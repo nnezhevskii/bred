@@ -1,0 +1,30 @@
+package org.nnezh
+
+import org.nnezh.lexer.Lexer
+import org.nnezh.lexer.readSource
+import arrow.core.raise.either
+
+/**
+ * Demo entry point: reads a .bred file (first CLI argument, or the bundled
+ * example by default), tokenizes it and prints the resulting token stream.
+ */
+fun main(args: Array<String>) {
+    val path = args.firstOrNull() ?: "examples/max.bred"
+    val result = either {
+        val source = readSource(path).bind()
+        val tokens = Lexer(source).tokenize().bind()
+
+        val stringBuilder = StringBuilder()
+        stringBuilder.append("Tokens for '$path':")
+
+        for (token in tokens) {
+            stringBuilder.append("  ${token.position}\t${token::class.simpleName}\t${token.lexeme}\n")
+        }
+        stringBuilder.toString()
+    }
+
+    result.fold(
+        ifLeft = { System.err.println(it) },
+        ifRight = { println(it) }
+    )
+}
