@@ -8,16 +8,19 @@ import org.nnezh.ast.BooleanLiteralExpressionNode
 import org.nnezh.ast.DeclareFunctionASTNode
 import org.nnezh.ast.DoubleLiteralExpressionNode
 import org.nnezh.ast.EmptyNode
+import org.nnezh.ast.ForStatementASTNode
 import org.nnezh.ast.FunctionArgumentASTNode
 import org.nnezh.ast.FunctionCallExpressionNode
 import org.nnezh.ast.IfStatementASTNode
 import org.nnezh.ast.ImmutableVariableInitializationASTNode
 import org.nnezh.ast.IntLiteralExpressionNode
+import org.nnezh.ast.MutableVariableInitializationASTNode
 import org.nnezh.ast.ProgramASTNode
 import org.nnezh.ast.StringLiteralExpressionNode
 import org.nnezh.ast.UnaryExpressionASTNode
 import org.nnezh.ast.VariableExpressionNode
 import org.nnezh.ast.WhileStatementASTNode
+import org.nnezh.org.nnezh.Type
 
 class AbstractSyntaxTreeDrawer {
     private val indent = " ".repeat(1)
@@ -95,7 +98,7 @@ class AbstractSyntaxTreeDrawer {
             }
             is ImmutableVariableInitializationASTNode -> {
                 acc.add("${shift + indent}ImmutableVariableInitialization:")
-                acc.add("${shift + indent}Name: ${node.name}: ${node.type}")
+                acc.add("${shift + indent}Name: ${node.name}: ${Type.toString(node.type)}")
                 acc.addAll(recursive(node.value, shift + indent.repeat(1)))
 
             }
@@ -126,6 +129,16 @@ class AbstractSyntaxTreeDrawer {
                 acc.addAll(recursive(node.condition, shift + indent.repeat(2)))
                 acc.add("${shift+indent}Body:")
                 acc.addAll(recursive(node.bodyBlock, shift + indent.repeat(2)))
+            }
+
+            is MutableVariableInitializationASTNode -> {
+                acc.add("${shift}MutableVariableInitialization:")
+                acc.add("${shift + indent}Name: ${node.name}: ${node.type}")
+                acc.addAll(recursive(node.value, shift + indent.repeat(1)))
+            }
+            is ForStatementASTNode -> {
+                acc.add("${shift}ForStatement:")
+                acc.addAll(recursive(node.desugaredContent, shift + indent.repeat(1)))
             }
         }
         return acc

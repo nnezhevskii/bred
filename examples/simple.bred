@@ -14,7 +14,13 @@ fun main(): Unit {
 }
 
 fun loop(): Unit {
-    while (loop() + x - 3) {
+    while (loop() > 1) {
         f = f + 1
+    }
+}
+
+fun forMethod(): Unit {
+    for (i in true to "oranges") {
+        a = b + c()
     }
 }

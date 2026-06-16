@@ -4,6 +4,8 @@
 
 package org.nnezh.lexer
 
+import org.nnezh.lexer.Token.Keyword.In
+
 /**
  * Position of a token in the source file. Both [line] and [column] are 1-based.
  */
@@ -53,6 +55,18 @@ sealed class Token {
             override val lexeme: String = "while"
         }
 
+        data class For(override val position: Position) : Keyword() {
+            override val lexeme: String = "for"
+        }
+
+        data class To(override val position: Position) : Keyword() {
+            override val lexeme: String = "to"
+        }
+
+        data class In(override val position: Position) : Keyword() {
+            override val lexeme: String = "in"
+        }
+
         data class True(override val position: Position) : Keyword() {
             override val lexeme: String = "true"
         }
@@ -71,6 +85,9 @@ sealed class Token {
                 "else" to ::Else,
                 "return" to ::Return,
                 "while" to ::While,
+                "for" to ::For,
+                "in" to ::In,
+                "to" to ::To,
                 "true" to ::True,
                 "false" to ::False,
             )
