@@ -3,13 +3,16 @@ package org.nnezh
 import org.nnezh.lexer.Lexer
 import org.nnezh.lexer.readSource
 import arrow.core.raise.either
+import org.nnezh.ast.AbstractSyntaxTreeBuilder
+import org.nnezh.org.nnezh.ast.AbstractSyntaxTreeExpressionParser
+import org.nnezh.org.nnezh.ast.utils.AbstractSyntaxTreeDrawer
 
 /**
  * Demo entry point: reads a .bred file (first CLI argument, or the bundled
  * example by default), tokenizes it and prints the resulting token stream.
  */
 fun main(args: Array<String>) {
-    val path = args.firstOrNull() ?: "examples/max.bred"
+    val path = args.firstOrNull() ?: "examples/simple.bred"
     val result = either {
         val source = readSource(path).bind()
         val tokens = Lexer(source).tokenize().bind()
@@ -21,6 +24,10 @@ fun main(args: Array<String>) {
             stringBuilder.append("  ${token.position}\t${token::class.simpleName}\t${token.lexeme}\n")
         }
         stringBuilder.toString()
+
+        AbstractSyntaxTreeBuilder(AbstractSyntaxTreeExpressionParser())
+            .build(tokens).bind().let { AbstractSyntaxTreeDrawer().draw(it) }
+
     }
 
     result.fold(

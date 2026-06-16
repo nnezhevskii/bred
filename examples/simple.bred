@@ -1,0 +1,20 @@
+fun min(a: Int, b: String): Unit {
+    val b: String = 5 + a
+}
+
+fun main(): Unit {
+    val c: Int = min(a) + main() + 3.14
+    d = ((c + 3) * 3) / (println * unknownFunction())
+
+    if (d > c) {
+        d = c
+    } else {
+        c = readInt() + main()
+    }
+}
+
+fun loop(): Unit {
+    while (loop() + x - 3) {
+        f = f + 1
+    }
+}

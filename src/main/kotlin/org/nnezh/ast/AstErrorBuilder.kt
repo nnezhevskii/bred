@@ -10,4 +10,6 @@ object AstErrorFactory {
     fun expectedExpression(token: Token): ASTError = ASTError("Expected expression but got ${token.lexeme} at ${token.position}")
     fun expectedClosingParen(token: Token): ASTError = ASTError("Expected ')' but got ${token.lexeme} at ${token.position}")
     fun expectedArgumentSeparator(token: Token): ASTError = ASTError("Expected ',' or ')' but got ${token.lexeme} at ${token.position}")
+
+    fun buildError(expected: String, token: Token): ASTError = ASTError("Expected $expected but got ${token.lexeme} in ${token.position}")
 }
