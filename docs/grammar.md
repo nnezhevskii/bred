@@ -260,18 +260,17 @@ Multi-character operators are recognized greedily (`==` before `=`, `<=` before 
 | `}`    | `Punctuation.RBrace`     |
 | `,`    | `Punctuation.Comma`      |
 | `:`    | `Punctuation.Colon`      |
-| `;`    | `Punctuation.Semicolon`  |
 | `.`    | `Punctuation.Dot`        |
 
 **Examples:**
 
 ```bred
-(){},:;.
+(){},:.
 ```
 
 **Notes:**
 
-- `;` is tokenized but **not consumed by any parser** — statement terminators are **not confirmed** in the grammar. See [§10](#10-open-questions--inconsistencies).
+- `;` is not valid syntax → `LexerError.UnexpectedCharacter` (see [§1.10](#110-lexical-errors)).
 - `.` as member access / field access — **not confirmed**. In practice `.` appears as a separate token after integers without a fractional part (`3.`).
 
 **Implementation:** `Token.Punctuation`, `LexerTest.punctuation is recognized`.
@@ -294,7 +293,7 @@ Empty or whitespace-only input produces only `EOF`.
 
 | Error | Typical cause |
 |-------|----------------|
-| `UnexpectedCharacter` | `@`, lone `&`, unrecognized symbol |
+| `UnexpectedCharacter` | `@`, `;`, lone `&`, unrecognized symbol |
 | `UnterminatedString` | missing closing `"`, newline inside string |
 | `UnterminatedBlockComment` | missing `*/` |
 | `UnknownEscape` | `\q` and similar |
@@ -817,7 +816,6 @@ fun f(): Foo { }            (* parse error: Invalid type Foo at … *)
 ### Confirmed limitations
 
 - No global `var` declaration (block-only; top-level `var` → `Expected function or constant declaration`).
-- No semicolon-separated statements (token exists, unused).
 - No member access (`.` not in expression grammar).
 - No array indexing, generics, or user-defined types in the parser.
 - No string interpolation.
@@ -831,11 +829,10 @@ fun f(): Foo { }            (* parse error: Invalid type Foo at … *)
 |---|-------|----------|
 | 1 | Global `var` unsupported | `ProgramParser.kt` accepts only `fun` / `val` at top level; block `var` via `MutableInitializationParser` |
 | 2 | `for` header parens wrap `id in expr to expr`, not a bare `expression` | `ForParser.kt` vs `IfParser.kt` / `WhileParser.kt` — intentional range syntax, structurally different from if/while |
-| 3 | `;` token unused | `Token.Punctuation.Semicolon`; no parser consumes it |
-| 4 | For-loop counter always `Int` in desugar regardless of bound types | `ForParser.kt` hardcodes `Type.IntType` |
-| 5 | Package split: parsers vs AST nodes | `org.nnezh.org.nnezh.ast` vs `org.nnezh.ast` |
-| 6 | `FunctionArgsASTNode` is not an `ASTNode` | `ASTNode.kt` |
-| 7 | Call statement vs expression routing mismatch | `CallStatementParser` accepts any expression; `StatementParser` only routes `identifier '('` |
+| 3 | For-loop counter always `Int` in desugar regardless of bound types | `ForParser.kt` hardcodes `Type.IntType` |
+| 4 | Package split: parsers vs AST nodes | `org.nnezh.org.nnezh.ast` vs `org.nnezh.ast` |
+| 5 | `FunctionArgsASTNode` is not an `ASTNode` | `ASTNode.kt` |
+| 6 | Call statement vs expression routing mismatch | `CallStatementParser` accepts any expression; `StatementParser` only routes `identifier '('` |
 | 9 | AST appends synthetic `return Unit` even for `: Int` without return | `FunctionParser.kt`; `add` / `compute` in `ai_generated.bred` — semantic error deferred to analysis phase |
 | 10 | Implicit-return check is top-level only | Nested `return` in `if`/`while` does not suppress append; `FunctionParser.kt` |
 
@@ -872,7 +869,7 @@ Current suite: **16 test files** in `src/test/kotlin/`.
 
 - [x] **Unknown type `Foo`:** `fun f(): Foo { }`, `val x: Foo = 1`, `fun f(a: Foo): Int { }` → `Invalid type Foo at …` (`FunctionParserTest`, `ImmutableInitializationParserTest`, `AiGeneratedProgramIntegrationTest`).
 - [x] **`var` init:** block `var n: Int = 42` → `MutableVariableInitializationASTNode`; global `var` rejected (`MutableInitializationParserTest`, `StatementParserTest`, `BlockParserTest`, `ProgramParserTest`).
-- [ ] **Semicolon between statements:** confirm tokens are ignored or cause unexpected-token errors.
+- [x] **Semicolon:** `;` rejected at lex → `LexerError.UnexpectedCharacter` (`LexerTest`).
 - [ ] **Statement `(f)()` or `1 + foo()`:** confirm rejection at `StatementParser` dispatch.
 - [ ] **Lexer keywords `for`, `in`, `to`:** explicit keyword recognition test (subset tested in `keywords are recognized`).
 - [ ] **`else if` chain:** confirm rejection (not implemented).

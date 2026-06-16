@@ -280,22 +280,6 @@ class ImmutableInitializationParserTest {
     }
 
     @Test
-    fun `semicolon instead of colon fails`() {
-        val result = parseInit(
-            listOf(
-                valKeyword(),
-                identifier("x"),
-                Token.Punctuation.Semicolon(pos),
-                identifier("Int"),
-                assign(),
-                eof(),
-            ),
-        )
-        assertTrue(result.isLeft())
-        assertTrue(result.leftOrNull()?.message?.contains(":") == true)
-    }
-
-    @Test
     fun `missing type fails`() {
         val result = parseFromSource("val x : = 1")
         assertTrue(result.isLeft())

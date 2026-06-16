@@ -10,10 +10,9 @@ Item IDs (G-02, G-21, …) are stable references; sections below group by **when
 
 | ID | Item | Current state | Action |
 |----|------|---------------|--------|
-| G-21 | Semicolon between statements | `;` token lexed, never consumed; behavior undocumented | One test: `{ val a: Int = 1; val b: Int = 2 }` — assert ignore vs error |
-| G-22 | Non-identifier call statement | `StatementParser` routes only `identifier '('`; §10 #7 | One test: `(f)()` at statement level — assert `Left` |
+| G-22 | Non-identifier call statement | `StatementParser` routes only `identifier '('`; §10 #6 | One test: `(f)()` at statement level — assert `Left` |
 
-**Suggested order:** G-21, G-22.
+**Suggested order:** G-22.
 
 ---
 
@@ -36,7 +35,6 @@ Not blocking parser completeness; implement when the language actually needs the
 | ID | Item | Current state | Action |
 |----|------|---------------|--------|
 | G-05 | `else if` chains | Only `else block`; no `else if` desugar | Desugar to nested `if` or keep unsupported (+ test G-25) |
-| G-06 | Statement separators (`;`) | Token in lexer, unused in grammar | Implement terminators **or** remove `Semicolon` from lexer |
 | G-12 | Member access (`obj.field`) | `.` token exists; not in expression parser | Implement or remove dot from lexer |
 | G-13 | Indirect calls `(f)()` | Call suffix only on identifier primary | Implement if call grammar should allow it |
 
@@ -56,7 +54,7 @@ Not blocking parser completeness; implement when the language actually needs the
 
 | When | IDs |
 |------|-----|
-| **Now** | G-21, G-22 |
+| **Now** | G-22 |
 | **Next pipeline** | G-31, G-09, G-03 |
-| **When language grows** | G-05, G-06, G-12, G-13 |
+| **When language grows** | G-05, G-12, G-13 |
 | **Optional** | G-14, G-16, G-25 |

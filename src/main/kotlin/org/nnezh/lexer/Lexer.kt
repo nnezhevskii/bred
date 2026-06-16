@@ -151,7 +151,7 @@ class Lexer(private val source: String) {
             '}' -> Token.Punctuation.RBrace(start)
             ',' -> Token.Punctuation.Comma(start)
             ':' -> Token.Punctuation.Colon(start)
-            ';' -> Token.Punctuation.Semicolon(start)
+            ';' -> raise(LexerError.UnexpectedCharacter(start, ';'))
             '.' -> Token.Punctuation.Dot(start)
             '=' -> if (match('=')) Token.Operator.Eq(start) else Token.Operator.Assign(start)
             '!' -> if (match('=')) Token.Operator.Neq(start) else Token.Operator.Not(start)

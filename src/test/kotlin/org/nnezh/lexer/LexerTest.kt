@@ -143,7 +143,7 @@ class LexerTest {
 
     @Test
     fun `punctuation is recognized`() {
-        val tokens = meaningfulTokens("(){},:;.")
+        val tokens = meaningfulTokens("(){},:.")
         val expected = listOf(
             Token.Punctuation.LParen::class.java,
             Token.Punctuation.RParen::class.java,
@@ -151,11 +151,27 @@ class LexerTest {
             Token.Punctuation.RBrace::class.java,
             Token.Punctuation.Comma::class.java,
             Token.Punctuation.Colon::class.java,
-            Token.Punctuation.Semicolon::class.java,
             Token.Punctuation.Dot::class.java,
         )
         assertEquals(expected.size, tokens.size)
         expected.forEachIndexed { i, type -> assertInstanceOf(type, tokens[i]) }
+    }
+
+    @Test
+    fun `semicolon is rejected`() {
+        val error = assertInstanceOf(LexerError.UnexpectedCharacter::class.java, errorOf(";"))
+        assertEquals(';', error.char)
+        assertTrue(error.message.contains("Unexpected character ';'"))
+    }
+
+    @Test
+    fun `semicolon between statements is rejected`() {
+        val error = assertInstanceOf(
+            LexerError.UnexpectedCharacter::class.java,
+            errorOf("val a: Int = 1; val b: Int = 2"),
+        )
+        assertEquals(';', error.char)
+        assertTrue(error.message.contains("Unexpected character ';'"))
     }
 
     @Test

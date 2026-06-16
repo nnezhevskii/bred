@@ -217,10 +217,6 @@ sealed class Token {
             override val lexeme: String = ":"
         }
 
-        data class Semicolon(override val position: Position) : Punctuation() {
-            override val lexeme: String = ";"
-        }
-
         data class Dot(override val position: Position) : Punctuation() {
             override val lexeme: String = "."
         }
