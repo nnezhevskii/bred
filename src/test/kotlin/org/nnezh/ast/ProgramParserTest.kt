@@ -287,6 +287,13 @@ class ProgramParserTest {
     // region Negative scenarios
 
     @Test
+    fun `var at top level fails`() {
+        val result = parseFromSource("var x: Int = 1")
+        assertTrue(result.isLeft())
+        assertTrue(result.leftOrNull()?.message?.contains("Expected function or constant declaration") == true)
+    }
+
+    @Test
     fun `if at top level fails`() {
         val result = parseFromSource("if (true) { }")
         assertTrue(result.isLeft())

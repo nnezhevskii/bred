@@ -16,6 +16,7 @@ import org.nnezh.ast.AssignmentStatementASTNode
 import org.nnezh.ast.BlockASTNode
 import org.nnezh.ast.ImmutableVariableInitializationASTNode
 import org.nnezh.ast.IntLiteralExpressionNode
+import org.nnezh.ast.MutableVariableInitializationASTNode
 import org.nnezh.ast.StatementASTNode
 import org.nnezh.lexer.Lexer
 import org.nnezh.lexer.Position
@@ -89,6 +90,9 @@ class BlockParserTest {
 
     private fun initStatementParser(): Parser<StatementASTNode> =
         ImmutableInitializationParser(AbstractSyntaxTreeExpressionParser())
+
+    private fun varInitStatementParser(): Parser<StatementASTNode> =
+        MutableInitializationParser(AbstractSyntaxTreeExpressionParser())
 
     private fun parseBlock(
         tokens: List<Token>,
@@ -200,6 +204,19 @@ class BlockParserTest {
         val init = result.statements.single()
         assertInstanceOf(ImmutableVariableInitializationASTNode::class.java, init)
         assertEquals("n", (init as ImmutableVariableInitializationASTNode).name)
+        assertEquals(Type.IntType, init.type)
+        assertEquals(42L, (init.value as IntLiteralExpressionNode).value)
+    }
+
+    @Test
+    fun `parses block with var initialization via lexer`() {
+        val result = parseFromSource("{ var n: Int = 42 }", varInitStatementParser())
+            .getOrElse { error("unexpected parse error: $it") }
+
+        assertEquals(1, result.statements.size)
+        val init = result.statements.single()
+        assertInstanceOf(MutableVariableInitializationASTNode::class.java, init)
+        assertEquals("n", (init as MutableVariableInitializationASTNode).name)
         assertEquals(Type.IntType, init.type)
         assertEquals(42L, (init.value as IntLiteralExpressionNode).value)
     }

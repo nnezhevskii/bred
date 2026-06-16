@@ -141,7 +141,7 @@ fun val if else return while for in to true false
 **Notes:**
 
 - `true` and `false` are keywords, not separate literal token types. The expression parser maps them to `BooleanLiteralExpressionNode`.
-- Several keywords are recognized by the lexer but **not** by the statement/program parsers (`var`). See [§10](#10-open-questions--inconsistencies).
+- `var` is parsed as a block statement but **not** as a top-level program declaration (see [§3.3](#33-mutable-variable-declaration-var)).
 
 **Implementation:** `Token.Keyword.byText`.
 
@@ -409,9 +409,34 @@ fun main(): Unit {
 
 - Type annotation is **required**; `val x = 1` — **not supported**.
 - `typeName` must resolve via `Type.fromString` (see [§7](#7-type-names)).
-- `var` declarations — **not confirmed** at surface syntax (no parser). `MutableVariableInitializationASTNode` exists only as for-loop desugaring output.
 
 **Implementation:** `ImmutableInitializationParser.kt`, `ImmutableInitializationParserTest`.
+
+---
+
+### 3.3 Mutable variable declaration (`var`)
+
+```ebnf
+varDecl ::= 'var' identifier ':' typeName '=' expression ;
+```
+
+**Example (inside a block only):**
+
+```bred
+fun main(): Unit {
+    var counter: Int = 0
+    counter = counter + 1
+}
+```
+
+**Notes:**
+
+- Same syntax as `valDecl` except for the `var` keyword.
+- Type annotation is **required**; `var x = 1` — **not supported**.
+- `typeName` must resolve via `Type.fromString` (see [§7](#7-type-names)).
+- **Not supported at program top level** — only `fun` and `val` are valid top-level declarations (`ProgramParser.kt`).
+
+**Implementation:** `MutableInitializationParser.kt`, `MutableInitializationParserTest`.
 
 ---
 
@@ -446,6 +471,7 @@ block ::= '{' { statement } '}' ;
 
 ```ebnf
 statement ::= valDecl
+            | varDecl
             | assignment
             | callStmt
             | ifStmt
@@ -459,6 +485,7 @@ statement ::= valDecl
 | First token(s)              | Parser route        |
 |-----------------------------|---------------------|
 | `val`                       | `ImmutableInitializationParser` |
+| `var`                       | `MutableInitializationParser` |
 | `if`                        | `IfParser`          |
 | `while`                     | `WhileParser`       |
 | `for`                       | `ForParser`         |
@@ -781,7 +808,7 @@ fun f(): Foo { }            (* parse error: Invalid type Foo at … *)
 | Situation | Message pattern |
 |-----------|-------------------|
 | Top-level non-declaration | `Expected function or constant declaration` |
-| Unknown type (`val`, param, return) | `Invalid type <name> at <line:column>` |
+| Unknown type (`val`, `var`, param, return) | `Invalid type <name> at <line:column>` |
 | Malformed block | `Expected begin/end of block` |
 | Missing expression | `Expected expression but got …` |
 | Bad function call | `Expected ',' or ')'` |
@@ -789,7 +816,7 @@ fun f(): Foo { }            (* parse error: Invalid type Foo at … *)
 
 ### Confirmed limitations
 
-- No surface `var` declaration parser.
+- No global `var` declaration (block-only; top-level `var` → `Expected function or constant declaration`).
 - No semicolon-separated statements (token exists, unused).
 - No member access (`.` not in expression grammar).
 - No array indexing, generics, or user-defined types in the parser.
@@ -802,7 +829,7 @@ fun f(): Foo { }            (* parse error: Invalid type Foo at … *)
 
 | # | Issue | Evidence |
 |---|-------|----------|
-| 1 | `var` is lexed but not parsed at surface | `Token.Keyword.Var`; `MutableVariableInitializationASTNode` only from `ForParser` desugar |
+| 1 | Global `var` unsupported | `ProgramParser.kt` accepts only `fun` / `val` at top level; block `var` via `MutableInitializationParser` |
 | 2 | `for` header parens wrap `id in expr to expr`, not a bare `expression` | `ForParser.kt` vs `IfParser.kt` / `WhileParser.kt` — intentional range syntax, structurally different from if/while |
 | 3 | `;` token unused | `Token.Punctuation.Semicolon`; no parser consumes it |
 | 4 | For-loop counter always `Int` in desugar regardless of bound types | `ForParser.kt` hardcodes `Type.IntType` |
@@ -818,7 +845,7 @@ See also [`docs/TODO.md`](TODO.md) for actionable follow-ups.
 
 ## 11. Checklist for parser tests
 
-Current suite: **15 test files** in `src/test/kotlin/`.
+Current suite: **16 test files** in `src/test/kotlin/`.
 
 ### Covered
 
@@ -828,9 +855,10 @@ Current suite: **15 test files** in `src/test/kotlin/`.
 | Source I/O | `SourceReaderTest.kt` | read `.bred` files |
 | Expressions | `AbstractSyntaxTreeExpressionParserTest.kt` | precedence, associativity, unary, calls, grouping, literals, negative malformed |
 | Integration (e2e) | `AiGeneratedProgramIntegrationTest.kt` | `ai_generated.bred`: lex + build, full AST structure, implicit return in `add`/`compute`/`noArgs`, negative lex/parse |
-| Program | `ProgramParserTest.kt` | empty program, fun/val routing, integration, top-level errors |
+| Program | `ProgramParserTest.kt` | empty program, fun/val routing, integration, top-level errors (incl. global `var`) |
 | Functions | `FunctionParserTest.kt` | params, return type, block, implicit return append, no duplicate when return present, Int-without-return, commas, invalid types |
 | `val` init | `ImmutableInitializationParserTest.kt` | type/name/assign, invalid types, integration |
+| `var` init | `MutableInitializationParserTest.kt` | type/name/assign, invalid types, integration (block-only) |
 | Blocks | `BlockParserTest.kt` | empty/multiple statements, braces, EOF inside block |
 | Statements | `StatementParserTest.kt` | routing to all statement kinds, integration, dispatch errors |
 | Assign | `AssignParserTest.kt` | name, expression delegation, malformed |
@@ -843,11 +871,11 @@ Current suite: **15 test files** in `src/test/kotlin/`.
 ### Gaps / recommended additions
 
 - [x] **Unknown type `Foo`:** `fun f(): Foo { }`, `val x: Foo = 1`, `fun f(a: Foo): Int { }` → `Invalid type Foo at …` (`FunctionParserTest`, `ImmutableInitializationParserTest`, `AiGeneratedProgramIntegrationTest`).
+- [x] **`var` init:** block `var n: Int = 42` → `MutableVariableInitializationASTNode`; global `var` rejected (`MutableInitializationParserTest`, `StatementParserTest`, `BlockParserTest`, `ProgramParserTest`).
 - [ ] **Semicolon between statements:** confirm tokens are ignored or cause unexpected-token errors.
 - [ ] **Statement `(f)()` or `1 + foo()`:** confirm rejection at `StatementParser` dispatch.
 - [ ] **Lexer keywords `for`, `in`, `to`:** explicit keyword recognition test (subset tested in `keywords are recognized`).
 - [ ] **`else if` chain:** confirm rejection (not implemented).
-- [ ] **`var`:** add tests when parser is implemented.
 
 ---
 
@@ -870,6 +898,7 @@ Current suite: **15 test files** in `src/test/kotlin/`.
 - `src/main/kotlin/org/nnezh/ast/ProgramParser.kt`
 - `src/main/kotlin/org/nnezh/ast/FunctionParser.kt`
 - `src/main/kotlin/org/nnezh/ast/ImmutableInitializationParser.kt`
+- `src/main/kotlin/org/nnezh/ast/MutableInitializationParser.kt`
 - `src/main/kotlin/org/nnezh/ast/BlockParser.kt`
 - `src/main/kotlin/org/nnezh/ast/StatementParser.kt`
 - `src/main/kotlin/org/nnezh/ast/AssignParser.kt`

@@ -1,5 +1,5 @@
 fun main() {
     for (i in 0 to 10) {
-        println(i)
+        var i: Int = i + main() / 0
     }
 }

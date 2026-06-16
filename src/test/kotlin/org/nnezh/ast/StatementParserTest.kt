@@ -22,6 +22,7 @@ import org.nnezh.ast.ForStatementASTNode
 import org.nnezh.ast.IfStatementASTNode
 import org.nnezh.ast.ImmutableVariableInitializationASTNode
 import org.nnezh.ast.IntLiteralExpressionNode
+import org.nnezh.ast.MutableVariableInitializationASTNode
 import org.nnezh.ast.ReturnFunctionStatementASTNode
 import org.nnezh.ast.StatementASTNode
 import org.nnezh.ast.VariableExpressionNode
@@ -90,19 +91,21 @@ class StatementParserTest {
         val ifStub: TaggingStubParser,
         val whileStub: TaggingStubParser,
         val forStub: TaggingStubParser,
-        val initStub: TaggingStubParser,
+        val immutableInitStub: TaggingStubParser,
+        val mutableInitStub: TaggingStubParser,
         val assignStub: TaggingStubParser,
         val callStub: TaggingStubParser,
         val returnStub: ReturnTaggingStubParser,
     ) {
         fun all(): List<InvocableStub> =
-            listOf(ifStub, whileStub, forStub, initStub, assignStub, callStub, returnStub)
+            listOf(ifStub, whileStub, forStub, immutableInitStub, mutableInitStub, assignStub, callStub, returnStub)
 
         fun parser(): StatementParser = StatementParser(
             ifStub,
             whileStub,
             forStub,
-            initStub,
+            immutableInitStub,
+            mutableInitStub,
             assignStub,
             callStub,
             returnStub,
@@ -122,8 +125,11 @@ class StatementParserTest {
             forStub = TaggingStubParser(
                 ForStatementASTNode(emptyBlock),
             ),
-            initStub = TaggingStubParser(
+            immutableInitStub = TaggingStubParser(
                 ImmutableVariableInitializationASTNode("i", Type.IntType, IntLiteralExpressionNode(0L)),
+            ),
+            mutableInitStub = TaggingStubParser(
+                MutableVariableInitializationASTNode("j", Type.IntType, IntLiteralExpressionNode(0L)),
             ),
             assignStub = TaggingStubParser(
                 AssignmentStatementASTNode("x", IntLiteralExpressionNode(0L)),
@@ -145,6 +151,7 @@ class StatementParserTest {
             whileParser = WhileParser(expr, block),
             forParser = ForParser(expr, block),
             immutableInitializationParser = ImmutableInitializationParser(expr),
+            mutableInitializationParser = MutableInitializationParser(expr),
             assignParser = AssignParser(expr),
             callParser = CallStatementParser(expr),
             returnParser = ReturnValueParser(expr),
@@ -178,11 +185,19 @@ class StatementParserTest {
     // region Positive routing scenarios
 
     @Test
-    fun `routes val to init parser`() {
+    fun `routes val to immutable init parser`() {
         val stubs = defaultStubs()
         parseStatement(listOf(Token.Keyword.Val(pos), eof()), stubs.parser())
             .getOrElse { error("unexpected parse error: $it") }
-        assertOnlyStubInvoked(stubs, stubs.initStub)
+        assertOnlyStubInvoked(stubs, stubs.immutableInitStub)
+    }
+
+    @Test
+    fun `routes var to mutable init parser`() {
+        val stubs = defaultStubs()
+        parseStatement(listOf(Token.Keyword.Var(pos), eof()), stubs.parser())
+            .getOrElse { error("unexpected parse error: $it") }
+        assertOnlyStubInvoked(stubs, stubs.mutableInitStub)
     }
 
     @Test
@@ -238,7 +253,7 @@ class StatementParserTest {
         val stubs = defaultStubs()
         val result = parseStatement(listOf(Token.Keyword.Val(pos), eof()), stubs.parser())
             .getOrElse { error("unexpected parse error: $it") }
-        assertEquals(stubs.initStub.result, result)
+        assertEquals(stubs.immutableInitStub.result, result)
     }
 
     @Test
@@ -259,6 +274,14 @@ class StatementParserTest {
             .getOrElse { error("unexpected parse error: $it") }
         assertInstanceOf(ImmutableVariableInitializationASTNode::class.java, result)
         assertEquals("n", (result as ImmutableVariableInitializationASTNode).name)
+    }
+
+    @Test
+    fun `parses var initialization via real parsers`() {
+        val result = parseFromSource("var n: Int = 42")
+            .getOrElse { error("unexpected parse error: $it") }
+        assertInstanceOf(MutableVariableInitializationASTNode::class.java, result)
+        assertEquals("n", (result as MutableVariableInitializationASTNode).name)
     }
 
     @Test
@@ -393,6 +416,7 @@ class StatementParserTest {
             stubs.whileStub,
             stubs.forStub,
             FailingStatementParser("init stub failure"),
+            stubs.mutableInitStub,
             stubs.assignStub,
             stubs.callStub,
             stubs.returnStub,
@@ -400,6 +424,24 @@ class StatementParserTest {
         val result = parseStatement(listOf(Token.Keyword.Val(pos), eof()), parser)
         assertTrue(result.isLeft())
         assertTrue(result.leftOrNull()?.message?.contains("init stub failure") == true)
+    }
+
+    @Test
+    fun `propagates mutable init parser failure`() {
+        val stubs = defaultStubs()
+        val parser = StatementParser(
+            stubs.ifStub,
+            stubs.whileStub,
+            stubs.forStub,
+            stubs.immutableInitStub,
+            FailingStatementParser("mutable init stub failure"),
+            stubs.assignStub,
+            stubs.callStub,
+            stubs.returnStub,
+        )
+        val result = parseStatement(listOf(Token.Keyword.Var(pos), eof()), parser)
+        assertTrue(result.isLeft())
+        assertTrue(result.leftOrNull()?.message?.contains("mutable init stub failure") == true)
     }
 
     @Test
