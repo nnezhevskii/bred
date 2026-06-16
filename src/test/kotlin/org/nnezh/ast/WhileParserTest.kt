@@ -33,6 +33,10 @@ class WhileParserTest {
 
     private fun whileKeyword() = Token.Keyword.While(pos)
 
+    private fun lparen() = Token.Punctuation.LParen(pos)
+
+    private fun rparen() = Token.Punctuation.RParen(pos)
+
     private fun lbrace() = Token.Punctuation.LBrace(pos)
 
     private fun rbrace() = Token.Punctuation.RBrace(pos)
@@ -80,6 +84,9 @@ class WhileParserTest {
         return parseWhile(tokens, AbstractSyntaxTreeExpressionParser(), blockParser)
     }
 
+    private fun whileTokensWithoutBlock(vararg tail: Token): List<Token> =
+        listOf(whileKeyword(), lparen(), rparen(), *tail)
+
     // region Positive scenarios
 
     @Test
@@ -87,7 +94,7 @@ class WhileParserTest {
         val condition = IntLiteralExpressionNode(1L)
         val block = BlockASTNode(emptyList())
         val result = parseWhile(
-            listOf(whileKeyword(), lbrace(), rbrace(), eof()),
+            whileTokensWithoutBlock(lbrace(), rbrace(), eof()),
             StubExpressionParser(condition),
             StubBlockParser(block),
         ).getOrElse { error("unexpected parse error: $it") }
@@ -97,7 +104,7 @@ class WhileParserTest {
     }
 
     @Test
-    fun `passes first token after while to expression parser`() {
+    fun `passes first token inside parens to expression parser`() {
         val conditionToken = identifier("x")
         var tokenAtExpressionStart: Token? = null
 
@@ -110,7 +117,7 @@ class WhileParserTest {
         }
 
         parseWhile(
-            listOf(whileKeyword(), conditionToken, lbrace(), rbrace(), eof()),
+            listOf(whileKeyword(), lparen(), conditionToken, rparen(), lbrace(), rbrace(), eof()),
             consumingStub,
         ).getOrElse { error("unexpected parse error: $it") }
 
@@ -118,11 +125,11 @@ class WhileParserTest {
     }
 
     @Test
-    fun `passes context after condition to block parser`() {
+    fun `passes context after closing paren to block parser`() {
         var tokenAtBlockStart: Token? = null
 
         parseFromSource(
-            "while x > 0 { }",
+            "while (x > 0) { }",
             StubBlockParser(onParse = { tokenAtBlockStart = it.top() }),
         ).getOrElse { error("unexpected parse error: $it") }
 
@@ -131,7 +138,7 @@ class WhileParserTest {
 
     @Test
     fun `parses while with comparison condition via lexer`() {
-        val result = parseFromSource("while x > 0 { }")
+        val result = parseFromSource("while (x > 0) { }")
             .getOrElse { error("unexpected parse error: $it") }
 
         assertInstanceOf(BinaryExpressionASTNode::class.java, result.condition)
@@ -154,7 +161,7 @@ class WhileParserTest {
 
     @Test
     fun `parses while with complex condition expression`() {
-        val result = parseFromSource("while a + b * 2 > 0 { }")
+        val result = parseFromSource("while (a + b * 2 > 0) { }")
             .getOrElse { error("unexpected parse error: $it") }
 
         assertInstanceOf(BinaryExpressionASTNode::class.java, result.condition)
@@ -162,7 +169,7 @@ class WhileParserTest {
 
     @Test
     fun `parses while with empty block`() {
-        val result = parseFromSource("while x > 0 { }")
+        val result = parseFromSource("while (x > 0) { }")
             .getOrElse { error("unexpected parse error: $it") }
 
         assertTrue(result.bodyBlock.statements.isEmpty())
@@ -175,7 +182,7 @@ class WhileParserTest {
         val customBlock = BlockASTNode(listOf(customStatement))
 
         val result = parseWhile(
-            listOf(whileKeyword(), lbrace(), rbrace(), eof()),
+            whileTokensWithoutBlock(lbrace(), rbrace(), eof()),
             StubExpressionParser(IntLiteralExpressionNode(0L)),
             StubBlockParser(customBlock),
         ).getOrElse { error("unexpected parse error: $it") }
@@ -185,7 +192,7 @@ class WhileParserTest {
 
     @Test
     fun `parses while with extra spaces via lexer`() {
-        val result = parseFromSource("while  x  >  0  {  }")
+        val result = parseFromSource("while  ( x > 0 )  {  }")
             .getOrElse { error("unexpected parse error: $it") }
 
         assertInstanceOf(BinaryExpressionASTNode::class.java, result.condition)
@@ -194,7 +201,7 @@ class WhileParserTest {
 
     @Test
     fun `parses while with boolean literal condition`() {
-        val result = parseFromSource("while true { }")
+        val result = parseFromSource("while (true) { }")
             .getOrElse { error("unexpected parse error: $it") }
 
         assertInstanceOf(BooleanLiteralExpressionNode::class.java, result.condition)
@@ -212,26 +219,26 @@ class WhileParserTest {
 
     @Test
     fun `missing while keyword fails`() {
-        assertTrue(parseWhile(listOf(identifier("x"), lbrace(), rbrace(), eof())).isLeft())
+        assertTrue(parseWhile(listOf(lparen(), rparen(), lbrace(), rbrace(), eof())).isLeft())
     }
 
     @Test
     fun `if instead of while fails`() {
-        val result = parseWhile(listOf(Token.Keyword.If(pos), lbrace(), rbrace(), eof()))
+        val result = parseWhile(listOf(Token.Keyword.If(pos), lparen(), rparen(), lbrace(), rbrace(), eof()))
         assertTrue(result.isLeft())
         assertTrue(result.leftOrNull()?.message?.contains("while") == true)
     }
 
     @Test
     fun `for instead of while fails`() {
-        val result = parseWhile(listOf(Token.Keyword.For(pos), lbrace(), rbrace(), eof()))
+        val result = parseWhile(listOf(Token.Keyword.For(pos), lparen(), rparen(), lbrace(), rbrace(), eof()))
         assertTrue(result.isLeft())
         assertTrue(result.leftOrNull()?.message?.contains("while") == true)
     }
 
     @Test
     fun `val instead of while fails`() {
-        val result = parseWhile(listOf(Token.Keyword.Val(pos), lbrace(), rbrace(), eof()))
+        val result = parseWhile(listOf(Token.Keyword.Val(pos), lparen(), rparen(), lbrace(), rbrace(), eof()))
         assertTrue(result.isLeft())
         assertTrue(result.leftOrNull()?.message?.contains("while") == true)
     }
@@ -247,30 +254,44 @@ class WhileParserTest {
     }
 
     @Test
-    fun `malformed condition fails`() {
-        assertTrue(parseFromSource("while x >").isLeft())
+    fun `while without lparen fails`() {
+        val result = parseFromSource("while x > 0 { }")
+        assertTrue(result.isLeft())
+        assertTrue(result.leftOrNull()?.message?.contains("(") == true)
     }
 
     @Test
-    fun `missing block fails`() {
-        assertTrue(parseFromSource("while x > 0").isLeft())
+    fun `while with lparen but no condition fails`() {
+        assertTrue(parseFromSource("while (").isLeft())
     }
 
     @Test
-    fun `lparen instead of block fails`() {
-        val result = parseFromSource("while x > 0 (")
+    fun `while without rparen fails`() {
+        val result = parseFromSource("while (x > 0")
+        assertTrue(result.isLeft())
+        assertTrue(result.leftOrNull()?.message?.contains(")") == true)
+    }
+
+    @Test
+    fun `while without block fails`() {
+        val result = parseFromSource("while (x > 0)")
         assertTrue(result.isLeft())
         assertTrue(result.leftOrNull()?.message?.contains("{") == true)
     }
 
     @Test
-    fun `unclosed block fails`() {
-        assertTrue(parseFromSource("while x > 0 {").isLeft())
+    fun `malformed condition inside parens fails`() {
+        assertTrue(parseFromSource("while (x >) { }").isLeft())
     }
 
     @Test
-    fun `rbrace instead of lbrace fails`() {
-        val result = parseFromSource("while x > 0 }")
+    fun `unclosed block fails`() {
+        assertTrue(parseFromSource("while (x > 0) {").isLeft())
+    }
+
+    @Test
+    fun `rbrace instead of lbrace after condition fails`() {
+        val result = parseFromSource("while (x > 0) }")
         assertTrue(result.isLeft())
         assertTrue(result.leftOrNull()?.message?.contains("{") == true)
     }
@@ -278,7 +299,7 @@ class WhileParserTest {
     @Test
     fun `literal instead of while fails`() {
         val result = parseWhile(
-            listOf(Token.Literal.IntLiteral(1L, "1", pos), lbrace(), rbrace(), eof()),
+            listOf(Token.Literal.IntLiteral(1L, "1", pos), lparen(), rparen(), lbrace(), rbrace(), eof()),
         )
         assertTrue(result.isLeft())
         assertTrue(result.leftOrNull()?.message?.contains("while") == true)
@@ -287,6 +308,11 @@ class WhileParserTest {
     @Test
     fun `empty parenthesized condition fails`() {
         assertTrue(parseFromSource("while () { }").isLeft())
+    }
+
+    @Test
+    fun `extra rparen fails`() {
+        assertTrue(parseFromSource("while (x > 0)) { }").isLeft())
     }
 
     // endregion

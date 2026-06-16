@@ -288,7 +288,7 @@ class ProgramParserTest {
 
     @Test
     fun `while at top level fails`() {
-        val result = parseFromSource("while true { }")
+        val result = parseFromSource("while (true) { }")
         assertTrue(result.isLeft())
         assertTrue(result.leftOrNull()?.message?.contains("Expected function or constant declaration") == true)
     }

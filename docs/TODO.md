@@ -15,6 +15,14 @@ Actionable follow-ups derived from gaps between lexer, AST, parsers, tests, and 
 
 ---
 
+## Semantics — missing AST transformations
+
+| ID | Item | Current state | Suggested action |
+|----|------|---------------|------------------|
+| G-28 | Implicit `return Unit` at end of function body | Function blocks without an explicit `return` produce no `ReturnFunctionStatementASTNode`; only written `return` / bare `return` before `}` appears in AST | Add desugaring (e.g. in `FunctionParser` or a post-parse pass): for functions with return type `Unit`, if the block does not end with `return`, append synthetic `ReturnFunctionStatementASTNode(Unit)`; decide behavior for non-`Unit` return types (error vs no implicit return); add tests when implemented |
+
+---
+
 ## Type system — parser inconsistencies
 
 | ID | Item | Current state | Suggested action |
@@ -29,8 +37,8 @@ Actionable follow-ups derived from gaps between lexer, AST, parsers, tests, and 
 
 | ID | Item | Current state | Suggested action |
 |----|------|---------------|------------------|
-| G-10 | `if` vs `while` parentheses | `if (expr)` required; `while expr` does not require parens | Align syntax (require parens for both or neither) or document as intentional |
 | G-11 | For-loop surface `var` | Desugar emits `MutableVariableInitializationASTNode` without surface `var` | Expose `var` syntax or rename AST node to reflect internal-only use |
+| G-30 | `for` header parens vs if/while | `for (id in e to e)` uses parens for range header, not a bare expression | Document as intentional; unify only if language design changes |
 
 ---
 
@@ -60,11 +68,11 @@ Actionable follow-ups derived from gaps between lexer, AST, parsers, tests, and 
 | G-22 | Non-identifier call statement | `parseFromSource("(f)()")` at statement level — assert `Left` |
 | G-23 | Lexer keywords `for`, `in`, `to` | Extend `LexerTest.keywords are recognized` |
 | G-25 | `else if` | Assert parse failure or implement |
+| G-29 | `while` without parens rejected | Parser requires `(`; covered by `WhileParserTest` `while without lparen fails` | Keep regression test when changing while syntax |
 
 ---
 
 ## Priority suggestion
 
-1. **G-10** — syntax alignment (`if`/`while`)
-2. **G-26** — unify type error messages / resolver API
-3. **G-21–G-25** — remaining test coverage gaps
+1. **G-26** — unify type error messages / resolver API
+2. **G-21–G-25** — remaining test coverage gaps

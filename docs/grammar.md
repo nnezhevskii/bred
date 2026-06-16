@@ -562,23 +562,22 @@ if (x > y) {
 ### 4.7 `while`
 
 ```ebnf
-whileStmt ::= 'while' expression block ;
+whileStmt ::= 'while' '(' expression ')' block ;
 ```
 
 **Examples:**
 
 ```bred
-while true { }
-while loop() > 1 { }
+while (true) { }
+while (loop() > 1) { }
 while (x < 10) { }
 ```
 
 **Notes:**
 
-- Parentheses around the condition are **not required** (unlike `if`).
-- Parentheses may appear as part of a parenthesized subexpression.
+- Parentheses around the condition are **required** (same as `if`).
 
-**Implementation:** `WhileParser.kt`, `WhileParserTest`.
+**Implementation:** `WhileParser.kt`, `WhileParserTest.kt`.
 
 ---
 
@@ -791,7 +790,7 @@ fun f(): Foo { }            (* parse error: Unexpected type Foo — return *)
 | # | Issue | Evidence |
 |---|-------|----------|
 | 1 | `var` is lexed but not parsed at surface | `Token.Keyword.Var`; `MutableVariableInitializationASTNode` only from `ForParser` desugar |
-| 2 | `if` requires `()`, `while` does not | `IfParser.kt` vs `WhileParser.kt` |
+| 2 | `for` header parens wrap `id in expr to expr`, not a bare `expression` | `ForParser.kt` vs `IfParser.kt` / `WhileParser.kt` — intentional range syntax, structurally different from if/while |
 | 3 | `;` token unused | `Token.Punctuation.Semicolon`; no parser consumes it |
 | 4 | Type error message asymmetry | Params/`val`: `Invalid type …` via `parseOrNull`; return type: `Unexpected type …` via `fromString` |
 | 5 | For-loop counter always `Int` in desugar regardless of bound types | `ForParser.kt` hardcodes `Type.IntType` |
@@ -823,7 +822,7 @@ Current suite: **15 test files** in `src/test/kotlin/`.
 | Assign | `AssignParserTest.kt` | name, expression delegation, malformed |
 | Call stmt | `CallStatementParserTest.kt` | delegation, wrapping, integration calls, errors |
 | `if` | `IfParserTest.kt` | condition parens, else, blocks, errors |
-| `while` | `WhileParserTest.kt` | condition variants, block, errors |
+| `while` | `WhileParserTest.kt` | condition parens required, block, errors |
 | `for` | `ForParserTest.kt` | header, desugaring shape, synthetic positions, errors |
 | `return` | `ReturnValueParserTest.kt` | expression, `return Unit`, bare return before `}`, EOF error, delegation |
 

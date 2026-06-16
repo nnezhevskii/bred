@@ -285,7 +285,7 @@ class StatementParserTest {
 
     @Test
     fun `parses while statement via real parsers`() {
-        val result = parseFromSource("while true { }")
+        val result = parseFromSource("while (true) { }")
             .getOrElse { error("unexpected parse error: $it") }
         assertInstanceOf(WhileStatementASTNode::class.java, result)
     }
