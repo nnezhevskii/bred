@@ -6,6 +6,7 @@ package org.nnezh.org.nnezh.ast
 
 import arrow.core.Either
 import arrow.core.getOrElse
+import arrow.core.left
 import arrow.core.raise.Raise
 import arrow.core.raise.either
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -17,6 +18,7 @@ import org.nnezh.ast.BlockASTNode
 import org.nnezh.ast.DeclareFunctionASTNode
 import org.nnezh.ast.FunctionArgumentASTNode
 import org.nnezh.ast.IntLiteralExpressionNode
+import org.nnezh.ast.ReturnFunctionStatementASTNode
 import org.nnezh.ast.StatementASTNode
 import org.nnezh.lexer.Lexer
 import org.nnezh.lexer.Position
@@ -74,6 +76,12 @@ class FunctionParserTest {
         return parseFunction(tokens, blockParser)
     }
 
+    private fun assertImplicitUnitReturn(statement: StatementASTNode) {
+        val returnStmt = assertInstanceOf(ReturnFunctionStatementASTNode::class.java, statement)
+        assertTrue(returnStmt.expression.isLeft())
+        assertEquals(Type.UnitType, returnStmt.expression.leftOrNull())
+    }
+
     // region Positive scenarios
 
     @Test
@@ -84,7 +92,8 @@ class FunctionParserTest {
         assertEquals("foo", result.name)
         assertTrue(result.args.arguments.isEmpty())
         assertEquals(Type.UnitType, result.resultType)
-        assertTrue(result.block.statements.isEmpty())
+        assertEquals(1, result.block.statements.size)
+        assertImplicitUnitReturn(result.block.statements.single())
     }
 
     @Test
@@ -128,7 +137,9 @@ class FunctionParserTest {
         val result = parseFromSource("fun foo(): Unit { }", StubBlockParser(customBlock))
             .getOrElse { error("unexpected parse error: $it") }
 
-        assertEquals(customBlock, result.block)
+        assertEquals(2, result.block.statements.size)
+        assertEquals(customStatement, result.block.statements[0])
+        assertImplicitUnitReturn(result.block.statements[1])
     }
 
     @Test
@@ -189,6 +200,37 @@ class FunctionParserTest {
         assertEquals(Type.StringType, result.args.arguments[1].type)
         assertEquals(Type.DoubleType, result.args.arguments[2].type)
         assertEquals(Type.BoolType, result.args.arguments[3].type)
+    }
+
+    @Test
+    fun `appends implicit return Unit to empty Unit function body`() {
+        val result = parseFromSource("fun main(): Unit { }")
+            .getOrElse { error("unexpected parse error: $it") }
+
+        assertEquals(1, result.block.statements.size)
+        assertImplicitUnitReturn(result.block.statements.single())
+    }
+
+    @Test
+    fun `does not append implicit return when top-level return exists`() {
+        val returnStmt = ReturnFunctionStatementASTNode(Type.UnitType.left())
+        val blockWithReturn = BlockASTNode(listOf(returnStmt))
+
+        val result = parseFromSource("fun f(): Unit { }", StubBlockParser(blockWithReturn))
+            .getOrElse { error("unexpected parse error: $it") }
+
+        assertEquals(1, result.block.statements.size)
+        assertEquals(returnStmt, result.block.statements.single())
+    }
+
+    @Test
+    fun `appends implicit return Unit even for Int function without return`() {
+        val result = parseFromSource("fun f(): Int { }")
+            .getOrElse { error("unexpected parse error: $it") }
+
+        assertEquals(Type.IntType, result.resultType)
+        assertEquals(1, result.block.statements.size)
+        assertImplicitUnitReturn(result.block.statements.single())
     }
 
     // endregion

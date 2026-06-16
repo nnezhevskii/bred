@@ -19,6 +19,7 @@ import org.nnezh.ast.FunctionArgsASTNode
 import org.nnezh.ast.ImmutableVariableInitializationASTNode
 import org.nnezh.ast.IntLiteralExpressionNode
 import org.nnezh.ast.ProgramASTNode
+import org.nnezh.ast.ReturnFunctionStatementASTNode
 import org.nnezh.lexer.Lexer
 import org.nnezh.lexer.Position
 import org.nnezh.lexer.Token
@@ -272,7 +273,13 @@ class ProgramParserTest {
 
         assertEquals(1, result.functions.size)
         assertEquals(1, result.globalVariables.size)
-        assertTrue(result.functions.single().block.statements.isEmpty())
+        assertEquals(1, result.functions.single().block.statements.size)
+        val returnStmt = assertInstanceOf(
+            ReturnFunctionStatementASTNode::class.java,
+            result.functions.single().block.statements.single(),
+        )
+        assertTrue(returnStmt.expression.isLeft())
+        assertEquals(Type.UnitType, returnStmt.expression.leftOrNull())
     }
 
     // endregion

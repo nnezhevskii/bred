@@ -1,78 +1,64 @@
 # bred — Grammar / Parser TODO
 
-Actionable follow-ups derived from gaps between lexer, AST, parsers, tests, and examples. See [`grammar.md`](grammar.md) §10 for the full inconsistency table.
+Follow-ups for lexer, AST, parsers, tests, and docs. Full inconsistency table: [`grammar.md`](grammar.md) §10.
+
+Item IDs (G-02, G-26, …) are stable references; sections below group by **when to act**, not by subsystem.
 
 ---
 
-## Language surface — missing parsers
+## Now — parser stage (high ROI)
 
-| ID | Item | Current state | Suggested action |
-|----|------|---------------|------------------|
-| G-02 | `var` declaration | Keyword lexed; `MutableVariableInitializationASTNode` exists only from for-desugar | Add `MutableInitializationParser` (mirror `val`) or document that `var` is intentionally unsupported |
-| G-03 | Type inference for `val` | `val z = expr` rejected; required in `ImmutableInitializationParser` | Either implement inference or keep explicit `: Type` as the only form |
-| G-05 | `else if` chains | Not implemented; only `else block` | Implement desugaring to nested `if` or document as unsupported |
-| G-06 | Statement separators (`;`) | Token lexed, never consumed | Either implement `;` as statement terminator or remove token from lexer |
+| ID | Item | Current state | Action |
+|----|------|---------------|--------|
+| G-26 | Type error message asymmetry | Params/`val`: `Invalid type …` via `parseOrNull`; return type: `Unexpected type …` via `fromString` | Unify messages and/or one type resolver API |
+| G-02 | `var` declaration | Keyword lexed; `MutableVariableInitializationASTNode` only from `ForParser` desugar (no surface `var`) | **Decide:** add `MutableInitializationParser` (mirror `val`) **or** document `var` as intentionally unsupported and stop implying it in docs/examples |
+| G-21 | Semicolon between statements | `;` token lexed, never consumed; behavior undocumented | One test: `{ val a: Int = 1; val b: Int = 2 }` — assert ignore vs error |
+| G-22 | Non-identifier call statement | `StatementParser` routes only `identifier '('`; §10 #8 | One test: `(f)()` at statement level — assert `Left` |
 
----
-
-## Semantics — missing AST transformations
-
-| ID | Item | Current state | Suggested action |
-|----|------|---------------|------------------|
-| G-28 | Implicit `return Unit` at end of function body | Function blocks without an explicit `return` produce no `ReturnFunctionStatementASTNode`; only written `return` / bare `return` before `}` appears in AST | Add desugaring (e.g. in `FunctionParser` or a post-parse pass): for functions with return type `Unit`, if the block does not end with `return`, append synthetic `ReturnFunctionStatementASTNode(Unit)`; decide behavior for non-`Unit` return types (error vs no implicit return); add tests when implemented |
+**Suggested order:** G-26 → G-02 (decision) → G-21, G-22.
 
 ---
 
-## Type system — parser inconsistencies
+## Later — semantic analysis & typechecker
 
-| ID | Item | Current state | Suggested action |
-|----|------|---------------|------------------|
-| G-09 | For-loop bound types | Desugar always uses `Int` counter; bounds are any expression | Add type checks or document runtime-only behavior |
-| G-26 | Type error message asymmetry | Params/`val`: `Invalid type …`; return type: `Unexpected type …` | Unify messages and/or use one resolver (`parseOrNull` vs `fromString`) |
-| G-27 | `Unit` as parameter type | `Unit` is in `Type` enum; grammar text historically excluded it from params | Document whether `fun f(u: Unit)` is intentional; add test if yes |
+Requires a phase after AST construction (not parser-only).
 
----
-
-## Control-flow syntax asymmetry
-
-| ID | Item | Current state | Suggested action |
-|----|------|---------------|------------------|
-| G-11 | For-loop surface `var` | Desugar emits `MutableVariableInitializationASTNode` without surface `var` | Expose `var` syntax or rename AST node to reflect internal-only use |
-| G-30 | `for` header parens vs if/while | `for (id in e to e)` uses parens for range header, not a bare expression | Document as intentional; unify only if language design changes |
+| ID | Item | Current state | Action |
+|----|------|---------------|--------|
+| G-31 | Missing return on non-Unit functions | `FunctionParser` appends synthetic `return Unit` even for `: Int` without return (`add`, `compute` in `ai_generated.bred`) | Report error when `resultType != Unit` and no explicit return; treat synthetic Unit on non-Unit as invalid |
+| G-09 | For-loop bound types | Desugar hardcodes `Int` counter; bounds are any expression syntactically | Type-check bounds (or document runtime-only behavior) when analysis exists |
+| G-03 | Type inference for `val` | `val z = expr` rejected; `: Type` required | Only with inference / typechecker — or keep explicit types as permanent design |
 
 ---
 
-## Expression / call limitations
+## Later — language expansion (nice when needed)
 
-| ID | Item | Current state | Suggested action |
-|----|------|---------------|------------------|
-| G-12 | Member access (`obj.field`) | `.` token exists; not used in expression parser | Implement or remove `Punctuation.Dot` from lexer if unused |
-| G-13 | Indirect calls `(f)()` | Call suffix only on identifier primary | Implement if desired |
-| G-14 | Call statement routing | `StatementParser` only routes `identifier '('`; `CallStatementParser` wraps any expression | Align routing with intended statement grammar |
+Not blocking parser completeness; implement when the language actually needs them.
 
----
-
-## Implementation bugs
-
-| ID | Item | Current state | Suggested action |
-|----|------|---------------|------------------|
-| G-16 | Package split | Parsers in `org.nnezh.org.nnezh.ast`, nodes in `org.nnezh.ast` | Consolidate packages when convenient |
+| ID | Item | Current state | Action |
+|----|------|---------------|--------|
+| G-05 | `else if` chains | Only `else block`; no `else if` desugar | Desugar to nested `if` or keep unsupported (+ test G-25) |
+| G-06 | Statement separators (`;`) | Token in lexer, unused in grammar | Implement terminators **or** remove `Semicolon` from lexer |
+| G-12 | Member access (`obj.field`) | `.` token exists; not in expression parser | Implement or remove dot from lexer |
+| G-13 | Indirect calls `(f)()` | Call suffix only on identifier primary | Implement if call grammar should allow it |
 
 ---
 
-## Test coverage gaps
+## Nice to have — no urgent action
 
-| ID | Item | Suggested test |
-|----|------|----------------|
-| G-21 | Semicolon between statements | `parseFromSource("{ val a: Int = 1; val b: Int = 2 }")` — assert behavior |
-| G-22 | Non-identifier call statement | `parseFromSource("(f)()")` at statement level — assert `Left` |
-| G-23 | Lexer keywords `for`, `in`, `to` | Extend `LexerTest.keywords are recognized` |
-| G-25 | `else if` | Assert parse failure or implement |
-| G-29 | `while` without parens rejected | Parser requires `(`; covered by `WhileParserTest` `while without lparen fails` | Keep regression test when changing while syntax |
+| ID | Item | Notes |
+|----|------|-------|
+| G-14 | Call statement routing | Not a bug: `StatementParser` intentionally routes `identifier '('`. `CallStatementParser` accepting any expression is internal flexibility. Document in grammar if behavior should stay narrow. |
+| G-25 | `else if` test | Tied to G-05 — assert failure until implemented |
+| G-16 | Package split | `org.nnezh.org.nnezh.ast` vs `org.nnezh.ast` — refactor when convenient |
 
 ---
 
-## Priority suggestion
+## Priority snapshot
 
-1. **G-26** — unify type error messages / resolver API
-2. **G-21–G-25** — remaining test coverage gaps
+| When | IDs |
+|------|-----|
+| **Now** | G-26, G-02, G-21, G-22 |
+| **Next pipeline** | G-31, G-09, G-03 |
+| **When language grows** | G-05, G-06, G-12, G-13 |
+| **Optional** | G-14, G-16, G-25 |

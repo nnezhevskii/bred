@@ -1,10 +1,13 @@
 package org.nnezh.org.nnezh.ast
 
+import arrow.core.left
 import arrow.core.raise.Raise
 import org.nnezh.ast.BlockASTNode
 import org.nnezh.ast.DeclareFunctionASTNode
 import org.nnezh.ast.FunctionArgsASTNode
 import org.nnezh.ast.FunctionArgumentASTNode
+import org.nnezh.ast.ReturnFunctionStatementASTNode
+import org.nnezh.ast.StatementASTNode
 import org.nnezh.lexer.Token
 import org.nnezh.org.nnezh.Type
 
@@ -77,8 +80,13 @@ class FunctionParser(
             }
             else -> raise(ASTError("Expected '{' or ':' before function body but got ${token.lexeme} at ${token.position}"))
         }
-        val block = parseWith(blockParser.value, context)
+        val block: BlockASTNode = parseWith(blockParser.value, context)
+        val finalBlockStatements: List<StatementASTNode> = if (block.statements.none { statement -> statement is ReturnFunctionStatementASTNode } ) {
+            block.statements + ReturnFunctionStatementASTNode(Type.UnitType.left())
+        } else {
+            block.statements
+        }
 
-        return DeclareFunctionASTNode(name.lexeme, FunctionArgsASTNode(arguments), block, resultType)
+        return DeclareFunctionASTNode(name.lexeme, FunctionArgsASTNode(arguments), BlockASTNode(finalBlockStatements), resultType)
     }
 }

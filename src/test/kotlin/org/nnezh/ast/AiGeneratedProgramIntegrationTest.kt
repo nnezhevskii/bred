@@ -157,7 +157,7 @@ class AiGeneratedProgramIntegrationTest {
     @Test
     fun `add body declares a single immutable sum`() {
         val add = parsedProgram().functions.single { it.name == "add" }
-        assertEquals(1, add.block.statements.size)
+        assertEquals(2, add.block.statements.size)
 
         val sum = statement<ImmutableVariableInitializationASTNode>(add.block, 0)
         assertEquals("sum", sum.name)
@@ -167,12 +167,16 @@ class AiGeneratedProgramIntegrationTest {
         assertInstanceOf(Token.Operator.Plus::class.java, plus.operator)
         assertEquals("a", varName(plus.left))
         assertEquals("b", varName(plus.right))
+
+        val implicitReturn = assertInstanceOf(ReturnFunctionStatementASTNode::class.java, add.block.statements[1])
+        assertTrue(implicitReturn.expression.isLeft())
+        assertEquals(Type.UnitType, implicitReturn.expression.leftOrNull())
     }
 
     @Test
     fun `compute body has the expected statement sequence`() {
         val compute = parsedProgram().functions.single { it.name == "compute" }
-        assertEquals(12, compute.block.statements.size)
+        assertEquals(13, compute.block.statements.size)
 
         val kinds = compute.block.statements.map { it::class }
         assertEquals(ImmutableVariableInitializationASTNode::class, kinds[0])
@@ -182,6 +186,7 @@ class AiGeneratedProgramIntegrationTest {
         assertEquals(IfStatementASTNode::class, kinds[9])
         assertEquals(WhileStatementASTNode::class, kinds[10])
         assertEquals(ForStatementASTNode::class, kinds[11])
+        assertEquals(ReturnFunctionStatementASTNode::class, kinds[12])
     }
 
     @Test
@@ -423,7 +428,10 @@ class AiGeneratedProgramIntegrationTest {
     fun `function with empty parameter list has an empty body`() {
         val noArgs = parsedProgram().functions.single { it.name == "noArgs" }
         assertTrue(noArgs.args.arguments.isEmpty())
-        assertTrue(noArgs.block.statements.isEmpty())
+        assertEquals(1, noArgs.block.statements.size)
+        val returnStmt = assertInstanceOf(ReturnFunctionStatementASTNode::class.java, noArgs.block.statements.single())
+        assertTrue(returnStmt.expression.isLeft())
+        assertEquals(Type.UnitType, returnStmt.expression.leftOrNull())
     }
 
     @Test

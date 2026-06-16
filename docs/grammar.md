@@ -368,6 +368,20 @@ fun max(a: Int, b: Int): Int {
 - `DeclareFunctionASTNode.resultType` is **`Type`**, not `String`.
 - Function body is a single `block` (see [§4](#4-blocks-and-statements)).
 
+#### Function body desugaring (implementation note)
+
+If the parsed block contains **no top-level** `ReturnFunctionStatementASTNode`, `FunctionParser` appends a synthetic one:
+
+```ebnf
+(* conceptual — not surface syntax *)
+return Unit ;
+```
+
+- Applies to **all** functions when no top-level `return` / `return Unit` / bare `return` is present — including `: Int` and other non-`Unit` return types.
+- A non-`Unit` function without an explicit return is a **semantic error** (see [§10](#10-open-questions--inconsistencies), [`docs/TODO.md`](TODO.md) G-31); the parser does not reject it.
+- Only **top-level** statements are checked; a `return` inside a nested `if`/`while` block does not suppress the append.
+- Example: `fun noArgs(): Unit { }` → AST body: `{ return Unit }` (synthetic).
+
 **Implementation:** `FunctionParser.kt`, `FunctionParserTest`.
 
 ---
@@ -481,6 +495,7 @@ return          (* valid only when immediately followed by `}` — same as `retu
 - `return Unit` is parsed as the type `Unit` (`Type.UnitType` in AST), not as a variable reference.
 - Bare `return` before `}` (implicit Unit) is accepted inside a block; bare `return` before `EOF` is a parse error.
 - AST node: `ReturnFunctionStatementASTNode` with `expression: Either<Type.UnitType, ExpressionASTNode>` — `Left` = Unit, `Right` = expression value.
+- **Function-level desugaring:** if the function body has no top-level return statement, `FunctionParser` appends synthetic `return Unit` (see [§3.1](#31-function-declaration)). This is separate from bare `return` before `}` in source text.
 
 **Implementation:** `ReturnValueParser.kt`, `ReturnValueParserTest.kt`.
 
@@ -797,6 +812,8 @@ fun f(): Foo { }            (* parse error: Unexpected type Foo — return *)
 | 6 | Package split: parsers vs AST nodes | `org.nnezh.org.nnezh.ast` vs `org.nnezh.ast` |
 | 7 | `FunctionArgsASTNode` is not an `ASTNode` | `ASTNode.kt` |
 | 8 | Call statement vs expression routing mismatch | `CallStatementParser` accepts any expression; `StatementParser` only routes `identifier '('` |
+| 9 | AST appends synthetic `return Unit` even for `: Int` without return | `FunctionParser.kt`; `add` / `compute` in `ai_generated.bred` — semantic error deferred to analysis phase |
+| 10 | Implicit-return check is top-level only | Nested `return` in `if`/`while` does not suppress append; `FunctionParser.kt` |
 
 See also [`docs/TODO.md`](TODO.md) for actionable follow-ups.
 
@@ -813,9 +830,9 @@ Current suite: **15 test files** in `src/test/kotlin/`.
 | Lexer | `LexerTest.kt` | empty input, keywords, identifiers, int/double/string, operators, punctuation, comments, positions, lexical errors |
 | Source I/O | `SourceReaderTest.kt` | read `.bred` files |
 | Expressions | `AbstractSyntaxTreeExpressionParserTest.kt` | precedence, associativity, unary, calls, grouping, literals, negative malformed |
-| Integration (e2e) | `AiGeneratedProgramIntegrationTest.kt` | `ai_generated.bred`: lex + build, full AST structure, negative lex/parse |
+| Integration (e2e) | `AiGeneratedProgramIntegrationTest.kt` | `ai_generated.bred`: lex + build, full AST structure, implicit return in `add`/`compute`/`noArgs`, negative lex/parse |
 | Program | `ProgramParserTest.kt` | empty program, fun/val routing, integration, top-level errors |
-| Functions | `FunctionParserTest.kt` | params, return type, block, commas, invalid types |
+| Functions | `FunctionParserTest.kt` | params, return type, block, implicit return append, no duplicate when return present, Int-without-return, commas, invalid types |
 | `val` init | `ImmutableInitializationParserTest.kt` | type/name/assign, invalid types, integration |
 | Blocks | `BlockParserTest.kt` | empty/multiple statements, braces, EOF inside block |
 | Statements | `StatementParserTest.kt` | routing to all statement kinds, integration, dispatch errors |
