@@ -43,7 +43,10 @@ class FunctionParser(
                     val argType =
                         match<Token.Identifier>(context.consumeToken()) { token -> ASTError("Expected argument type but got ${token.lexeme} in ${token.position}") }
 
-                    arguments.add(FunctionArgumentASTNode(argName.lexeme, Type.fromString(argType.lexeme)))
+                    val resolvedArgType = Type.parseOrNull(argType.lexeme)
+                        ?: raise(ASTError("Invalid type ${argType.lexeme} at ${argType.position}"))
+
+                    arguments.add(FunctionArgumentASTNode(argName.lexeme, resolvedArgType))
                     argumentWasJustParsed = true
                 }
 

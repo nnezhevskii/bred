@@ -17,6 +17,8 @@ sealed interface Type {
             return stringToTypeMap[name] ?: throw IllegalArgumentException("Invalid type: $name")
         }
 
+        fun parseOrNull(name: String): Type? = stringToTypeMap[name]
+
         fun toString(type: Type): String = type.name
     }
 }

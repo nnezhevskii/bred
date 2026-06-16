@@ -7,10 +7,6 @@ import org.nnezh.ast.AbstractSyntaxTreeBuilder
 import org.nnezh.org.nnezh.ast.AbstractSyntaxTreeExpressionParser
 import org.nnezh.org.nnezh.ast.utils.AbstractSyntaxTreeDrawer
 
-/**
- * Demo entry point: reads a .bred file (first CLI argument, or the bundled
- * example by default), tokenizes it and prints the resulting token stream.
- */
 fun main(args: Array<String>) {
     val path = args.firstOrNull() ?: "examples/simple.bred"
     val result = either {

@@ -24,17 +24,18 @@ class ForParser(
         val counterName = match<Token.Identifier>(context.consumeToken()) { buildError("for-variable", it) }
         match<Token.Keyword.In>(context.consumeToken()) { buildError("in", it) }
         val initialValue = parseWith(expressionParser, context)
-        match<Token.Keyword.To>(context.consumeToken()) { buildError("to", it) }
+        val toKeyword = match<Token.Keyword.To>(context.consumeToken()) { buildError("to", it) }
         val finalValue = parseWith(expressionParser, context)
         match<Token.Punctuation.RParen>(context.consumeToken()) { buildError(")", it) }
         val innerBlockStatements = parseWith(blockParser.value, context).statements
+        val syntheticOpPosition = toKeyword.position
         val counter = MutableVariableInitializationASTNode(counterName.lexeme, Type.IntType, initialValue)
         val desugared = listOf(
             counter,
             WhileStatementASTNode(
                 BinaryExpressionASTNode(
                     VariableExpressionNode(counterName),
-                    Token.Operator.Le(context.top().position), // TODO << doesn't seem right. Recalculate? or change arch?
+                    Token.Operator.Le(syntheticOpPosition),
                     finalValue,
                 ),
                 bodyBlock = BlockASTNode(
@@ -43,7 +44,7 @@ class ForParser(
                                 counterName.lexeme,
                                 BinaryExpressionASTNode(
                                     VariableExpressionNode(counterName),
-                                    Token.Operator.Plus(context.top().position),
+                                    Token.Operator.Plus(syntheticOpPosition),
                                     IntLiteralExpressionNode(1)
                                 )
                             )
