@@ -1,0 +1,39 @@
+// AI-generated sample program exercising the bred grammar (see docs/grammar.md).
+/* This block comment is skipped by the lexer.
+   It spans multiple lines. */
+
+val Pi: Double = 3.14
+val greeting: String = "line1\nline2\t\"end\"\\"
+val flag: Boolean = true
+val limit: Int = 10
+
+fun add(a: Int, b: Int): Int {
+    val sum: Int = a + b
+}
+
+fun compute(x: Int, y: Int): Int {
+    val a: Int = x + y * 2 - 1
+    val b: Int = (x + y) * 2
+    val c: Boolean = x < y && y > 0 || !flag
+    val d: Boolean = x == y
+    val e: Int = -x + 1
+    val f: Double = 2.0 * Pi
+    val g: Int = x % 3 /* modulo */
+    total = add(x, y)
+    println(a, b, max(x, min(y, 1)))
+    if (x > y) {
+        total = x
+    } else {
+        total = y
+    }
+    while (x < limit) {
+        x = x + 1
+        step()
+    }
+    for (i in 0 to limit) {
+        println(i)
+    }
+}
+
+fun noArgs(): Unit {
+}
