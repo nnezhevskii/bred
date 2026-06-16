@@ -870,7 +870,8 @@ Current suite: **16 test files** in `src/test/kotlin/`.
 - [x] **Unknown type `Foo`:** `fun f(): Foo { }`, `val x: Foo = 1`, `fun f(a: Foo): Int { }` → `Invalid type Foo at …` (`FunctionParserTest`, `ImmutableInitializationParserTest`, `AiGeneratedProgramIntegrationTest`).
 - [x] **`var` init:** block `var n: Int = 42` → `MutableVariableInitializationASTNode`; global `var` rejected (`MutableInitializationParserTest`, `StatementParserTest`, `BlockParserTest`, `ProgramParserTest`).
 - [x] **Semicolon:** `;` rejected at lex → `LexerError.UnexpectedCharacter` (`LexerTest`).
-- [ ] **Statement `(f)()` or `1 + foo()`:** confirm rejection at `StatementParser` dispatch.
+- [x] **Indirect call `(f)()` as statement:** rejected at `StatementParser` dispatch → `Didn't expect` (`StatementParserTest`).
+- [ ] **Bare expression statement:** e.g. `{ 1 + foo() }` (first token is literal, not `identifier '('`) → `Didn't expect` at dispatch; distinct from valid `x = 1 + foo()`.
 - [ ] **Lexer keywords `for`, `in`, `to`:** explicit keyword recognition test (subset tested in `keywords are recognized`).
 - [ ] **`else if` chain:** confirm rejection (not implemented).
 

@@ -6,16 +6,6 @@ Item IDs (G-02, G-21, …) are stable references; sections below group by **when
 
 ---
 
-## Now — parser stage (high ROI)
-
-| ID | Item | Current state | Action |
-|----|------|---------------|--------|
-| G-22 | Non-identifier call statement | `StatementParser` routes only `identifier '('`; §10 #6 | One test: `(f)()` at statement level — assert `Left` |
-
-**Suggested order:** G-22.
-
----
-
 ## Later — semantic analysis & typechecker
 
 Requires a phase after AST construction (not parser-only).
@@ -54,7 +44,6 @@ Not blocking parser completeness; implement when the language actually needs the
 
 | When | IDs |
 |------|-----|
-| **Now** | G-22 |
 | **Next pipeline** | G-31, G-09, G-03 |
 | **When language grows** | G-05, G-12, G-13 |
 | **Optional** | G-14, G-16, G-25 |

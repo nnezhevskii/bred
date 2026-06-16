@@ -402,6 +402,13 @@ class StatementParserTest {
     }
 
     @Test
+    fun `indirect call (f)() fails at statement dispatch`() {
+        val result = parseFromSource("(f)()")
+        assertTrue(result.isLeft())
+        assertTrue(result.leftOrNull()?.message?.contains("Didn't expect") == true)
+    }
+
+    @Test
     fun `assign operator fails with didnt expect`() {
         val result = parseStatement(listOf(assign(), eof()))
         assertTrue(result.isLeft())
