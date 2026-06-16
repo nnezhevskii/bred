@@ -134,7 +134,7 @@ class AiGeneratedProgramIntegrationTest {
     fun `functions preserve order names and return types`() {
         val functions = parsedProgram().functions
         assertEquals(listOf("add", "compute", "noArgs"), functions.map { it.name })
-        assertEquals(listOf("Int", "Int", "Unit"), functions.map { it.resultType })
+        assertEquals(listOf(Type.IntType, Type.IntType, Type.UnitType), functions.map { it.resultType })
     }
 
     @Test
@@ -486,15 +486,24 @@ class AiGeneratedProgramIntegrationTest {
     }
 
     @Test
+    fun `function without explicit return type defaults to Unit`() {
+        val ast = build("fun main() { }").getOrElse { error("unexpected parse error: $it") }
+        val program = assertInstanceOf(ProgramASTNode::class.java, ast)
+        val main = program.functions.single()
+        assertEquals("main", main.name)
+        assertEquals(Type.UnitType, main.resultType)
+    }
+
+    @Test
     fun `val without type annotation fails to parse`() {
         val message = build("val x = 1").leftOrNull()?.message
         assertTrue(message?.contains("Expected :") == true, "was: $message")
     }
 
     @Test
-    fun `function without return type fails to parse`() {
-        val message = build("fun main() { }").leftOrNull()?.message
-        assertTrue(message?.contains("Expected colon") == true, "was: $message")
+    fun `unknown function return type fails to parse`() {
+        val message = build("fun f(): Foo { }").leftOrNull()?.message
+        assertTrue(message?.contains("Unexpected type Foo") == true, "was: $message")
     }
 
     @Test

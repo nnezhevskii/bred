@@ -340,16 +340,17 @@ val Pi: Double = 3.1417
 ### 3.1 Function declaration
 
 ```ebnf
-functionDecl ::= 'fun' identifier '(' [ param { ',' param } ] ')' ':' returnTypeName block ;
+functionDecl ::= 'fun' identifier '(' [ param { ',' param } ] ')' [ ':' typeName ] block ;
 
 param          ::= identifier ':' typeName ;
 typeName       ::= identifier ;   (* validated — see §7 *)
-returnTypeName ::= identifier ;   (* NOT validated via Type.parseOrNull *)
 ```
 
-**Example:**
+**Examples:**
 
 ```bred
+fun main() { }
+
 fun max(a: Int, b: Int): Int {
     if (a > b) {
         println("a")
@@ -359,10 +360,12 @@ fun max(a: Int, b: Int): Int {
 
 **Notes:**
 
-- Parameter list may be empty: `fun main(): Unit { }`.
+- Parameter list may be empty: `fun main() { }` or `fun main(): Unit { }`.
+- If `:` and return type are omitted and `{` follows `)`, return type defaults to **`Unit`** (`Type.UnitType` in AST).
+- Explicit `: typeName` is validated via `Type.fromString` (see [§7](#7-type-names)).
+- `fun foo() Unit { }` (type name without `:`) is a **parse error**.
 - Trailing commas in the parameter list are **not** allowed (unlike function call arguments).
-- Parameter types must be one of `Int`, `String`, `Double`, `Boolean` (see [§7](#7-type-names)).
-- Return type is stored as a raw `String` in `DeclareFunctionASTNode.resultType` — any identifier is accepted syntactically (e.g. `Unit`, `Foo`).
+- `DeclareFunctionASTNode.resultType` is **`Type`**, not `String`.
 - Function body is a single `block` (see [§4](#4-blocks-and-statements)).
 
 **Implementation:** `FunctionParser.kt`, `FunctionParserTest`.
@@ -681,7 +684,7 @@ f(a + 1, b * 2)
 
 ## 7. Type names
 
-The runtime type enum (`Types.kt`) contains exactly four types:
+The type enum ([`Types.kt`](src/main/kotlin/org/nnezh/Types.kt)) contains five types:
 
 | Name      | `Type` object   |
 |-----------|-----------------|
@@ -689,23 +692,24 @@ The runtime type enum (`Types.kt`) contains exactly four types:
 | `String`  | `StringType`    |
 | `Double`  | `DoubleType`    |
 | `Boolean` | `BoolType`      |
+| `Unit`    | `UnitType`      |
 
-**Where validated (`Type.parseOrNull`):**
+**Where validated:**
 
-- `val` declaration type annotations
-- function parameter types
+- `val` declaration type annotations — `Type.parseOrNull` → `Invalid type …`
+- function parameter types — `Type.parseOrNull` → `Invalid type …`
+- explicit function return type — `Type.fromString` → `Unexpected type …`
 
-**Where NOT validated:**
-
-- function return type (`returnTypeName` stored as raw string)
+**Implicit return type:** omitted `: typeName` before `{` → `UnitType` in AST (not written in source).
 
 **Examples:**
 
 ```bred
+fun main() { }              (* implicit Unit *)
+fun f(): Unit { }           (* explicit Unit *)
 val x: Int = 1              (* OK *)
 fun f(a: Foo): Int { }      (* parse error: Invalid type Foo — param *)
-fun f(): Unit { }           (* OK syntactically; Unit not in Type enum *)
-fun f(): Foo { }            (* OK syntactically; Foo not validated *)
+fun f(): Foo { }            (* parse error: Unexpected type Foo — return *)
 ```
 
 **Implementation:** `Types.kt`, `ImmutableInitializationParser.kt`, `FunctionParser.kt`.
@@ -753,7 +757,7 @@ fun f(): Foo { }            (* OK syntactically; Foo not validated *)
 - No member access (`.` not in expression grammar).
 - No array indexing, generics, or user-defined types in the parser.
 - No string interpolation.
-- Examples in `examples/` are **not** fully valid programs for the current parser (see [§10](#10-open-questions--inconsistencies)).
+- Files under `examples/` (except `ai_generated.bred`) are ad-hoc test fixtures, not normative programs.
 
 ---
 
@@ -763,15 +767,13 @@ fun f(): Foo { }            (* OK syntactically; Foo not validated *)
 |---|-------|----------|
 | 1 | `return` is lexed but not parsed | `Token.Keyword.Return`; no `ReturnStatementASTNode`, no parser |
 | 2 | `var` is lexed but not parsed at surface | `Token.Keyword.Var`; `MutableVariableInitializationASTNode` only from `ForParser` desugar |
-| 3 | `Unit` used in examples, absent from `Type` | `examples/simple.bred`; `DeclareFunctionASTNode.resultType` is `String` |
-| 4 | Example files contain invalid syntax | `max.bred`: `return`, `val z = …`, `fun main()` without `: Type`; `sandbox.bred`: `fun main()` without return type; `simple.bred`: `val z = …`, `return`-like patterns absent but other invalid forms present |
-| 5 | `if` requires `()`, `while` does not | `IfParser.kt` vs `WhileParser.kt` |
-| 6 | `;` token unused | `Token.Punctuation.Semicolon`; no parser consumes it |
-| 7 | Return type vs param type validation asymmetry | `FunctionParser` stores return type as unchecked string |
-| 8 | For-loop counter always `Int` in desugar regardless of bound types | `ForParser.kt` hardcodes `Type.IntType` |
-| 9 | Package split: parsers vs AST nodes | `org.nnezh.org.nnezh.ast` vs `org.nnezh.ast` |
-| 10 | `FunctionArgsASTNode` is not an `ASTNode` | `ASTNode.kt` |
-| 11 | Call statement vs expression routing mismatch | `CallStatementParser` accepts any expression; `StatementParser` only routes `identifier '('` |
+| 3 | `if` requires `()`, `while` does not | `IfParser.kt` vs `WhileParser.kt` |
+| 4 | `;` token unused | `Token.Punctuation.Semicolon`; no parser consumes it |
+| 5 | Type error message asymmetry | Params/`val`: `Invalid type …` via `parseOrNull`; return type: `Unexpected type …` via `fromString` |
+| 6 | For-loop counter always `Int` in desugar regardless of bound types | `ForParser.kt` hardcodes `Type.IntType` |
+| 7 | Package split: parsers vs AST nodes | `org.nnezh.org.nnezh.ast` vs `org.nnezh.ast` |
+| 8 | `FunctionArgsASTNode` is not an `ASTNode` | `ASTNode.kt` |
+| 9 | Call statement vs expression routing mismatch | `CallStatementParser` accepts any expression; `StatementParser` only routes `identifier '('` |
 
 See also [`docs/TODO.md`](TODO.md) for actionable follow-ups.
 
@@ -779,7 +781,7 @@ See also [`docs/TODO.md`](TODO.md) for actionable follow-ups.
 
 ## 11. Checklist for parser tests
 
-Current suite: **13 test files**, ~**280** test methods in `src/test/kotlin/`.
+Current suite: **14 test files** in `src/test/kotlin/`.
 
 ### Covered
 
@@ -788,6 +790,7 @@ Current suite: **13 test files**, ~**280** test methods in `src/test/kotlin/`.
 | Lexer | `LexerTest.kt` | empty input, keywords, identifiers, int/double/string, operators, punctuation, comments, positions, lexical errors |
 | Source I/O | `SourceReaderTest.kt` | read `.bred` files |
 | Expressions | `AbstractSyntaxTreeExpressionParserTest.kt` | precedence, associativity, unary, calls, grouping, literals, negative malformed |
+| Integration (e2e) | `AiGeneratedProgramIntegrationTest.kt` | `ai_generated.bred`: lex + build, full AST structure, negative lex/parse |
 | Program | `ProgramParserTest.kt` | empty program, fun/val routing, integration, top-level errors |
 | Functions | `FunctionParserTest.kt` | params, return type, block, commas, invalid types |
 | `val` init | `ImmutableInitializationParserTest.kt` | type/name/assign, invalid types, integration |
@@ -801,15 +804,12 @@ Current suite: **13 test files**, ~**280** test methods in `src/test/kotlin/`.
 
 ### Gaps / recommended additions
 
-- [ ] **End-to-end:** parse a fully valid multi-function program file from disk (no current example parses end-to-end).
-- [ ] **Function return type `Foo`:** accepted syntactically, never validated — document/ test explicitly.
+- [x] **Invalid return type `Foo`:** `fun f(): Foo { }` → `Unexpected type Foo` (`FunctionParserTest`, `AiGeneratedProgramIntegrationTest`).
 - [ ] **Semicolon between statements:** confirm tokens are ignored or cause unexpected-token errors.
 - [ ] **Statement `(f)()` or `1 + foo()`:** confirm rejection at `StatementParser` dispatch.
 - [ ] **Lexer keywords `for`, `in`, `to`:** explicit keyword recognition test (subset tested in `keywords are recognized`).
 - [ ] **`else if` chain:** confirm rejection (not implemented).
 - [ ] **`return` / `var`:** add tests when parsers are implemented.
-- [x] **`StatementParser` routing at EOF:** lone `identifier` before `EOF` returns `ASTError` (`StatementParserTest`).
-- [ ] **Regression:** `examples/*.bred` — either fix examples or add tests asserting expected parse failures per construct.
 
 ---
 
@@ -847,8 +847,7 @@ Current suite: **13 test files**, ~**280** test methods in `src/test/kotlin/`.
 
 All files under `src/test/kotlin/org/nnezh/ast/` and `src/test/kotlin/org/nnezh/lexer/`.
 
-### Examples (non-normative)
+### Examples
 
-- `examples/simple.bred` — mixed valid/invalid constructs; stress sample
-- `examples/max.bred` — partial valid fragments; contains `return`, untyped `val`, missing return types
-- `examples/sandbox.bred` — `fun main() { }` (missing `: Type` on function)
+- `examples/ai_generated.bred` — **canonical** valid program for end-to-end grammar coverage (`AiGeneratedProgramIntegrationTest`)
+- `examples/simple.bred`, `examples/max.bred`, `examples/sandbox.bred` — ad-hoc test/scratch fixtures (not normative)

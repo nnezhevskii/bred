@@ -1,29 +1,3 @@
-fun min(a: Int, b: String): Unit {
-    val b: String = 5 + a
-}
+fun main() {
 
-val Pi: Double = 3.1417
-
-fun main(): Unit {
-    val c: Int = min(a) + main() + 3.14
-    d = ((c + 3) * 3) / (println * unknownFunction())
-
-    if (d > c) {
-        d = c
-    } else {
-        c = readInt() + main()
-    }
-}
-
-fun loop(): Unit {
-    while (loop() > 1) {
-        f = f + 1
-    }
-}
-
-fun forMethod(): Unit {
-    for (i in true to "oranges") {
-        a = b + c()
-        println(a)
-    }
 }

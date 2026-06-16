@@ -88,7 +88,7 @@ class ProgramParserTest {
     }
 
     private fun defaultFunctionStub(): DeclareFunctionASTNode =
-        DeclareFunctionASTNode("foo", FunctionArgsASTNode(emptyList()), BlockASTNode(emptyList()), "Unit")
+        DeclareFunctionASTNode("foo", FunctionArgsASTNode(emptyList()), BlockASTNode(emptyList()), Type.UnitType)
 
     private fun defaultInitStub(): ImmutableVariableInitializationASTNode =
         ImmutableVariableInitializationASTNode("x", Type.IntType, IntLiteralExpressionNode(0L))
@@ -174,6 +174,16 @@ class ProgramParserTest {
         assertEquals(1, result.functions.size)
         assertEquals("foo", result.functions.single().name)
         assertTrue(result.globalVariables.isEmpty())
+    }
+
+    @Test
+    fun `parses function with implicit Unit return type via integration`() {
+        val result = parseFromSource("fun main() { }")
+            .getOrElse { error("unexpected parse error: $it") }
+
+        assertEquals(1, result.functions.size)
+        assertEquals("main", result.functions.single().name)
+        assertEquals(Type.UnitType, result.functions.single().resultType)
     }
 
     @Test

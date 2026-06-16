@@ -17,7 +17,7 @@ data class DeclareFunctionASTNode(
     val name: String,
     val args: FunctionArgsASTNode,
     val block: BlockASTNode,
-    val resultType: String): ASTNode
+    val resultType: Type): ASTNode
 
 data class FunctionArgsASTNode(val arguments: List<FunctionArgumentASTNode>)
 data class FunctionArgumentASTNode(val name: String, val type: Type): ASTNode

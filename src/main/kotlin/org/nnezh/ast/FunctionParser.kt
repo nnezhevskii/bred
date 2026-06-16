@@ -58,11 +58,27 @@ class FunctionParser(
                 else -> raise(ASTError("Failed to build arguments in ${context.top().position} got ${context.top().lexeme}"))
             }
         }
-        match<Token.Punctuation.Colon>(context.consumeToken()) { token -> ASTError("Expected colon but got ${token.lexeme} in ${token.position}") }
-        val type =
-            match<Token.Identifier>(context.consumeToken()) { token -> ASTError("Expected return type but got ${token.lexeme} in ${token.position}") }
+
+        val resultType: Type
+        when (val token = context.top()) {
+            is Token.Punctuation.LBrace -> {
+                resultType = Type.UnitType
+            }
+            is Token.Punctuation.Colon -> {
+                context.consumeToken()
+                val type = match<Token.Identifier>(context.consumeToken()) { token -> ASTError("Expected return type but got ${token.lexeme} in ${token.position}") }
+                val typeParsing = Type.fromString(type.lexeme)
+                resultType = typeParsing.fold(
+                    ifLeft = { _ -> raise(ASTError("Unexpected type ${type.lexeme}")) },
+                    ifRight = { rightValue -> rightValue })
+            }
+            is Token.Identifier -> {
+                raise(ASTError("Expected ':' before return type but got ${token.lexeme} at ${token.position}"))
+            }
+            else -> raise(ASTError("Expected '{' or ':' before function body but got ${token.lexeme} at ${token.position}"))
+        }
         val block = parseWith(blockParser.value, context)
 
-        return DeclareFunctionASTNode(name.lexeme, FunctionArgsASTNode(arguments), block, type.lexeme)
+        return DeclareFunctionASTNode(name.lexeme, FunctionArgsASTNode(arguments), block, resultType)
     }
 }

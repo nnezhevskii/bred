@@ -50,7 +50,7 @@ class AbstractSyntaxTreeDrawer {
                 acc.addAll(node.statements.flatMap { recursive(it, shift + indent) })
             }
             is DeclareFunctionASTNode -> {
-                val name = "${shift}func: ${node.name} returns ${node.resultType}"
+                val name = "${shift}func: ${node.name} returns ${Type.toString(node.resultType)}"
                 val args = node.args.arguments.flatMap { recursive(it, shift + indent.repeat(1)) }
                 val body = recursive(node.block, shift + indent.repeat(1))
 

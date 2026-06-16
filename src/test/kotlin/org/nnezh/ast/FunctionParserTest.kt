@@ -83,7 +83,7 @@ class FunctionParserTest {
 
         assertEquals("foo", result.name)
         assertTrue(result.args.arguments.isEmpty())
-        assertEquals("Unit", result.resultType)
+        assertEquals(Type.UnitType, result.resultType)
         assertTrue(result.block.statements.isEmpty())
     }
 
@@ -96,7 +96,7 @@ class FunctionParserTest {
         assertEquals(2, result.args.arguments.size)
         assertEquals(FunctionArgumentASTNode("a", Type.IntType), result.args.arguments[0])
         assertEquals(FunctionArgumentASTNode("b", Type.StringType), result.args.arguments[1])
-        assertEquals("Unit", result.resultType)
+        assertEquals(Type.UnitType, result.resultType)
     }
 
     @Test
@@ -105,7 +105,7 @@ class FunctionParserTest {
             .getOrElse { error("unexpected parse error: $it") }
 
         assertEquals("max", result.name)
-        assertEquals("Int", result.resultType)
+        assertEquals(Type.IntType, result.resultType)
         assertEquals(Type.IntType, result.args.arguments[0].type)
     }
 
@@ -158,7 +158,7 @@ class FunctionParserTest {
 
         assertEquals("foo", result.name)
         assertEquals(1, result.args.arguments.size)
-        assertEquals("Unit", result.resultType)
+        assertEquals(Type.UnitType, result.resultType)
     }
 
     @Test
@@ -169,6 +169,15 @@ class FunctionParserTest {
         assertEquals(1, result.args.arguments.size)
         assertEquals("x", result.args.arguments.single().name)
         assertEquals(Type.StringType, result.args.arguments.single().type)
+    }
+
+    @Test
+    fun `parses function with implicit Unit return type`() {
+        val result = parseFromSource("fun main() { }")
+            .getOrElse { error("unexpected parse error: $it") }
+
+        assertEquals("main", result.name)
+        assertEquals(Type.UnitType, result.resultType)
     }
 
     @Test
@@ -257,10 +266,10 @@ class FunctionParserTest {
     }
 
     @Test
-    fun `missing return type colon fails`() {
+    fun `return type without colon fails`() {
         val result = parseFromSource("fun foo() Unit { }")
         assertTrue(result.isLeft())
-        assertTrue(result.leftOrNull()?.message?.contains("Expected colon") == true)
+        assertTrue(result.leftOrNull()?.message?.contains("Expected ':' before return type") == true)
     }
 
     @Test
@@ -308,6 +317,13 @@ class FunctionParserTest {
     @Test
     fun `unclosed block fails`() {
         assertTrue(parseFromSource("fun foo(): Unit {").isLeft())
+    }
+
+    @Test
+    fun `unknown return type fails with parse error`() {
+        val result = parseFromSource("fun f(): Foo { }")
+        assertTrue(result.isLeft())
+        assertTrue(result.leftOrNull()?.message?.contains("Unexpected type Foo") == true)
     }
 
     @Test
