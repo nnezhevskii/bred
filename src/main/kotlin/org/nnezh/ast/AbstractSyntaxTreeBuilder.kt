@@ -243,21 +243,11 @@ class AbstractSyntaxTreeBuilder(
 
     private fun Raise<ASTError>.parseFunctionCall(context: TokensContext): StatementASTNode {
         return CallFunctionStatementASTNode(with(expressionParser) { parse(context) })
-//        val functionName = (match<Token.Identifier>(context.consumeToken()) { token -> buildError("calling function name", token) }).lexeme
-//
-//        (match<Token.Punctuation.LParen>(context.consumeToken()) { token -> buildError("(", token) }).lexeme
-//
-//        val arguments = mutableListOf<ExpressionASTNode>()
-//        while (context.top() !is Token.Punctuation.RParen) {
-//            arguments.add(with(expressionParser) { parse(context) })
-//            (match<Token.Punctuation.LParen>(context.consumeToken()) { token -> buildError(",", token) }).lexeme
-//        }
-
     }
 
 
     private fun Raise<ASTError>.parseGlobalVariable(context: TokensContext): ImmutableVariableInitializationASTNode {
-        TODO()
+        return parseImmutableInitialization(context) as ImmutableVariableInitializationASTNode
     }
 
 }

@@ -2,6 +2,8 @@ fun min(a: Int, b: String): Unit {
     val b: String = 5 + a
 }
 
+val Pi: Double = 3.1417
+
 fun main(): Unit {
     val c: Int = min(a) + main() + 3.14
     d = ((c + 3) * 3) / (println * unknownFunction())
