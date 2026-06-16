@@ -5,6 +5,7 @@ import org.nnezh.ast.AssignmentStatementASTNode
 import org.nnezh.ast.BinaryExpressionASTNode
 import org.nnezh.ast.BlockASTNode
 import org.nnezh.ast.BooleanLiteralExpressionNode
+import org.nnezh.ast.CallFunctionStatementASTNode
 import org.nnezh.ast.DeclareFunctionASTNode
 import org.nnezh.ast.DoubleLiteralExpressionNode
 import org.nnezh.ast.EmptyNode
@@ -139,6 +140,11 @@ class AbstractSyntaxTreeDrawer {
             is ForStatementASTNode -> {
                 acc.add("${shift}ForStatement:")
                 acc.addAll(recursive(node.desugaredContent, shift + indent.repeat(1)))
+            }
+
+            is CallFunctionStatementASTNode -> {
+                acc.add("${shift}Calling function")
+                acc.addAll(recursive(node.expression, shift + indent))
             }
         }
         return acc

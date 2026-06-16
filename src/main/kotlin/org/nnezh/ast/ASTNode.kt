@@ -53,6 +53,11 @@ data class ForStatementASTNode(
     val desugaredContent: BlockASTNode
 ): StatementASTNode
 
+data class CallFunctionStatementASTNode(
+    val expression: ExpressionASTNode
+): StatementASTNode
+
+
 sealed interface ExpressionASTNode: ASTNode // i.e. 3 + 5 + x
 
 sealed interface LiteralExpressionNode: ExpressionASTNode

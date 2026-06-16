@@ -13,8 +13,6 @@ import org.nnezh.org.nnezh.ast.AstErrorFactory
 import org.nnezh.org.nnezh.ast.AstErrorFactory.buildError
 import org.nnezh.org.nnezh.ast.TokensContext
 import org.nnezh.org.nnezh.ast.match
-import java.beans.Expression
-import kotlin.math.exp
 
 class AbstractSyntaxTreeBuilder(
     private val expressionParser: AbstractSyntaxTreeExpressionParser
@@ -115,7 +113,11 @@ class AbstractSyntaxTreeBuilder(
                 }
 
                 is Token.Identifier -> {
-                    statements.add(parseAssign(context))
+                    if (context.top(1) is Token.Punctuation.LParen) {
+                        statements.add(parseFunctionCall(context))
+                    } else {
+                        statements.add(parseAssign(context))
+                    }
                 }
 
                 is Token.Keyword.If -> {
@@ -237,6 +239,20 @@ class AbstractSyntaxTreeBuilder(
         }
 
         return AssignmentStatementASTNode(variableName, value)
+    }
+
+    private fun Raise<ASTError>.parseFunctionCall(context: TokensContext): StatementASTNode {
+        return CallFunctionStatementASTNode(with(expressionParser) { parse(context) })
+//        val functionName = (match<Token.Identifier>(context.consumeToken()) { token -> buildError("calling function name", token) }).lexeme
+//
+//        (match<Token.Punctuation.LParen>(context.consumeToken()) { token -> buildError("(", token) }).lexeme
+//
+//        val arguments = mutableListOf<ExpressionASTNode>()
+//        while (context.top() !is Token.Punctuation.RParen) {
+//            arguments.add(with(expressionParser) { parse(context) })
+//            (match<Token.Punctuation.LParen>(context.consumeToken()) { token -> buildError(",", token) }).lexeme
+//        }
+
     }
 
 

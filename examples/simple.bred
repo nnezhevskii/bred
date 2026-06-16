@@ -22,5 +22,6 @@ fun loop(): Unit {
 fun forMethod(): Unit {
     for (i in true to "oranges") {
         a = b + c()
+        println(a)
     }
 }
