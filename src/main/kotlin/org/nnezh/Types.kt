@@ -18,12 +18,10 @@ sealed interface Type {
 
         private val stringToTypeMap = allTypes.associateBy { it.name }
 
-
+        // Left message is internal; user-facing text (with position) comes from AstErrorFactory.invalidType.
         fun fromString(name: String): Either<String, Type> {
             return stringToTypeMap[name]?.right() ?: "Invalid type: $name".left()
         }
-
-        fun parseOrNull(name: String): Type? = stringToTypeMap[name]
 
         fun toString(type: Type): String = type.name
     }

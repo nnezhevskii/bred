@@ -46,10 +46,7 @@ class FunctionParser(
                     val argType =
                         match<Token.Identifier>(context.consumeToken()) { token -> ASTError("Expected argument type but got ${token.lexeme} in ${token.position}") }
 
-                    val resolvedArgType = Type.parseOrNull(argType.lexeme)
-                        ?: raise(ASTError("Invalid type ${argType.lexeme} at ${argType.position}"))
-
-                    arguments.add(FunctionArgumentASTNode(argName.lexeme, resolvedArgType))
+                    arguments.add(FunctionArgumentASTNode(argName.lexeme, parseType(argType)))
                     argumentWasJustParsed = true
                 }
 
@@ -70,10 +67,7 @@ class FunctionParser(
             is Token.Punctuation.Colon -> {
                 context.consumeToken()
                 val type = match<Token.Identifier>(context.consumeToken()) { token -> ASTError("Expected return type but got ${token.lexeme} in ${token.position}") }
-                val typeParsing = Type.fromString(type.lexeme)
-                resultType = typeParsing.fold(
-                    ifLeft = { _ -> raise(ASTError("Unexpected type ${type.lexeme}")) },
-                    ifRight = { rightValue -> rightValue })
+                resultType = parseType(type)
             }
             is Token.Identifier -> {
                 raise(ASTError("Expected ':' before return type but got ${token.lexeme} at ${token.position}"))

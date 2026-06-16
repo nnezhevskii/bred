@@ -20,9 +20,6 @@ class ImmutableInitializationParser(
 
         val value: ExpressionASTNode = parseWith(expressionParser, context)
 
-        val resolvedType = Type.parseOrNull(type.lexeme)
-            ?: raise(ASTError("Invalid type ${type.lexeme} at ${type.position}"))
-
-        return ImmutableVariableInitializationASTNode(valName.lexeme, resolvedType, value)
+        return ImmutableVariableInitializationASTNode(valName.lexeme, parseType(type), value)
     }
 }

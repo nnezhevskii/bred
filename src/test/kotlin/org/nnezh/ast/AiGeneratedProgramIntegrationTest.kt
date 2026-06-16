@@ -558,13 +558,13 @@ class AiGeneratedProgramIntegrationTest {
     @Test
     fun `unknown function return type fails to parse`() {
         val message = build("fun f(): Foo { }").leftOrNull()?.message
-        assertTrue(message?.contains("Unexpected type Foo") == true, "was: $message")
+        assertTrue(message?.contains("Invalid type Foo at") == true, "was: $message")
     }
 
     @Test
     fun `unknown declaration type fails to parse`() {
         val message = build("val x: Foo = 1").leftOrNull()?.message
-        assertTrue(message?.contains("Invalid type Foo") == true, "was: $message")
+        assertTrue(message?.contains("Invalid type Foo at") == true, "was: $message")
     }
 
     @Test

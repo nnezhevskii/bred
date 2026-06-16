@@ -408,7 +408,7 @@ fun main(): Unit {
 **Notes:**
 
 - Type annotation is **required**; `val x = 1` — **not supported**.
-- `typeName` must resolve via `Type.parseOrNull` (see [§7](#7-type-names)).
+- `typeName` must resolve via `Type.fromString` (see [§7](#7-type-names)).
 - `var` declarations — **not confirmed** at surface syntax (no parser). `MutableVariableInitializationASTNode` exists only as for-loop desugaring output.
 
 **Implementation:** `ImmutableInitializationParser.kt`, `ImmutableInitializationParserTest`.
@@ -736,9 +736,7 @@ The type enum ([`Types.kt`](src/main/kotlin/org/nnezh/Types.kt)) contains five t
 
 **Where validated:**
 
-- `val` declaration type annotations — `Type.parseOrNull` → `Invalid type …`
-- function parameter types — `Type.parseOrNull` → `Invalid type …`
-- explicit function return type — `Type.fromString` → `Unexpected type …`
+- `val` type annotations, function parameter types, explicit return types — `Type.fromString` via `Raise.parseType`; on failure → `Invalid type <name> at <line:column>` (`AstErrorFactory.invalidType`).
 
 **Implicit return type:** omitted `: typeName` before `{` → `UnitType` in AST (not written in source).
 
@@ -748,11 +746,11 @@ The type enum ([`Types.kt`](src/main/kotlin/org/nnezh/Types.kt)) contains five t
 fun main() { }              (* implicit Unit *)
 fun f(): Unit { }           (* explicit Unit *)
 val x: Int = 1              (* OK *)
-fun f(a: Foo): Int { }      (* parse error: Invalid type Foo — param *)
-fun f(): Foo { }            (* parse error: Unexpected type Foo — return *)
+fun f(a: Foo): Int { }      (* parse error: Invalid type Foo at … *)
+fun f(): Foo { }            (* parse error: Invalid type Foo at … *)
 ```
 
-**Implementation:** `Types.kt`, `ImmutableInitializationParser.kt`, `FunctionParser.kt`.
+**Implementation:** `Types.kt`, `AstErrorFactory.kt`, `ASTExtensions.kt`, `ImmutableInitializationParser.kt`, `FunctionParser.kt`.
 
 ---
 
@@ -783,7 +781,7 @@ fun f(): Foo { }            (* parse error: Unexpected type Foo — return *)
 | Situation | Message pattern |
 |-----------|-------------------|
 | Top-level non-declaration | `Expected function or constant declaration` |
-| Unknown `val`/param type | `Invalid type <name> at <position>` |
+| Unknown type (`val`, param, return) | `Invalid type <name> at <line:column>` |
 | Malformed block | `Expected begin/end of block` |
 | Missing expression | `Expected expression but got …` |
 | Bad function call | `Expected ',' or ')'` |
@@ -807,11 +805,10 @@ fun f(): Foo { }            (* parse error: Unexpected type Foo — return *)
 | 1 | `var` is lexed but not parsed at surface | `Token.Keyword.Var`; `MutableVariableInitializationASTNode` only from `ForParser` desugar |
 | 2 | `for` header parens wrap `id in expr to expr`, not a bare `expression` | `ForParser.kt` vs `IfParser.kt` / `WhileParser.kt` — intentional range syntax, structurally different from if/while |
 | 3 | `;` token unused | `Token.Punctuation.Semicolon`; no parser consumes it |
-| 4 | Type error message asymmetry | Params/`val`: `Invalid type …` via `parseOrNull`; return type: `Unexpected type …` via `fromString` |
-| 5 | For-loop counter always `Int` in desugar regardless of bound types | `ForParser.kt` hardcodes `Type.IntType` |
-| 6 | Package split: parsers vs AST nodes | `org.nnezh.org.nnezh.ast` vs `org.nnezh.ast` |
-| 7 | `FunctionArgsASTNode` is not an `ASTNode` | `ASTNode.kt` |
-| 8 | Call statement vs expression routing mismatch | `CallStatementParser` accepts any expression; `StatementParser` only routes `identifier '('` |
+| 4 | For-loop counter always `Int` in desugar regardless of bound types | `ForParser.kt` hardcodes `Type.IntType` |
+| 5 | Package split: parsers vs AST nodes | `org.nnezh.org.nnezh.ast` vs `org.nnezh.ast` |
+| 6 | `FunctionArgsASTNode` is not an `ASTNode` | `ASTNode.kt` |
+| 7 | Call statement vs expression routing mismatch | `CallStatementParser` accepts any expression; `StatementParser` only routes `identifier '('` |
 | 9 | AST appends synthetic `return Unit` even for `: Int` without return | `FunctionParser.kt`; `add` / `compute` in `ai_generated.bred` — semantic error deferred to analysis phase |
 | 10 | Implicit-return check is top-level only | Nested `return` in `if`/`while` does not suppress append; `FunctionParser.kt` |
 
@@ -845,7 +842,7 @@ Current suite: **15 test files** in `src/test/kotlin/`.
 
 ### Gaps / recommended additions
 
-- [x] **Invalid return type `Foo`:** `fun f(): Foo { }` → `Unexpected type Foo` (`FunctionParserTest`, `AiGeneratedProgramIntegrationTest`).
+- [x] **Unknown type `Foo`:** `fun f(): Foo { }`, `val x: Foo = 1`, `fun f(a: Foo): Int { }` → `Invalid type Foo at …` (`FunctionParserTest`, `ImmutableInitializationParserTest`, `AiGeneratedProgramIntegrationTest`).
 - [ ] **Semicolon between statements:** confirm tokens are ignored or cause unexpected-token errors.
 - [ ] **Statement `(f)()` or `1 + foo()`:** confirm rejection at `StatementParser` dispatch.
 - [ ] **Lexer keywords `for`, `in`, `to`:** explicit keyword recognition test (subset tested in `keywords are recognized`).

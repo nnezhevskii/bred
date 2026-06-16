@@ -365,14 +365,14 @@ class FunctionParserTest {
     fun `unknown return type fails with parse error`() {
         val result = parseFromSource("fun f(): Foo { }")
         assertTrue(result.isLeft())
-        assertTrue(result.leftOrNull()?.message?.contains("Unexpected type Foo") == true)
+        assertTrue(result.leftOrNull()?.message?.contains("Invalid type Foo at") == true)
     }
 
     @Test
     fun `unknown argument type fails with parse error`() {
         val result = parseFromSource("fun foo(a: Foo): Unit { }")
         assertTrue(result.isLeft())
-        assertTrue(result.leftOrNull()?.message?.contains("Invalid type Foo") == true)
+        assertTrue(result.leftOrNull()?.message?.contains("Invalid type Foo at") == true)
     }
 
     // endregion

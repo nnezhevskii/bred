@@ -320,7 +320,7 @@ class ImmutableInitializationParserTest {
     fun `unknown type fails`() {
         val result = parseFromSource("val x : Foo = 1")
         assertTrue(result.isLeft())
-        assertTrue(result.leftOrNull()?.message?.contains("Invalid type Foo") == true)
+        assertTrue(result.leftOrNull()?.message?.contains("Invalid type Foo at") == true)
     }
 
     @Test

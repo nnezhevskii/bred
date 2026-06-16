@@ -2,7 +2,7 @@
 
 Follow-ups for lexer, AST, parsers, tests, and docs. Full inconsistency table: [`grammar.md`](grammar.md) §10.
 
-Item IDs (G-02, G-26, …) are stable references; sections below group by **when to act**, not by subsystem.
+Item IDs (G-02, G-21, …) are stable references; sections below group by **when to act**, not by subsystem.
 
 ---
 
@@ -10,12 +10,11 @@ Item IDs (G-02, G-26, …) are stable references; sections below group by **when
 
 | ID | Item | Current state | Action |
 |----|------|---------------|--------|
-| G-26 | Type error message asymmetry | Params/`val`: `Invalid type …` via `parseOrNull`; return type: `Unexpected type …` via `fromString` | Unify messages and/or one type resolver API |
 | G-02 | `var` declaration | Keyword lexed; `MutableVariableInitializationASTNode` only from `ForParser` desugar (no surface `var`) | **Decide:** add `MutableInitializationParser` (mirror `val`) **or** document `var` as intentionally unsupported and stop implying it in docs/examples |
 | G-21 | Semicolon between statements | `;` token lexed, never consumed; behavior undocumented | One test: `{ val a: Int = 1; val b: Int = 2 }` — assert ignore vs error |
-| G-22 | Non-identifier call statement | `StatementParser` routes only `identifier '('`; §10 #8 | One test: `(f)()` at statement level — assert `Left` |
+| G-22 | Non-identifier call statement | `StatementParser` routes only `identifier '('`; §10 #7 | One test: `(f)()` at statement level — assert `Left` |
 
-**Suggested order:** G-26 → G-02 (decision) → G-21, G-22.
+**Suggested order:** G-02 (decision) → G-21, G-22.
 
 ---
 
@@ -58,7 +57,7 @@ Not blocking parser completeness; implement when the language actually needs the
 
 | When | IDs |
 |------|-----|
-| **Now** | G-26, G-02, G-21, G-22 |
+| **Now** | G-02, G-21, G-22 |
 | **Next pipeline** | G-31, G-09, G-03 |
 | **When language grows** | G-05, G-06, G-12, G-13 |
 | **Optional** | G-14, G-16, G-25 |

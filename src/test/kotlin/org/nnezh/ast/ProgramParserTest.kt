@@ -369,14 +369,14 @@ class ProgramParserTest {
     fun `function with unknown argument type fails`() {
         val result = parseFromSource("fun foo(a: Foo): Unit { }")
         assertTrue(result.isLeft())
-        assertTrue(result.leftOrNull()?.message?.contains("Invalid type Foo") == true)
+        assertTrue(result.leftOrNull()?.message?.contains("Invalid type Foo at") == true)
     }
 
     @Test
     fun `global with unknown type fails`() {
         val result = parseFromSource("val x: Foo = 1")
         assertTrue(result.isLeft())
-        assertTrue(result.leftOrNull()?.message?.contains("Invalid type Foo") == true)
+        assertTrue(result.leftOrNull()?.message?.contains("Invalid type Foo at") == true)
     }
 
     @Test
