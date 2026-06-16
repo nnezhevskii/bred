@@ -141,7 +141,7 @@ fun val if else return while for in to true false
 **Notes:**
 
 - `true` and `false` are keywords, not separate literal token types. The expression parser maps them to `BooleanLiteralExpressionNode`.
-- Several keywords are recognized by the lexer but **not** by the statement/program parsers (`var`, `return`). See [§10](#10-open-questions--inconsistencies).
+- Several keywords are recognized by the lexer but **not** by the statement/program parsers (`var`). See [§10](#10-open-questions--inconsistencies).
 
 **Implementation:** `Token.Keyword.byText`.
 
@@ -436,7 +436,8 @@ statement ::= valDecl
             | callStmt
             | ifStmt
             | whileStmt
-            | forStmt ;
+            | forStmt
+            | returnStmt ;
 ```
 
 **Dispatch rules** (`StatementParser.kt`) — not expressible as pure EBNF:
@@ -447,6 +448,7 @@ statement ::= valDecl
 | `if`                        | `IfParser`          |
 | `while`                     | `WhileParser`       |
 | `for`                       | `ForParser`         |
+| `return`                    | `ReturnValueParser` |
 | `identifier` `(`            | `CallStatementParser` |
 | `identifier` (not followed by `(`) | `AssignParser` |
 | anything else               | parse error         |
@@ -454,13 +456,37 @@ statement ::= valDecl
 **Notes:**
 
 - Token streams always end with `EOF` (appended by `Lexer.tokenize()`). A lone `identifier` immediately before `EOF` is rejected with `Unexpected end of file` at routing time — neither assign nor call parser is invoked.
-- `return expr` — **not confirmed** (keyword lexed, no parser/AST node).
 
 **Implementation:** `StatementParser.kt`, `StatementParserTest`.
 
 ---
 
-### 4.3 Assignment
+### 4.3 Return statement
+
+```ebnf
+returnStmt ::= 'return' [ 'Unit' | expression ] ;
+```
+
+**Examples:**
+
+```bred
+return 42
+return x
+return Unit
+return          (* valid only when immediately followed by `}` — same as `return Unit` *)
+```
+
+**Notes:**
+
+- `return Unit` is parsed as the type `Unit` (`Type.UnitType` in AST), not as a variable reference.
+- Bare `return` before `}` (implicit Unit) is accepted inside a block; bare `return` before `EOF` is a parse error.
+- AST node: `ReturnFunctionStatementASTNode` with `expression: Either<Type.UnitType, ExpressionASTNode>` — `Left` = Unit, `Right` = expression value.
+
+**Implementation:** `ReturnValueParser.kt`, `ReturnValueParserTest.kt`.
+
+---
+
+### 4.4 Assignment
 
 ```ebnf
 assignment ::= identifier '=' expression ;
@@ -482,7 +508,7 @@ counter = counter + 1
 
 ---
 
-### 4.4 Call statement
+### 4.5 Call statement
 
 ```ebnf
 callStmt ::= expression ;
@@ -507,7 +533,7 @@ foo()
 
 ---
 
-### 4.5 `if` / `else`
+### 4.6 `if` / `else`
 
 ```ebnf
 ifStmt ::= 'if' '(' expression ')' block [ 'else' block ] ;
@@ -533,7 +559,7 @@ if (x > y) {
 
 ---
 
-### 4.6 `while`
+### 4.7 `while`
 
 ```ebnf
 whileStmt ::= 'while' expression block ;
@@ -556,7 +582,7 @@ while (x < 10) { }
 
 ---
 
-### 4.7 `for`
+### 4.8 `for`
 
 ```ebnf
 forStmt ::= 'for' '(' identifier 'in' expression 'to' expression ')' block ;
@@ -751,7 +777,6 @@ fun f(): Foo { }            (* parse error: Unexpected type Foo — return *)
 
 ### Confirmed limitations
 
-- No `return` statement parser.
 - No surface `var` declaration parser.
 - No semicolon-separated statements (token exists, unused).
 - No member access (`.` not in expression grammar).
@@ -765,15 +790,14 @@ fun f(): Foo { }            (* parse error: Unexpected type Foo — return *)
 
 | # | Issue | Evidence |
 |---|-------|----------|
-| 1 | `return` is lexed but not parsed | `Token.Keyword.Return`; no `ReturnStatementASTNode`, no parser |
-| 2 | `var` is lexed but not parsed at surface | `Token.Keyword.Var`; `MutableVariableInitializationASTNode` only from `ForParser` desugar |
-| 3 | `if` requires `()`, `while` does not | `IfParser.kt` vs `WhileParser.kt` |
-| 4 | `;` token unused | `Token.Punctuation.Semicolon`; no parser consumes it |
-| 5 | Type error message asymmetry | Params/`val`: `Invalid type …` via `parseOrNull`; return type: `Unexpected type …` via `fromString` |
-| 6 | For-loop counter always `Int` in desugar regardless of bound types | `ForParser.kt` hardcodes `Type.IntType` |
-| 7 | Package split: parsers vs AST nodes | `org.nnezh.org.nnezh.ast` vs `org.nnezh.ast` |
-| 8 | `FunctionArgsASTNode` is not an `ASTNode` | `ASTNode.kt` |
-| 9 | Call statement vs expression routing mismatch | `CallStatementParser` accepts any expression; `StatementParser` only routes `identifier '('` |
+| 1 | `var` is lexed but not parsed at surface | `Token.Keyword.Var`; `MutableVariableInitializationASTNode` only from `ForParser` desugar |
+| 2 | `if` requires `()`, `while` does not | `IfParser.kt` vs `WhileParser.kt` |
+| 3 | `;` token unused | `Token.Punctuation.Semicolon`; no parser consumes it |
+| 4 | Type error message asymmetry | Params/`val`: `Invalid type …` via `parseOrNull`; return type: `Unexpected type …` via `fromString` |
+| 5 | For-loop counter always `Int` in desugar regardless of bound types | `ForParser.kt` hardcodes `Type.IntType` |
+| 6 | Package split: parsers vs AST nodes | `org.nnezh.org.nnezh.ast` vs `org.nnezh.ast` |
+| 7 | `FunctionArgsASTNode` is not an `ASTNode` | `ASTNode.kt` |
+| 8 | Call statement vs expression routing mismatch | `CallStatementParser` accepts any expression; `StatementParser` only routes `identifier '('` |
 
 See also [`docs/TODO.md`](TODO.md) for actionable follow-ups.
 
@@ -781,7 +805,7 @@ See also [`docs/TODO.md`](TODO.md) for actionable follow-ups.
 
 ## 11. Checklist for parser tests
 
-Current suite: **14 test files** in `src/test/kotlin/`.
+Current suite: **15 test files** in `src/test/kotlin/`.
 
 ### Covered
 
@@ -801,6 +825,7 @@ Current suite: **14 test files** in `src/test/kotlin/`.
 | `if` | `IfParserTest.kt` | condition parens, else, blocks, errors |
 | `while` | `WhileParserTest.kt` | condition variants, block, errors |
 | `for` | `ForParserTest.kt` | header, desugaring shape, synthetic positions, errors |
+| `return` | `ReturnValueParserTest.kt` | expression, `return Unit`, bare return before `}`, EOF error, delegation |
 
 ### Gaps / recommended additions
 
@@ -809,7 +834,7 @@ Current suite: **14 test files** in `src/test/kotlin/`.
 - [ ] **Statement `(f)()` or `1 + foo()`:** confirm rejection at `StatementParser` dispatch.
 - [ ] **Lexer keywords `for`, `in`, `to`:** explicit keyword recognition test (subset tested in `keywords are recognized`).
 - [ ] **`else if` chain:** confirm rejection (not implemented).
-- [ ] **`return` / `var`:** add tests when parsers are implemented.
+- [ ] **`var`:** add tests when parser is implemented.
 
 ---
 

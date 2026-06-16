@@ -57,6 +57,10 @@ data class CallFunctionStatementASTNode(
     val expression: ExpressionASTNode
 ): StatementASTNode
 
+data class ReturnFunctionStatementASTNode(
+    val expression: Either<Type.UnitType, ExpressionASTNode>
+): StatementASTNode
+
 
 sealed interface ExpressionASTNode: ASTNode // i.e. 3 + 5 + x
 

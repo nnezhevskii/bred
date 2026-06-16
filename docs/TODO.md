@@ -8,7 +8,6 @@ Actionable follow-ups derived from gaps between lexer, AST, parsers, tests, and 
 
 | ID | Item | Current state | Suggested action |
 |----|------|---------------|------------------|
-| G-01 | `return` statement | Keyword lexed; no AST node, no parser | Add `ReturnStatementASTNode`, `ReturnParser`, wire into `StatementParser`; decide whether value is required |
 | G-02 | `var` declaration | Keyword lexed; `MutableVariableInitializationASTNode` exists only from for-desugar | Add `MutableInitializationParser` (mirror `val`) or document that `var` is intentionally unsupported |
 | G-03 | Type inference for `val` | `val z = expr` rejected; required in `ImmutableInitializationParser` | Either implement inference or keep explicit `: Type` as the only form |
 | G-05 | `else if` chains | Not implemented; only `else block` | Implement desugaring to nested `if` or document as unsupported |
@@ -66,7 +65,6 @@ Actionable follow-ups derived from gaps between lexer, AST, parsers, tests, and 
 
 ## Priority suggestion
 
-1. **G-01** — `return` statement
-2. **G-10** — syntax alignment (`if`/`while`)
-3. **G-26** — unify type error messages / resolver API
-4. **G-21–G-25** — remaining test coverage gaps
+1. **G-10** — syntax alignment (`if`/`while`)
+2. **G-26** — unify type error messages / resolver API
+3. **G-21–G-25** — remaining test coverage gaps

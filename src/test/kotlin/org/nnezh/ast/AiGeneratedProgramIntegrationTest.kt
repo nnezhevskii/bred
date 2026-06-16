@@ -23,6 +23,7 @@ import org.nnezh.ast.ImmutableVariableInitializationASTNode
 import org.nnezh.ast.IntLiteralExpressionNode
 import org.nnezh.ast.MutableVariableInitializationASTNode
 import org.nnezh.ast.ProgramASTNode
+import org.nnezh.ast.ReturnFunctionStatementASTNode
 import org.nnezh.ast.StatementASTNode
 import org.nnezh.ast.StringLiteralExpressionNode
 import org.nnezh.ast.UnaryExpressionASTNode
@@ -423,6 +424,52 @@ class AiGeneratedProgramIntegrationTest {
         val noArgs = parsedProgram().functions.single { it.name == "noArgs" }
         assertTrue(noArgs.args.arguments.isEmpty())
         assertTrue(noArgs.block.statements.isEmpty())
+    }
+
+    @Test
+    fun `function with return expression parses end-to-end`() {
+        val ast = build("fun f(): Int { return 1 }").getOrElse { error("unexpected parse error: $it") }
+        val function = assertInstanceOf(ProgramASTNode::class.java, ast).functions.single()
+        val returnStmt = assertInstanceOf(ReturnFunctionStatementASTNode::class.java, function.block.statements.single())
+        assertTrue(returnStmt.expression.isRight())
+        assertEquals(1L, (returnStmt.expression.getOrNull() as IntLiteralExpressionNode).value)
+    }
+
+    @Test
+    fun `function with bare return parses as Unit end-to-end`() {
+        val ast = build("fun main() { return }").getOrElse { error("unexpected parse error: $it") }
+        val function = assertInstanceOf(ProgramASTNode::class.java, ast).functions.single()
+        val returnStmt = assertInstanceOf(ReturnFunctionStatementASTNode::class.java, function.block.statements.single())
+        assertTrue(returnStmt.expression.isLeft())
+        assertEquals(Type.UnitType, returnStmt.expression.leftOrNull())
+    }
+
+    @Test
+    fun `function with return Unit parses end-to-end`() {
+        val ast = build("fun main() { return Unit }").getOrElse { error("unexpected parse error: $it") }
+        val function = assertInstanceOf(ProgramASTNode::class.java, ast).functions.single()
+        val returnStmt = assertInstanceOf(ReturnFunctionStatementASTNode::class.java, function.block.statements.single())
+        assertTrue(returnStmt.expression.isLeft())
+        assertEquals(Type.UnitType, returnStmt.expression.leftOrNull())
+    }
+
+    @Test
+    fun `max function with conditional returns parses end-to-end`() {
+        val src = """
+            fun max(a: Int, b: Int): Int {
+                if (a > b) {
+                    return a
+                }
+                return b
+            }
+        """.trimIndent()
+        val ast = build(src).getOrElse { error("unexpected parse error: $it") }
+        val max = assertInstanceOf(ProgramASTNode::class.java, ast).functions.single()
+        assertEquals("max", max.name)
+        assertEquals(Type.IntType, max.resultType)
+        assertEquals(2, max.block.statements.size)
+        assertInstanceOf(IfStatementASTNode::class.java, max.block.statements[0])
+        assertInstanceOf(ReturnFunctionStatementASTNode::class.java, max.block.statements[1])
     }
 
     // endregion

@@ -8,6 +8,7 @@ import org.nnezh.ast.ForStatementASTNode
 import org.nnezh.ast.IfStatementASTNode
 import org.nnezh.ast.ImmutableVariableInitializationASTNode
 import org.nnezh.ast.ProgramASTNode
+import org.nnezh.ast.ReturnFunctionStatementASTNode
 import org.nnezh.ast.WhileStatementASTNode
 
 class ParserFactory(
@@ -18,6 +19,7 @@ class ParserFactory(
     private val createInit: (Parser<ExpressionASTNode>) -> Parser<ImmutableVariableInitializationASTNode> = { e -> ImmutableInitializationParser(e) },
     private val createAssign: (Parser<ExpressionASTNode>) -> Parser<AssignmentStatementASTNode> = { e -> AssignParser(e) },
     private val createCall: (Parser<ExpressionASTNode>) -> Parser<CallFunctionStatementASTNode> = { e -> CallStatementParser(e) },
+    private val createReturn: (Parser<ExpressionASTNode>) -> Parser<ReturnFunctionStatementASTNode> = { e -> ReturnValueParser(e) },
 ) {
     private val initParser by lazy { createInit(expressionParser) }
     private val assignParser by lazy { createAssign(expressionParser) }
@@ -25,8 +27,9 @@ class ParserFactory(
     private val ifParser by lazy { createIf(expressionParser, lazy { blockParser }) }
     private val whileParser by lazy { createWhile(expressionParser, lazy { blockParser }) }
     private val forParser by lazy { createFor(expressionParser, lazy { blockParser }) }
+    private val returnValueParser by lazy { createReturn(expressionParser) }
     private val statementParser by lazy {
-        StatementParser(ifParser, whileParser, forParser, initParser, assignParser, callParser)
+        StatementParser(ifParser, whileParser, forParser, initParser, assignParser, callParser, returnValueParser)
     }
     private val blockParser: Parser<BlockASTNode> by lazy { BlockParser(lazy { statementParser }) }
     private val functionParser by lazy { FunctionParser(lazy { blockParser }) }

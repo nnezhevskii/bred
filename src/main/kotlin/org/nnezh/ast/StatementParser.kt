@@ -1,6 +1,7 @@
 package org.nnezh.org.nnezh.ast
 
 import arrow.core.raise.Raise
+import org.nnezh.ast.ReturnFunctionStatementASTNode
 import org.nnezh.ast.StatementASTNode
 import org.nnezh.lexer.Token
 
@@ -11,6 +12,7 @@ class StatementParser(
     private val immutableInitializationParser: Parser<StatementASTNode>,
     private val assignParser: Parser<StatementASTNode>,
     private val callParser: Parser<StatementASTNode>,
+    private val returnParser: Parser<ReturnFunctionStatementASTNode>,
 ) : Parser<StatementASTNode> {
     override fun Raise<ASTError>.parse(context: TokensContext): StatementASTNode =
         when (context.top()) {
@@ -18,6 +20,8 @@ class StatementParser(
                 raise(ASTError("Unexpected end of file in ${context.top().position}"))
             }
             is Token.Keyword.Val -> parseWith(immutableInitializationParser, context)
+
+            is Token.Keyword.Return -> parseWith(returnParser, context)
 
             is Token.Identifier -> {
                 when (context.top(1)) {

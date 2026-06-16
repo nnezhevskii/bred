@@ -17,6 +17,7 @@ import org.nnezh.ast.ImmutableVariableInitializationASTNode
 import org.nnezh.ast.IntLiteralExpressionNode
 import org.nnezh.ast.MutableVariableInitializationASTNode
 import org.nnezh.ast.ProgramASTNode
+import org.nnezh.ast.ReturnFunctionStatementASTNode
 import org.nnezh.ast.StringLiteralExpressionNode
 import org.nnezh.ast.UnaryExpressionASTNode
 import org.nnezh.ast.VariableExpressionNode
@@ -121,7 +122,6 @@ class AbstractSyntaxTreeDrawer {
                     { emptyNode -> recursive(emptyNode, shift + indent.repeat(2)) },
                     { elseBlock -> recursive(elseBlock, shift + indent.repeat(2)) }
                 ))
-//                acc.addAll(recursive(, shift + indent.repeat(2)))
             }
 
             is WhileStatementASTNode -> {
@@ -145,6 +145,14 @@ class AbstractSyntaxTreeDrawer {
             is CallFunctionStatementASTNode -> {
                 acc.add("${shift}Calling function")
                 acc.addAll(recursive(node.expression, shift + indent))
+            }
+
+            is ReturnFunctionStatementASTNode -> {
+                acc.add("${shift}Return: ")
+                node.expression.fold(
+                    ifLeft = { acc.add("${shift + indent}${Type.toString(it)}") },
+                    ifRight = { acc.addAll(recursive(it, shift + indent.repeat(1))) },
+                )
             }
         }
         return acc

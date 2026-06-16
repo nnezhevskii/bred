@@ -22,6 +22,7 @@ import org.nnezh.ast.ForStatementASTNode
 import org.nnezh.ast.IfStatementASTNode
 import org.nnezh.ast.ImmutableVariableInitializationASTNode
 import org.nnezh.ast.IntLiteralExpressionNode
+import org.nnezh.ast.ReturnFunctionStatementASTNode
 import org.nnezh.ast.StatementASTNode
 import org.nnezh.ast.VariableExpressionNode
 import org.nnezh.ast.WhileStatementASTNode
@@ -43,12 +44,27 @@ class StatementParserTest {
 
     private fun eof() = Token.Eof(pos)
 
+    private interface InvocableStub {
+        var invoked: Boolean
+    }
+
     private class TaggingStubParser(
         val result: StatementASTNode,
-    ) : Parser<StatementASTNode> {
-        var invoked: Boolean = false
+    ) : Parser<StatementASTNode>, InvocableStub {
+        override var invoked: Boolean = false
 
         override fun Raise<ASTError>.parse(context: TokensContext): StatementASTNode {
+            invoked = true
+            return result
+        }
+    }
+
+    private class ReturnTaggingStubParser(
+        val result: ReturnFunctionStatementASTNode,
+    ) : Parser<ReturnFunctionStatementASTNode>, InvocableStub {
+        override var invoked: Boolean = false
+
+        override fun Raise<ASTError>.parse(context: TokensContext): ReturnFunctionStatementASTNode {
             invoked = true
             return result
         }
@@ -77,8 +93,10 @@ class StatementParserTest {
         val initStub: TaggingStubParser,
         val assignStub: TaggingStubParser,
         val callStub: TaggingStubParser,
+        val returnStub: ReturnTaggingStubParser,
     ) {
-        fun all(): List<TaggingStubParser> = listOf(ifStub, whileStub, forStub, initStub, assignStub, callStub)
+        fun all(): List<InvocableStub> =
+            listOf(ifStub, whileStub, forStub, initStub, assignStub, callStub, returnStub)
 
         fun parser(): StatementParser = StatementParser(
             ifStub,
@@ -87,6 +105,7 @@ class StatementParserTest {
             initStub,
             assignStub,
             callStub,
+            returnStub,
         )
     }
 
@@ -112,6 +131,9 @@ class StatementParserTest {
             callStub = TaggingStubParser(
                 CallFunctionStatementASTNode(VariableExpressionNode(id)),
             ),
+            returnStub = ReturnTaggingStubParser(
+                ReturnFunctionStatementASTNode(IntLiteralExpressionNode(0L).right()),
+            ),
         )
     }
 
@@ -125,6 +147,7 @@ class StatementParserTest {
             immutableInitializationParser = ImmutableInitializationParser(expr),
             assignParser = AssignParser(expr),
             callParser = CallStatementParser(expr),
+            returnParser = ReturnValueParser(expr),
         )
     }
 
@@ -142,7 +165,7 @@ class StatementParserTest {
         return parseStatement(tokens, parser)
     }
 
-    private fun assertOnlyStubInvoked(stubs: StatementParserStubs, expected: TaggingStubParser) {
+    private fun assertOnlyStubInvoked(stubs: StatementParserStubs, expected: InvocableStub) {
         for (stub in stubs.all()) {
             if (stub === expected) {
                 assertTrue(stub.invoked, "expected stub to be invoked")
@@ -200,6 +223,14 @@ class StatementParserTest {
         parseStatement(listOf(Token.Keyword.For(pos), eof()), stubs.parser())
             .getOrElse { error("unexpected parse error: $it") }
         assertOnlyStubInvoked(stubs, stubs.forStub)
+    }
+
+    @Test
+    fun `routes return to return parser`() {
+        val stubs = defaultStubs()
+        parseStatement(listOf(Token.Keyword.Return(pos), eof()), stubs.parser())
+            .getOrElse { error("unexpected parse error: $it") }
+        assertOnlyStubInvoked(stubs, stubs.returnStub)
     }
 
     @Test
@@ -264,6 +295,24 @@ class StatementParserTest {
         val result = parseFromSource("for (i in 0 to 10) { }")
             .getOrElse { error("unexpected parse error: $it") }
         assertInstanceOf(ForStatementASTNode::class.java, result)
+    }
+
+    @Test
+    fun `parses return with expression via real parsers`() {
+        val result = parseFromSource("return 42")
+            .getOrElse { error("unexpected parse error: $it") }
+        val returnStmt = assertInstanceOf(ReturnFunctionStatementASTNode::class.java, result)
+        assertTrue(returnStmt.expression.isRight())
+        assertEquals(42L, (returnStmt.expression.getOrNull() as IntLiteralExpressionNode).value)
+    }
+
+    @Test
+    fun `parses return Unit via real parsers`() {
+        val result = parseFromSource("return Unit")
+            .getOrElse { error("unexpected parse error: $it") }
+        val returnStmt = assertInstanceOf(ReturnFunctionStatementASTNode::class.java, result)
+        assertTrue(returnStmt.expression.isLeft())
+        assertEquals(Type.UnitType, returnStmt.expression.leftOrNull())
     }
 
     // endregion
@@ -346,6 +395,7 @@ class StatementParserTest {
             FailingStatementParser("init stub failure"),
             stubs.assignStub,
             stubs.callStub,
+            stubs.returnStub,
         )
         val result = parseStatement(listOf(Token.Keyword.Val(pos), eof()), parser)
         assertTrue(result.isLeft())
