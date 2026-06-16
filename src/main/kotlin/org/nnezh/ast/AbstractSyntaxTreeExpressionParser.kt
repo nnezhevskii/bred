@@ -12,6 +12,9 @@ import org.nnezh.ast.UnaryExpressionASTNode
 import org.nnezh.ast.VariableExpressionNode
 import org.nnezh.lexer.Token
 
+/* The expression parser is one concrete [Parser] implementation among the
+ * statement parsers wired together by [ParserFactory]. */
+
 /**
  * Recursive-descent parser for bred expressions.
  *
@@ -23,9 +26,9 @@ import org.nnezh.lexer.Token
  * `||`, `&&`, `== !=`, `< > <= >=`, `+ -`, `* / %`, unary `- !`, primary.
  * All binary operators are left-associative; unary operators are right-associative.
  */
-class AbstractSyntaxTreeExpressionParser {
+class AbstractSyntaxTreeExpressionParser : Parser<ExpressionASTNode> {
 
-    fun Raise<ASTError>.parse(context: TokensContext): ExpressionASTNode = parseLogicalOr(context)
+    override fun Raise<ASTError>.parse(context: TokensContext): ExpressionASTNode = parseLogicalOr(context)
 
     private fun Raise<ASTError>.parseLogicalOr(context: TokensContext): ExpressionASTNode {
         var left = parseLogicalAnd(context)
