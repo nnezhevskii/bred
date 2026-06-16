@@ -14,13 +14,16 @@ class StatementParser(
 ) : Parser<StatementASTNode> {
     override fun Raise<ASTError>.parse(context: TokensContext): StatementASTNode =
         when (context.top()) {
+            is Token.Eof -> {
+                raise(ASTError("Unexpected end of file in ${context.top().position}"))
+            }
             is Token.Keyword.Val -> parseWith(immutableInitializationParser, context)
 
             is Token.Identifier -> {
-                if (context.top(1) is Token.Punctuation.LParen) {
-                    parseWith(callParser, context)
-                } else {
-                    parseWith(assignParser, context)
+                when (context.top(1)) {
+                    is Token.Eof -> raise(ASTError("Unexpected end of file in ${context.top(1).position}"))
+                    is Token.Punctuation.LParen -> parseWith(callParser, context)
+                    else -> parseWith(assignParser, context)
                 }
             }
 

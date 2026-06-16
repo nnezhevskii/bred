@@ -50,7 +50,6 @@ Actionable follow-ups derived from gaps between lexer, AST, parsers, tests, and 
 
 | ID | Item | Current state | Suggested action |
 |----|------|---------------|------------------|
-| G-15 | `StatementParser` bounds check | Lone identifier without EOF → `IndexOutOfBoundsException` | Guard `top(1)` or require EOF; return `ASTError` (`StatementParserTest` documents this) |
 | G-16 | Package split | Parsers in `org.nnezh.org.nnezh.ast`, nodes in `org.nnezh.ast` | Consolidate packages when convenient |
 
 ---
@@ -80,8 +79,7 @@ Actionable follow-ups derived from gaps between lexer, AST, parsers, tests, and 
 
 ## Priority suggestion
 
-1. **G-15** — bug fix (bounds check)
-2. **G-17–G-20** — examples + end-to-end test (documentation hygiene)
-3. **G-01, G-04** — align with `max.bred` / `sandbox.bred` intent
-4. **G-07, G-08** — type system consistency
-5. **G-10** — syntax alignment (`if`/`while`)
+1. **G-17–G-20** — examples + end-to-end test (documentation hygiene)
+2. **G-01, G-04** — align with `max.bred` / `sandbox.bred` intent
+3. **G-07, G-08** — type system consistency
+4. **G-10** — syntax alignment (`if`/`while`)

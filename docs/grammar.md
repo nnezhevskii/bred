@@ -450,7 +450,7 @@ statement ::= valDecl
 
 **Notes:**
 
-- Statement routing for `identifier` uses `context.top(1)` without bounds checking. A lone identifier at end of input can cause `IndexOutOfBoundsException` instead of `ASTError` (documented in `StatementParserTest`).
+- Token streams always end with `EOF` (appended by `Lexer.tokenize()`). A lone `identifier` immediately before `EOF` is rejected with `Unexpected end of file` at routing time — neither assign nor call parser is invoked.
 - `return expr` — **not confirmed** (keyword lexed, no parser/AST node).
 
 **Implementation:** `StatementParser.kt`, `StatementParserTest`.
@@ -755,10 +755,6 @@ fun f(): Foo { }            (* OK syntactically; Foo not validated *)
 - No string interpolation.
 - Examples in `examples/` are **not** fully valid programs for the current parser (see [§10](#10-open-questions--inconsistencies)).
 
-### Implementation defects (syntax-related)
-
-- `StatementParser`: lone `identifier` without lookahead token → `IndexOutOfBoundsException` instead of `Either.Left` (`StatementParserTest`).
-
 ---
 
 ## 10. Open questions / inconsistencies
@@ -812,7 +808,7 @@ Current suite: **13 test files**, ~**280** test methods in `src/test/kotlin/`.
 - [ ] **Lexer keywords `for`, `in`, `to`:** explicit keyword recognition test (subset tested in `keywords are recognized`).
 - [ ] **`else if` chain:** confirm rejection (not implemented).
 - [ ] **`return` / `var`:** add tests when parsers are implemented.
-- [ ] **`StatementParser` bounds check:** lone identifier should return `ASTError`, not throw.
+- [x] **`StatementParser` routing at EOF:** lone `identifier` before `EOF` returns `ASTError` (`StatementParserTest`).
 - [ ] **Regression:** `examples/*.bred` — either fix examples or add tests asserting expected parse failures per construct.
 
 ---

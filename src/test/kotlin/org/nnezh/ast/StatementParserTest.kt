@@ -12,7 +12,6 @@ import arrow.core.right
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.nnezh.ast.AssignmentStatementASTNode
@@ -370,17 +369,12 @@ class StatementParserTest {
         assertTrue(stubs.all().none { it.invoked })
     }
 
-    /**
-     * Documents current behavior: routing uses [TokensContext.top] with offset 1
-     * without bounds check. Malformed token stream without trailing Eof throws
-     * instead of returning [Either.Left].
-     */
     @Test
-    fun `identifier without eof throws instead of returning parse error`() {
+    fun `lone identifier before eof fails with parse error`() {
         val stubs = defaultStubs()
-        assertThrows(IndexOutOfBoundsException::class.java) {
-            parseStatement(listOf(identifier("x")), stubs.parser())
-        }
+        val result = parseStatement(listOf(identifier("x"), eof()), stubs.parser())
+        assertTrue(result.isLeft())
+        assertTrue(result.leftOrNull()?.message?.contains("Unexpected end of file") == true)
         assertTrue(stubs.all().none { it.invoked })
     }
 
