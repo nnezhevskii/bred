@@ -21,6 +21,7 @@ import org.nnezh.ast.UnaryExpressionASTNode
 import org.nnezh.ast.VariableExpressionNode
 import org.nnezh.ast.VariableInitializationASTNode
 import org.nnezh.ast.WhileStatementASTNode
+import org.nnezh.org.nnezh.base.Type
 import org.nnezh.org.nnezh.semantic.generic.BuiltInMethods
 import org.nnezh.org.nnezh.semantic.generic.FunctionSignature
 import org.nnezh.org.nnezh.semantic.generic.SemanticError
@@ -29,15 +30,14 @@ import org.nnezh.org.nnezh.semantic.generic.SemanticSubAnalyzer
 import java.util.Collections.singletonList
 
 class FunctionSubAnalyzer: SemanticSubAnalyzer() {
-    private lateinit var functionRegistry: FunctionRegistry
+    private lateinit var registry: FunctionRegistry
 
     override fun analyzeProgramASTNode(node: ProgramASTNode): List<SemanticError> {
-        functionRegistry = FunctionRegistry()
-        BuiltInMethods.functions.forEach { functionRegistry.registerFunction(it) }
+        registry = FunctionRegistry()
+        BuiltInMethods.functions.forEach { registry.registerFunction(it) }
 
-        // Функции с одинаковыми названиями пока что запрещены. Надо разрешить - сравнивать по сигнатуре (кроме возвращаемого типа)
         node.functions.map { FunctionSignature.build(it) }.forEach {
-            if (functionRegistry.isFunctionRegistered(it.name, it.args.size)) {
+            if (registry.isFunctionRegistered(it.name, it.args)) {
                 return singletonList(
                     SemanticError.FunctionSemanticError(
                         where = node,
@@ -46,7 +46,7 @@ class FunctionSubAnalyzer: SemanticSubAnalyzer() {
                     )
                 )
             }
-            functionRegistry.registerFunction(it)
+            registry.registerFunction(it)
         }
 
         return node.globalVariables.flatMap { varNode -> analyzeVariableInitializationASTNode(varNode) } +
@@ -73,13 +73,14 @@ class FunctionSubAnalyzer: SemanticSubAnalyzer() {
 
     override fun analyzeFunctionCallExpressionNode(node: FunctionCallExpressionNode): List<SemanticError> {
         val result = mutableListOf<SemanticError>()
-        if (!functionRegistry.existFunctionWithName(node.name.lexeme)) {
+        if (!registry.existFunctionWithName(node.name.lexeme)) {
             result.add(SemanticError.FunctionSemanticError(
                 where = node,
                 critical = true,
                 errorType = SemanticErrorType.FUNCTION_NOT_FOUND
             ))
-        } else if (!functionRegistry.isFunctionRegistered(node.name.lexeme, node.arguments.size)) {
+            // тут точно правильно
+        } else if (!registry.isFunctionWithSameArityRegistered(node.name.lexeme, node.arguments.size)) {
             result.add(SemanticError.FunctionSemanticError(
                 where = node,
                 critical = true,
@@ -112,13 +113,7 @@ class FunctionSubAnalyzer: SemanticSubAnalyzer() {
     }
 
     override fun analyzeVariableExpressionNode(node: VariableExpressionNode): List<SemanticError> {
-        if (functionRegistry.existFunctionWithName(node.token.lexeme)) {
-            return singletonList(SemanticError.FunctionSemanticError(
-                where = node,
-                critical = true,
-                errorType = SemanticErrorType.FUNCTION_IS_USED_AS_VARIABLE
-            ))
-        }
+
         return emptyList()
     }
 
@@ -128,13 +123,7 @@ class FunctionSubAnalyzer: SemanticSubAnalyzer() {
 
     override fun analyzeAssignmentStatementASTNode(node: AssignmentStatementASTNode): List<SemanticError> {
         val result = mutableListOf<SemanticError>()
-        if (functionRegistry.existFunctionWithName(node.name)) {
-            result.add(SemanticError.FunctionSemanticError(
-                where = node,
-                critical = true,
-                errorType = SemanticErrorType.FUNCTION_IS_USED_AS_VARIABLE)
-            )
-        }
+
         result.addAll(routeExpressionHandling(node.value))
 
         return result
@@ -173,13 +162,13 @@ class FunctionSubAnalyzer: SemanticSubAnalyzer() {
 
     override fun analyzeVariableInitializationASTNode(node: VariableInitializationASTNode): List<SemanticError> {
         val result = mutableListOf<SemanticError>()
-        if ( functionRegistry.existFunctionWithName(node.variableName)) {
-            result.add(SemanticError.FunctionSemanticError(
-                where = node,
-                critical = true,
-                errorType = SemanticErrorType.FUNCTION_IS_USED_AS_VARIABLE
-            ))
-        }
+//        if ( functionRegistry.existFunctionWithName(node.variableName)) {
+//            result.add(SemanticError.FunctionSemanticError(
+//                where = node,
+//                critical = true,
+//                errorType = SemanticErrorType.FUNCTION_IS_USED_AS_VARIABLE
+//            ))
+//        }
         result.addAll(routeExpressionHandling(node.valExpression))
 
         return result
@@ -200,9 +189,15 @@ class FunctionSubAnalyzer: SemanticSubAnalyzer() {
             return functionsRegistry.containsKey(name)
         }
 
-        fun isFunctionRegistered(function: String, argsSize: Int): Boolean {
+        fun isFunctionWithSameArityRegistered(function: String, argsSize: Int): Boolean {
             return functionsRegistry[function]?.any { signature ->
                 signature.name == function && signature.args.size == argsSize
+            } ?: false
+        }
+
+        fun isFunctionRegistered(function: String, args: List<Type>): Boolean {
+            return functionsRegistry[function]?.any { signature ->
+                signature.name == function && signature.args == args
             } ?: false
         }
 

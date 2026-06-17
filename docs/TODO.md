@@ -16,6 +16,10 @@ Requires a phase after AST construction (not parser-only).
 | G-09 | For-loop bound types | Desugar hardcodes `Int` counter; bounds are any expression syntactically | Type-check bounds (or document runtime-only behavior) when analysis exists |
 | G-03 | Type inference for `val` | `val z = expr` rejected; `: Type` required | Only with inference / typechecker — or keep explicit types as permanent design |
 | G-32 | Assignment to immutable `val` | `VariableScopeAnalyzer` has `// TODO: checking val/var` and `AssignmentStatementASTNode` currently checks only unknown variables | Add semantic error for assigning to immutable variables (error type TBD); add matching test in `VariableScopeAnalyzerTest` |
+| G-33 | `REDEFINE_FUNCTION` early abort | `FunctionSubAnalyzer` returns immediately on duplicate name+arity; `where` is `ProgramASTNode`, bodies/globals not analyzed | Accumulate error and continue (or stop registration only); set `where` to duplicate `DeclareFunctionASTNode`; update `redefine stops entire program analysis early` test |
+| G-34 | Function analyzer traversal policy | `FunctionSubAnalyzer` has no block short-circuit; differs from `VariableScopeSubAnalyzer` | Decide and document collect-all vs stop-after-critical; align implementation or document intentional difference |
+| G-35 | Function parameter names vs registry | `analyzeFunctionArgumentASTNode` is a no-op; `fun f(println: Int)` is accepted | Decide whether parameter names must not collide with function registry; add check + test if required |
+| G-36 | `FunctionSubAnalyzer` not in pipeline | `SemanticAnalyzer` runs only `VariableScopeSubAnalyzer`; `Main.kt` calls `FunctionSubAnalyzer` directly | Add to pipeline; add combined-pipeline tests (e.g. `println(unknown)` → both error kinds) |
 
 ---
 
@@ -45,6 +49,6 @@ Not blocking parser completeness; implement when the language actually needs the
 
 | When | IDs |
 |------|-----|
-| **Next pipeline** | G-31, G-09, G-03, G-32 |
+| **Next pipeline** | G-31, G-09, G-03, G-32, G-33, G-36 |
 | **When language grows** | G-05, G-12, G-13 |
-| **Optional** | G-14, G-16, G-25 |
+| **Optional** | G-14, G-16, G-25, G-34, G-35 |

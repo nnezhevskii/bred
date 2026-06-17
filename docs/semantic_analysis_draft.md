@@ -1,19 +1,25 @@
 # bred — Semantic Analysis (Draft)
 
-This document specifies the **intended** semantic checks performed after AST construction. It is derived from `VariableScopeAnalyzer`, `VariableScopeAnalyzerTest`, and current design discussions.
+This document specifies the **intended** semantic checks performed after AST construction. It is derived from `VariableScopeSubAnalyzer`, `FunctionSubAnalyzer`, their tests, and current design discussions.
 
-**Source of truth for behavior:** tests in `src/test/kotlin/org/nnezh/semantic/VariableScopeAnalyzerTest.kt`.
+**Source of truth for behavior:**
+- variable scope: `src/test/kotlin/org/nnezh/semantic/VariableScopeAnalyzerTest.kt`
+- function registry and calls: `src/test/kotlin/org/nnezh/semantic/FunctionAnalyzerTest.kt`
 
 ## Scope
 
 This phase runs **after** parsing/AST building and is **not** part of the grammar (`docs/grammar.md` covers syntax only).
 
 Current focus:
-- name resolution and lexical scoping for variables
+- name resolution and lexical scoping for variables (`VariableScopeSubAnalyzer`)
 - detection of shadowing / redeclaration
 - detection of unknown variables
-- collecting **all** diagnostics found within a single statement
-- stopping block traversal after a statement with a critical error
+- collecting **all** diagnostics found within a single statement (variable scope)
+- stopping block traversal after a statement with a critical error (variable scope)
+- function registry: built-ins + user declarations (`FunctionSubAnalyzer`)
+- function call arity checking (name + argument count; types not checked)
+- allowing function and variable names to coexist (syntactic disambiguation)
+- forbidding duplicate function signatures (same name + same parameter types; return type excluded)
 
 Out of scope for this draft:
 - type checking and type inference (see `docs/TODO.md`, semantic analysis section)
@@ -23,9 +29,12 @@ Out of scope for this draft:
 ## Inputs / Outputs
 
 - **Input**: `ProgramASTNode` (root of AST).
-- **Output**: list of semantic diagnostics:
-  - `VariableScopeError(where: ASTNode, isCriticalError: Boolean, errorType: VariableScopeErrorType)`
-  - `VariableScopeErrorType ∈ { UNKNOWN_VARIABLE, REDECLARATION, OVERSHADOW }`
+- **Output**: list of semantic diagnostics (`SemanticError` sealed interface):
+  - `VariableScopeSemanticError(where, critical, errorType)`
+  - `FunctionSemanticError(where, critical, errorType)`
+  - `SemanticErrorType` for variables: `UNKNOWN_VARIABLE`, `VARIABLE_REDECLARATION`, `VARIABLE_OVERSHADOW`
+  - `SemanticErrorType` for functions: `FUNCTION_NOT_FOUND`, `FUNCTION_EXISTS_BUT_WRONG_ARGUMENTS_AMOUNT`, `REDEFINE_FUNCTION`
+  - `FUNCTION_IS_USED_AS_VARIABLE` exists in the enum but is **not emitted** (legacy / reserved)
 
 ## Traversal policy
 
@@ -213,7 +222,7 @@ Status:
 - Tracked as `G-32` in `docs/TODO.md`
 - No test in `VariableScopeAnalyzerTest` yet
 
-## Test coverage map
+## Test coverage map (variable scope)
 
 | Behavior | Test name (abbrev.) |
 |----------|---------------------|
@@ -235,6 +244,165 @@ Status:
 | Outer scope visible inside block | `variable from outer scope is visible inside nested block` |
 | Inner scope not visible outside | `variable declared in if/while block is not visible outside`, `for counter variable is not visible after loop` |
 
+## Function semantics (`FunctionSubAnalyzer`)
+
+### Model: function registry
+
+- **Registry**: `name → List<FunctionSignature>` (overloads by arity and parameter types).
+- **Seeded** with built-ins from `BuiltInMethods` (`println`, `readInt`, `stringConcat`, etc.).
+- **User functions** registered from `ProgramASTNode.functions` before any body analysis (forward references between functions are valid).
+
+#### Signature identity (duplicate detection)
+
+A function is uniquely identified for `REDEFINE_FUNCTION` by:
+
+```ebnf
+signatureKey ::= name '(' paramType { ',' paramType } ')' ;
+```
+
+- `paramType` — ordered list of parameter types (`FunctionSignature.args`).
+- **Return type is not part of the key** — two declarations with the same name and parameter types but different return types are a duplicate.
+
+Overload rules:
+
+| Case | Allowed |
+|------|---------|
+| Same name, different arity | yes |
+| Same name, same arity, different parameter types | yes |
+| Same name, same parameter types, different return type | no → `REDEFINE_FUNCTION` |
+| Same name, same parameter types, different parameter names only | no → `REDEFINE_FUNCTION` |
+
+```bred
+fun foo(x: Int): Unit { }
+fun foo(x: String): Unit { }        // ok — parameter types differ
+
+fun foo(x: String): Unit { }
+fun foo(x: String): String {       // REDEFINE_FUNCTION — same parameter types, return type ignored for overload
+    return x
+}
+
+fun foo(a: Int): Unit { }
+fun foo(b: Int): Unit { }           // REDEFINE_FUNCTION — parameter types [Int] == [Int]
+```
+
+### Traversal policy (function analyzer)
+
+**Differs from variable scope analyzer:**
+
+- All function declarations are registered in a first pass; then `globalVariables` and function bodies are analyzed.
+- **No short-circuit** within blocks: every statement is visited regardless of prior critical errors in the same block.
+- On `REDEFINE_FUNCTION` during registration, analysis **stops entirely** (current implementation — see `G-33` in `docs/TODO.md`).
+- Argument expressions of a call are always analyzed after the call-site check (even when arity is wrong).
+
+### FUNCTION_NOT_FOUND (critical)
+
+Emitted when a call references a name not present in the registry.
+
+Properties:
+- `isCriticalError = true`
+- `where` = `FunctionCallExpressionNode`
+
+```bred
+fun main(): Unit {
+    missing(1)   // FUNCTION_NOT_FOUND
+}
+```
+
+### FUNCTION_EXISTS_BUT_WRONG_ARGUMENTS_AMOUNT (critical)
+
+Emitted when the name exists but no overload matches the call's argument count. Argument **types** are not checked.
+
+Properties:
+- `isCriticalError = true`
+- `where` = `FunctionCallExpressionNode`
+
+```bred
+fun moo(x: Int, y: Int): Unit { }
+fun main(): Unit {
+    moo(3, 2)           // ok
+    moo("x", true)      // ok — arity matches
+    moo(3)              // FUNCTION_EXISTS_BUT_WRONG_ARGUMENTS_AMOUNT
+    moo()               // FUNCTION_EXISTS_BUT_WRONG_ARGUMENTS_AMOUNT
+    moo(1, 2, 3)        // FUNCTION_EXISTS_BUT_WRONG_ARGUMENTS_AMOUNT
+}
+```
+
+### REDEFINE_FUNCTION (critical)
+
+Emitted when a user function duplicates an existing signature (built-in or user): same **name + parameter types** (return type does not distinguish overloads).
+
+Properties:
+- `isCriticalError = true`
+- `where` = `ProgramASTNode` (current implementation; should point to the duplicate `DeclareFunctionASTNode` — see `G-33`)
+
+```bred
+fun println(x: String): Unit { }   // REDEFINE_FUNCTION — builtin println(String) exists
+fun foo(a: Int): Unit { }
+fun foo(b: Int): Unit { }           // REDEFINE_FUNCTION — same parameter types [Int]
+fun foo(x: String): Unit { }
+fun foo(x: String): String {       // REDEFINE_FUNCTION — same parameter types [String]
+    return x
+}
+```
+
+### Function and variable name coexistence
+
+A name may denote **both** a function and a variable (`val` / `var`) in the same program. `FunctionSubAnalyzer` does not reject declarations or uses on that basis.
+
+Disambiguation is **syntactic**:
+
+| Surface form | Resolved as | Checked by |
+|--------------|-------------|------------|
+| `ident(...)` | function call | `FunctionSubAnalyzer` (registry + arity) |
+| `ident` in expression | variable reference | `VariableScopeSubAnalyzer` (scope lookup) |
+| `val ident` / `var ident` | variable declaration | not checked by function analyzer |
+| `ident = expr` | assignment to variable | not checked by function analyzer |
+
+```bred
+fun foo(): Unit { }
+val foo: Int = 1
+fun main(): Unit {
+    val x: Int = foo + 1   // variable foo — scope analyzer
+    foo()                  // function foo — function analyzer
+    bar(foo)               // variable foo as argument — ok for function analyzer
+}
+```
+
+`FUNCTION_IS_USED_AS_VARIABLE` is no longer produced; bare `ident` in an expression is never treated as “using a function as a variable” by `FunctionSubAnalyzer`.
+
+### Positive cases (no errors)
+
+- call with matching arity (any argument types at call site — type resolution deferred to future typechecker)
+- overload by arity
+- overload by parameter types (same arity, different param types)
+- forward reference between functions
+- built-in calls with correct arity
+- nested calls, calls in assignment RHS, statement-level calls
+- function and variable sharing the same name (global/local, call + reference, builtin name)
+
+## Function test coverage map
+
+| Behavior | Test name (abbrev.) |
+|----------|---------------------|
+| Valid arity | `valid call with matching arity` |
+| Types not checked | `argument types are not checked` |
+| Overload by arity | `overload by arity is allowed`, `different arity is not redefine` |
+| Overload by parameter types | `overload by parameter types is allowed` |
+| Redefine same param types | `duplicate user function same arity`, `duplicate same parameter types different return type is redefine`, `duplicate same parameter types implicit Unit and explicit return type is redefine`, `redefine builtin with same arity` |
+| Forward reference | `forward reference between functions` |
+| Builtin call | `builtin call is valid` |
+| Call in RHS / nested / statement | `call in assignment RHS`, `nested call in arguments`, `statement-level call` |
+| Unknown function | `unknown function is critical` |
+| Wrong arity | `too few arguments`, `too many arguments`, `zero args when one required`, `builtin wrong arity` |
+| Same name coexistence | `global val and function with same name`, `local val and function with same name`, `global val and builtin with same name`, `var assignment shares name with function`, `bare identifier in expression is not function analyzer concern`, `variable reference when both function and variable exist`, `function call when variable with same name exists`, `variable as call argument when name collides with function`, `call and variable use in same block` |
+| Arity error + arg analysis | `wrong arity and unknown args in same call both reported` |
+| Redefine early abort | `redefine stops entire program analysis early` |
+
 ## Open test gaps
 
-See `docs/TODO.md`: `G-32` (assignment to immutable `val` — no test yet).
+See `docs/TODO.md`:
+- `G-32` — assignment to immutable `val` (no test yet)
+- `G-33` — `REDEFINE_FUNCTION` early return and `where` node
+- `G-34` — traversal policy for `FunctionSubAnalyzer`
+- `G-35` — function parameter names vs function registry
+- `G-36` — wire `FunctionSubAnalyzer` into `SemanticAnalyzer` pipeline

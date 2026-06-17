@@ -26,8 +26,7 @@ fun main(args: Array<String>) {
 
         val ast = AbstractSyntaxTreeBuilder(AbstractSyntaxTreeExpressionParser()).build(tokens).bind()
 
-//        SemanticAnalyzer()(ast as ProgramASTNode).joinToString("\n")
-        FunctionSubAnalyzer().analyzeProgramASTNode(ast as ProgramASTNode).joinToString("\n").ifEmpty { "<NoErrors>" }
+        SemanticAnalyzer()(ast as ProgramASTNode).joinToString("\n").ifEmpty { "<NoErrors>" }
     }
 
     result.fold(

@@ -1,19 +1,11 @@
-val Pi: Double = 0.0
-
-fun hoba(x: Int) {
+fun foo(x: Int) {
 
 }
 
-fun foo() {
-
+fun foo(x: String): String {
+    return x + " "
 }
 
-fun foo(st: String) {
-
-}
-
-
-fun main(x: String, flag: Boolean) {
-    val a: Int = 10
-    val b: Int = 3 + foo() + foo(3) + foo (3, 4) + foo(true, false) + foo (main(), 3, 2)
+fun main() {
+    val foo: Int = 4
 }
