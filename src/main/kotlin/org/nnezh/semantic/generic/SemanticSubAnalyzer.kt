@@ -72,23 +72,23 @@ abstract class SemanticSubAnalyzer {
     }
 
     abstract fun analyzeProgramASTNode(node: ProgramASTNode): List<SemanticError>
-    abstract fun analyzeBlockASTNode(node: BlockASTNode): List<SemanticError>
-    abstract fun analyzeDeclareFunctionASTNode(node: DeclareFunctionASTNode): List<SemanticError>
-    abstract fun analyzeEmptyNode(node: EmptyNode): List<SemanticError>
-    abstract fun analyzeBinaryExpressionASTNode(node: BinaryExpressionASTNode): List<SemanticError>
-    abstract fun analyzeFunctionCallExpressionNode(node: FunctionCallExpressionNode): List<SemanticError>
-    abstract fun analyzeBooleanLiteralExpressionNode(node: BooleanLiteralExpressionNode): List<SemanticError>
-    abstract fun analyzeDoubleLiteralExpressionNode(node: DoubleLiteralExpressionNode): List<SemanticError>
-    abstract fun analyzeIntLiteralExpressionNode(node: IntLiteralExpressionNode): List<SemanticError>
-    abstract fun analyzeStringLiteralExpressionNode(node: StringLiteralExpressionNode): List<SemanticError>
-    abstract fun analyzeUnaryExpressionASTNode(node: UnaryExpressionASTNode): List<SemanticError>
-    abstract fun analyzeVariableExpressionNode(node: VariableExpressionNode): List<SemanticError>
-    abstract fun analyzeFunctionArgumentASTNode(node: FunctionArgumentASTNode): List<SemanticError>
-    abstract fun analyzeAssignmentStatementASTNode(node: AssignmentStatementASTNode): List<SemanticError>
-    abstract fun analyzeCallFunctionStatementASTNode(node: CallFunctionStatementASTNode): List<SemanticError>
-    abstract fun analyzeForStatementASTNode(node: ForStatementASTNode): List<SemanticError>
-    abstract fun analyzeIfStatementASTNode(node: IfStatementASTNode): List<SemanticError>
-    abstract fun analyzeReturnFunctionStatementASTNode(node: ReturnFunctionStatementASTNode): List<SemanticError>
-    abstract fun analyzeVariableInitializationASTNode(node: VariableInitializationASTNode): List<SemanticError>
-    abstract fun analyzeWhileStatementASTNode(node: WhileStatementASTNode): List<SemanticError>
+    protected abstract fun analyzeBlockASTNode(node: BlockASTNode): List<SemanticError>
+    protected abstract fun analyzeDeclareFunctionASTNode(node: DeclareFunctionASTNode): List<SemanticError>
+    protected abstract fun analyzeEmptyNode(node: EmptyNode): List<SemanticError>
+    protected abstract fun analyzeBinaryExpressionASTNode(node: BinaryExpressionASTNode): List<SemanticError>
+    protected abstract fun analyzeFunctionCallExpressionNode(node: FunctionCallExpressionNode): List<SemanticError>
+    protected abstract fun analyzeBooleanLiteralExpressionNode(node: BooleanLiteralExpressionNode): List<SemanticError>
+    protected abstract fun analyzeDoubleLiteralExpressionNode(node: DoubleLiteralExpressionNode): List<SemanticError>
+    protected abstract fun analyzeIntLiteralExpressionNode(node: IntLiteralExpressionNode): List<SemanticError>
+    protected abstract fun analyzeStringLiteralExpressionNode(node: StringLiteralExpressionNode): List<SemanticError>
+    protected abstract fun analyzeUnaryExpressionASTNode(node: UnaryExpressionASTNode): List<SemanticError>
+    protected abstract fun analyzeVariableExpressionNode(node: VariableExpressionNode): List<SemanticError>
+    protected abstract fun analyzeFunctionArgumentASTNode(node: FunctionArgumentASTNode): List<SemanticError>
+    protected abstract fun analyzeAssignmentStatementASTNode(node: AssignmentStatementASTNode): List<SemanticError>
+    protected abstract fun analyzeCallFunctionStatementASTNode(node: CallFunctionStatementASTNode): List<SemanticError>
+    protected abstract fun analyzeForStatementASTNode(node: ForStatementASTNode): List<SemanticError>
+    protected abstract fun analyzeIfStatementASTNode(node: IfStatementASTNode): List<SemanticError>
+    protected abstract fun analyzeReturnFunctionStatementASTNode(node: ReturnFunctionStatementASTNode): List<SemanticError>
+    protected abstract fun analyzeVariableInitializationASTNode(node: VariableInitializationASTNode): List<SemanticError>
+    protected abstract fun analyzeWhileStatementASTNode(node: WhileStatementASTNode): List<SemanticError>
 }

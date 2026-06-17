@@ -3,10 +3,12 @@ package org.nnezh.org.nnezh.ast.parsers
 import arrow.core.raise.Raise
 import org.nnezh.ast.AssignmentStatementASTNode
 import org.nnezh.ast.BinaryExpressionASTNode
+import org.nnezh.ast.BinaryOperator
 import org.nnezh.ast.BlockASTNode
 import org.nnezh.ast.ExpressionASTNode
 import org.nnezh.ast.ForStatementASTNode
 import org.nnezh.ast.IntLiteralExpressionNode
+import org.nnezh.ast.LocatedBinaryOperator
 import org.nnezh.ast.MutableVariableInitializationASTNode
 import org.nnezh.ast.VariableExpressionNode
 import org.nnezh.ast.WhileStatementASTNode
@@ -38,7 +40,7 @@ class ForParser(
             WhileStatementASTNode(
                 BinaryExpressionASTNode(
                     VariableExpressionNode(counterName),
-                    Token.Operator.Le(syntheticOpPosition),
+                    LocatedBinaryOperator(BinaryOperator.Le, syntheticOpPosition),
                     finalValue,
                 ),
                 bodyBlock = BlockASTNode(
@@ -47,7 +49,7 @@ class ForParser(
                                 counterName.lexeme,
                                 BinaryExpressionASTNode(
                                     VariableExpressionNode(counterName),
-                                    Token.Operator.Plus(syntheticOpPosition),
+                                    LocatedBinaryOperator(BinaryOperator.Plus, syntheticOpPosition),
                                     IntLiteralExpressionNode(1)
                                 )
                             )

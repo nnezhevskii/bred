@@ -10,6 +10,8 @@ import org.nnezh.ast.IntLiteralExpressionNode
 import org.nnezh.ast.StringLiteralExpressionNode
 import org.nnezh.ast.UnaryExpressionASTNode
 import org.nnezh.ast.VariableExpressionNode
+import org.nnezh.ast.toLocatedBinaryOperator
+import org.nnezh.ast.toLocatedUnaryOperator
 import org.nnezh.lexer.Token
 import org.nnezh.org.nnezh.ast.parsers.Parser
 
@@ -34,9 +36,9 @@ class AbstractSyntaxTreeExpressionParser : Parser<ExpressionASTNode> {
     private fun Raise<ASTError>.parseLogicalOr(context: TokensContext): ExpressionASTNode {
         var left = parseLogicalAnd(context)
         while (context.top() is Token.Operator.Or) {
-            val op = context.consumeToken()
+            val op = context.consumeToken() as Token.Operator
             val right = parseLogicalAnd(context)
-            left = BinaryExpressionASTNode(left, op, right)
+            left = BinaryExpressionASTNode(left, op.toLocatedBinaryOperator(), right)
         }
         return left
     }
@@ -44,9 +46,9 @@ class AbstractSyntaxTreeExpressionParser : Parser<ExpressionASTNode> {
     private fun Raise<ASTError>.parseLogicalAnd(context: TokensContext): ExpressionASTNode {
         var left = parseEquality(context)
         while (context.top() is Token.Operator.And) {
-            val op = context.consumeToken()
+            val op = context.consumeToken() as Token.Operator
             val right = parseEquality(context)
-            left = BinaryExpressionASTNode(left, op, right)
+            left = BinaryExpressionASTNode(left, op.toLocatedBinaryOperator(), right)
         }
         return left
     }
@@ -54,9 +56,9 @@ class AbstractSyntaxTreeExpressionParser : Parser<ExpressionASTNode> {
     private fun Raise<ASTError>.parseEquality(context: TokensContext): ExpressionASTNode {
         var left = parseComparison(context)
         while (context.top().let { it is Token.Operator.Eq || it is Token.Operator.Neq }) {
-            val op = context.consumeToken()
+            val op = context.consumeToken() as Token.Operator
             val right = parseComparison(context)
-            left = BinaryExpressionASTNode(left, op, right)
+            left = BinaryExpressionASTNode(left, op.toLocatedBinaryOperator(), right)
         }
         return left
     }
@@ -69,9 +71,9 @@ class AbstractSyntaxTreeExpressionParser : Parser<ExpressionASTNode> {
                     it is Token.Operator.Le || it is Token.Operator.Ge
             }
         ) {
-            val op = context.consumeToken()
+            val op = context.consumeToken() as Token.Operator
             val right = parseAdditive(context)
-            left = BinaryExpressionASTNode(left, op, right)
+            left = BinaryExpressionASTNode(left, op.toLocatedBinaryOperator(), right)
         }
         return left
     }
@@ -79,9 +81,9 @@ class AbstractSyntaxTreeExpressionParser : Parser<ExpressionASTNode> {
     private fun Raise<ASTError>.parseAdditive(context: TokensContext): ExpressionASTNode {
         var left = parseMultiplicative(context)
         while (context.top().let { it is Token.Operator.Plus || it is Token.Operator.Minus }) {
-            val op = context.consumeToken()
+            val op = context.consumeToken() as Token.Operator
             val right = parseMultiplicative(context)
-            left = BinaryExpressionASTNode(left, op, right)
+            left = BinaryExpressionASTNode(left, op.toLocatedBinaryOperator(), right)
         }
         return left
     }
@@ -93,9 +95,9 @@ class AbstractSyntaxTreeExpressionParser : Parser<ExpressionASTNode> {
                 it is Token.Operator.Star || it is Token.Operator.Slash || it is Token.Operator.Percent
             }
         ) {
-            val op = context.consumeToken()
+            val op = context.consumeToken() as Token.Operator
             val right = parseUnary(context)
-            left = BinaryExpressionASTNode(left, op, right)
+            left = BinaryExpressionASTNode(left, op.toLocatedBinaryOperator(), right)
         }
         return left
     }
@@ -103,8 +105,8 @@ class AbstractSyntaxTreeExpressionParser : Parser<ExpressionASTNode> {
     private fun Raise<ASTError>.parseUnary(context: TokensContext): ExpressionASTNode {
         val token = context.top()
         return if (token is Token.Operator.Minus || token is Token.Operator.Not) {
-            val op = context.consumeToken()
-            UnaryExpressionASTNode(op, parseUnary(context))
+            val op = context.consumeToken() as Token.Operator
+            UnaryExpressionASTNode(op.toLocatedUnaryOperator(), parseUnary(context))
         } else {
             parsePrimary(context)
         }

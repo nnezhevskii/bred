@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.nnezh.ast.AssignmentStatementASTNode
 import org.nnezh.ast.BinaryExpressionASTNode
+import org.nnezh.ast.BinaryOperator
 import org.nnezh.ast.BlockASTNode
 import org.nnezh.ast.BooleanLiteralExpressionNode
 import org.nnezh.ast.ExpressionASTNode
@@ -139,7 +140,7 @@ class ForParserTest {
         val condition = whileStmt.condition as BinaryExpressionASTNode
         assertInstanceOf(VariableExpressionNode::class.java, condition.left)
         assertEquals(counterName, (condition.left as VariableExpressionNode).token.lexeme)
-        assertInstanceOf(Token.Operator.Le::class.java, condition.operator)
+        assertEquals(BinaryOperator.Le, condition.operator.kind)
         assertEquals(end, condition.right)
 
         assertEquals(innerStatements.size + 1, whileStmt.bodyBlock.statements.size)
@@ -153,7 +154,7 @@ class ForParserTest {
         val incrementExpr = assignment.value as BinaryExpressionASTNode
         assertInstanceOf(VariableExpressionNode::class.java, incrementExpr.left)
         assertEquals(counterName, (incrementExpr.left as VariableExpressionNode).token.lexeme)
-        assertInstanceOf(Token.Operator.Plus::class.java, incrementExpr.operator)
+        assertEquals(BinaryOperator.Plus, incrementExpr.operator.kind)
         assertEquals(IntLiteralExpressionNode(1L), incrementExpr.right)
 
         if (syntheticOpPosition != null) {
@@ -204,7 +205,7 @@ class ForParserTest {
         val (_, whileStmt) = extractDesugared(result)
         val condition = whileStmt.condition as BinaryExpressionASTNode
         assertEquals("i", (condition.left as VariableExpressionNode).token.lexeme)
-        assertInstanceOf(Token.Operator.Le::class.java, condition.operator)
+        assertEquals(BinaryOperator.Le, condition.operator.kind)
         assertEquals(end, condition.right)
     }
 
@@ -233,7 +234,7 @@ class ForParserTest {
         val assignment = increment as AssignmentStatementASTNode
         assertEquals("i", assignment.name)
         val expr = assignment.value as BinaryExpressionASTNode
-        assertInstanceOf(Token.Operator.Plus::class.java, expr.operator)
+        assertEquals(BinaryOperator.Plus, expr.operator.kind)
         assertEquals(IntLiteralExpressionNode(1L), expr.right)
     }
 

@@ -1,11 +1,7 @@
-fun foo(x: Int) {
-
-}
-
-fun foo(x: String): String {
-    return x + " "
-}
-
-fun main() {
-    val foo: Int = 4
-}
+            fun add(a: Int, b: Int): Int {
+                return a
+            }
+            fun main(): Unit {
+                val sum: Int = add(1, tail)
+                val tail: Int = 2
+            }

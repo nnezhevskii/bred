@@ -10,6 +10,7 @@ import org.nnezh.ast.ASTNode
 import org.nnezh.ast.AbstractSyntaxTreeBuilder
 import org.nnezh.ast.AssignmentStatementASTNode
 import org.nnezh.ast.BinaryExpressionASTNode
+import org.nnezh.ast.BinaryOperator
 import org.nnezh.ast.BlockASTNode
 import org.nnezh.ast.BooleanLiteralExpressionNode
 import org.nnezh.ast.CallFunctionStatementASTNode
@@ -26,6 +27,7 @@ import org.nnezh.ast.ReturnFunctionStatementASTNode
 import org.nnezh.ast.StatementASTNode
 import org.nnezh.ast.StringLiteralExpressionNode
 import org.nnezh.ast.UnaryExpressionASTNode
+import org.nnezh.ast.UnaryOperator
 import org.nnezh.ast.VariableExpressionNode
 import org.nnezh.ast.WhileStatementASTNode
 import org.nnezh.lexer.Lexer
@@ -163,7 +165,7 @@ class AiGeneratedProgramIntegrationTest {
         assertEquals(Type.IntType, sum.type)
 
         val plus = binary(sum.value)
-        assertInstanceOf(Token.Operator.Plus::class.java, plus.operator)
+        assertEquals(BinaryOperator.Plus, plus.operator.kind)
         assertEquals("a", varName(plus.left))
         assertEquals("b", varName(plus.right))
 
@@ -195,15 +197,15 @@ class AiGeneratedProgramIntegrationTest {
         val a = statement<ImmutableVariableInitializationASTNode>(compute.block, 0)
 
         val minus = binary(a.value)
-        assertInstanceOf(Token.Operator.Minus::class.java, minus.operator)
+        assertEquals(BinaryOperator.Minus, minus.operator.kind)
         assertEquals(1L, intValue(minus.right))
 
         val plus = binary(minus.left)
-        assertInstanceOf(Token.Operator.Plus::class.java, plus.operator)
+        assertEquals(BinaryOperator.Plus, plus.operator.kind)
         assertEquals("x", varName(plus.left))
 
         val times = binary(plus.right)
-        assertInstanceOf(Token.Operator.Star::class.java, times.operator)
+        assertEquals(BinaryOperator.Star, times.operator.kind)
         assertEquals("y", varName(times.left))
         assertEquals(2L, intValue(times.right))
     }
@@ -215,11 +217,11 @@ class AiGeneratedProgramIntegrationTest {
         val b = statement<ImmutableVariableInitializationASTNode>(compute.block, 1)
 
         val times = binary(b.value)
-        assertInstanceOf(Token.Operator.Star::class.java, times.operator)
+        assertEquals(BinaryOperator.Star, times.operator.kind)
         assertEquals(2L, intValue(times.right))
 
         val plus = binary(times.left)
-        assertInstanceOf(Token.Operator.Plus::class.java, plus.operator)
+        assertEquals(BinaryOperator.Plus, plus.operator.kind)
         assertEquals("x", varName(plus.left))
         assertEquals("y", varName(plus.right))
     }
@@ -231,22 +233,22 @@ class AiGeneratedProgramIntegrationTest {
         val c = statement<ImmutableVariableInitializationASTNode>(compute.block, 2)
 
         val or = binary(c.value)
-        assertInstanceOf(Token.Operator.Or::class.java, or.operator)
+        assertEquals(BinaryOperator.Or, or.operator.kind)
 
         val not = assertInstanceOf(UnaryExpressionASTNode::class.java, or.right)
-        assertInstanceOf(Token.Operator.Not::class.java, not.operator)
+        assertEquals(UnaryOperator.Not, not.operator.kind)
         assertEquals("flag", varName(not.operand))
 
         val and = binary(or.left)
-        assertInstanceOf(Token.Operator.And::class.java, and.operator)
+        assertEquals(BinaryOperator.And, and.operator.kind)
 
         val lt = binary(and.left)
-        assertInstanceOf(Token.Operator.Lt::class.java, lt.operator)
+        assertEquals(BinaryOperator.Lt, lt.operator.kind)
         assertEquals("x", varName(lt.left))
         assertEquals("y", varName(lt.right))
 
         val gt = binary(and.right)
-        assertInstanceOf(Token.Operator.Gt::class.java, gt.operator)
+        assertEquals(BinaryOperator.Gt, gt.operator.kind)
         assertEquals("y", varName(gt.left))
         assertEquals(0L, intValue(gt.right))
     }
@@ -257,13 +259,13 @@ class AiGeneratedProgramIntegrationTest {
 
         val d = statement<ImmutableVariableInitializationASTNode>(compute.block, 3)
         val eq = binary(d.value)
-        assertInstanceOf(Token.Operator.Eq::class.java, eq.operator)
+        assertEquals(BinaryOperator.Eq, eq.operator.kind)
         assertEquals("x", varName(eq.left))
         assertEquals("y", varName(eq.right))
 
         val g = statement<ImmutableVariableInitializationASTNode>(compute.block, 6)
         val rem = binary(g.value)
-        assertInstanceOf(Token.Operator.Percent::class.java, rem.operator)
+        assertEquals(BinaryOperator.Percent, rem.operator.kind)
         assertEquals("x", varName(rem.left))
         assertEquals(3L, intValue(rem.right))
     }
@@ -275,11 +277,11 @@ class AiGeneratedProgramIntegrationTest {
         val e = statement<ImmutableVariableInitializationASTNode>(compute.block, 4)
 
         val plus = binary(e.value)
-        assertInstanceOf(Token.Operator.Plus::class.java, plus.operator)
+        assertEquals(BinaryOperator.Plus, plus.operator.kind)
         assertEquals(1L, intValue(plus.right))
 
         val negation = assertInstanceOf(UnaryExpressionASTNode::class.java, plus.left)
-        assertInstanceOf(Token.Operator.Minus::class.java, negation.operator)
+        assertEquals(UnaryOperator.Minus, negation.operator.kind)
         assertEquals("x", varName(negation.operand))
     }
 
@@ -291,7 +293,7 @@ class AiGeneratedProgramIntegrationTest {
         assertEquals(Type.DoubleType, f.type)
 
         val times = binary(f.value)
-        assertInstanceOf(Token.Operator.Star::class.java, times.operator)
+        assertEquals(BinaryOperator.Star, times.operator.kind)
         assertEquals(2.0, assertInstanceOf(DoubleLiteralExpressionNode::class.java, times.left).value)
         assertEquals("Pi", varName(times.right))
     }
@@ -344,7 +346,7 @@ class AiGeneratedProgramIntegrationTest {
         val ifStatement = statement<IfStatementASTNode>(compute.block, 9)
 
         val condition = binary(ifStatement.condition)
-        assertInstanceOf(Token.Operator.Gt::class.java, condition.operator)
+        assertEquals(BinaryOperator.Gt, condition.operator.kind)
         assertEquals("x", varName(condition.left))
         assertEquals("y", varName(condition.right))
 
@@ -371,7 +373,7 @@ class AiGeneratedProgramIntegrationTest {
         val whileStatement = statement<WhileStatementASTNode>(compute.block, 10)
 
         val condition = binary(whileStatement.condition)
-        assertInstanceOf(Token.Operator.Lt::class.java, condition.operator)
+        assertEquals(BinaryOperator.Lt, condition.operator.kind)
         assertEquals("x", varName(condition.left))
         assertEquals("limit", varName(condition.right))
 
@@ -405,7 +407,7 @@ class AiGeneratedProgramIntegrationTest {
 
         val loop = assertInstanceOf(WhileStatementASTNode::class.java, desugared[1])
         val condition = binary(loop.condition)
-        assertInstanceOf(Token.Operator.Le::class.java, condition.operator)
+        assertEquals(BinaryOperator.Le, condition.operator.kind)
         assertEquals("i", varName(condition.left))
         assertEquals("limit", varName(condition.right))
 
@@ -418,7 +420,7 @@ class AiGeneratedProgramIntegrationTest {
         val increment = assertInstanceOf(AssignmentStatementASTNode::class.java, loop.bodyBlock.statements[1])
         assertEquals("i", increment.name)
         val incExpr = binary(increment.value)
-        assertInstanceOf(Token.Operator.Plus::class.java, incExpr.operator)
+        assertEquals(BinaryOperator.Plus, incExpr.operator.kind)
         assertEquals("i", varName(incExpr.left))
         assertEquals(1L, intValue(incExpr.right))
     }

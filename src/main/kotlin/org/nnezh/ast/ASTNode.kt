@@ -105,6 +105,13 @@ data class BooleanLiteralExpressionNode(val value: Boolean): LiteralExpressionNo
 data class StringLiteralExpressionNode(val value: String): LiteralExpressionNode
 
 data class VariableExpressionNode(val token: Token): ExpressionASTNode
-data class BinaryExpressionASTNode(val left: ExpressionASTNode, val operator: Token, val right: ExpressionASTNode): ExpressionASTNode
-data class UnaryExpressionASTNode(val operator: Token, val operand: ExpressionASTNode): ExpressionASTNode
+data class BinaryExpressionASTNode(
+    val left: ExpressionASTNode,
+    val operator: LocatedBinaryOperator,
+    val right: ExpressionASTNode,
+): ExpressionASTNode
+data class UnaryExpressionASTNode(
+    val operator: LocatedUnaryOperator,
+    val operand: ExpressionASTNode,
+): ExpressionASTNode
 data class FunctionCallExpressionNode(val name: Token, val arguments: List<ExpressionASTNode>): ExpressionASTNode

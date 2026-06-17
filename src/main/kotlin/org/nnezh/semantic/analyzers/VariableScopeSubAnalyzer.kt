@@ -1,6 +1,7 @@
 package org.nnezh.org.nnezh.semantic.analyzers
 
 import arrow.core.raise.nullable
+import org.nnezh.ast.ASTNode
 import org.nnezh.ast.AssignmentStatementASTNode
 import org.nnezh.ast.BinaryExpressionASTNode
 import org.nnezh.ast.BlockASTNode
@@ -27,6 +28,7 @@ import org.nnezh.org.nnezh.semantic.generic.SemanticError
 import org.nnezh.org.nnezh.semantic.generic.SemanticErrorType
 import org.nnezh.org.nnezh.semantic.generic.SemanticSubAnalyzer
 import java.util.Collections.singletonList
+import java.util.IdentityHashMap
 import kotlin.collections.fold
 
 data class Scope(

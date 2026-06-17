@@ -30,7 +30,7 @@ import org.nnezh.org.nnezh.semantic.generic.SemanticSubAnalyzer
 import java.util.Collections.singletonList
 
 class FunctionSubAnalyzer: SemanticSubAnalyzer() {
-    private lateinit var registry: FunctionRegistry
+    public lateinit var registry: FunctionRegistry
 
     override fun analyzeProgramASTNode(node: ProgramASTNode): List<SemanticError> {
         registry = FunctionRegistry()
@@ -181,29 +181,35 @@ class FunctionSubAnalyzer: SemanticSubAnalyzer() {
 
         return result
     }
+}
 
-    private class FunctionRegistry {
-        private val functionsRegistry = mutableMapOf<String, MutableList<FunctionSignature>>()
+class FunctionRegistry {
+    private val functionsRegistry = mutableMapOf<String, MutableList<FunctionSignature>>()
 
-        fun existFunctionWithName(name: String): Boolean {
-            return functionsRegistry.containsKey(name)
-        }
-
-        fun isFunctionWithSameArityRegistered(function: String, argsSize: Int): Boolean {
-            return functionsRegistry[function]?.any { signature ->
-                signature.name == function && signature.args.size == argsSize
-            } ?: false
-        }
-
-        fun isFunctionRegistered(function: String, args: List<Type>): Boolean {
-            return functionsRegistry[function]?.any { signature ->
-                signature.name == function && signature.args == args
-            } ?: false
-        }
-
-        fun registerFunction(function: FunctionSignature) {
-            functionsRegistry.computeIfAbsent(function.name) { mutableListOf() }.add(function)
-        }
+    fun existFunctionWithName(name: String): Boolean {
+        return functionsRegistry.containsKey(name)
     }
 
+    fun isFunctionWithSameArityRegistered(function: String, argsSize: Int): Boolean {
+        return functionsRegistry[function]?.any { signature ->
+            signature.name == function && signature.args.size == argsSize
+        } ?: false
+    }
+
+    fun isFunctionRegistered(function: String, args: List<Type>): Boolean {
+        return functionsRegistry[function]?.any { signature ->
+            signature.name == function && signature.args == args
+        } ?: false
+    }
+
+    fun registerFunction(function: FunctionSignature) {
+        functionsRegistry.computeIfAbsent(function.name) { mutableListOf() }.add(function)
+    }
+
+    fun getResultType(function: String, args: List<Type>): Type? {
+        return functionsRegistry
+            .get(function)
+            ?.firstOrNull { signature -> signature.args.size == args.size && signature.args.all { type -> type in args }  }
+            ?.returnType
+    }
 }

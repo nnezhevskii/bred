@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.nnezh.ast.AssignmentStatementASTNode
 import org.nnezh.ast.BinaryExpressionASTNode
+import org.nnezh.ast.BinaryOperator
 import org.nnezh.ast.BlockASTNode
 import org.nnezh.ast.BooleanLiteralExpressionNode
 import org.nnezh.ast.ExpressionASTNode
@@ -180,7 +181,7 @@ class IfParserTest {
         assertInstanceOf(BinaryExpressionASTNode::class.java, result.condition)
         val binary = result.condition as BinaryExpressionASTNode
         assertInstanceOf(VariableExpressionNode::class.java, binary.left)
-        assertInstanceOf(Token.Operator.Gt::class.java, binary.operator)
+        assertEquals(BinaryOperator.Gt, binary.operator.kind)
         assertInstanceOf(IntLiteralExpressionNode::class.java, binary.right)
         assertTrue(result.elseBlock.isRight())
     }
