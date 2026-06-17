@@ -5,10 +5,10 @@ import arrow.core.raise.either
 import org.nnezh.lexer.Token
 import org.nnezh.org.nnezh.ast.ASTError
 import org.nnezh.org.nnezh.ast.AbstractSyntaxTreeExpressionParser
-import org.nnezh.org.nnezh.ast.Parser
+import org.nnezh.org.nnezh.ast.parsers.Parser
 import org.nnezh.org.nnezh.ast.ParserFactory
 import org.nnezh.org.nnezh.ast.TokensContext
-import org.nnezh.org.nnezh.ast.parseWith
+import org.nnezh.org.nnezh.ast.parsers.parseWith
 
 class AbstractSyntaxTreeBuilder(
     expressionParser: Parser<ExpressionASTNode> = AbstractSyntaxTreeExpressionParser(),

@@ -11,6 +11,7 @@ import org.nnezh.ast.StringLiteralExpressionNode
 import org.nnezh.ast.UnaryExpressionASTNode
 import org.nnezh.ast.VariableExpressionNode
 import org.nnezh.lexer.Token
+import org.nnezh.org.nnezh.ast.parsers.Parser
 
 /* The expression parser is one concrete [Parser] implementation among the
  * statement parsers wired together by [ParserFactory]. */

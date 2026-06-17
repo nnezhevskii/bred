@@ -26,8 +26,10 @@ import org.nnezh.ast.WhileStatementASTNode
 import org.nnezh.lexer.Lexer
 import org.nnezh.lexer.Position
 import org.nnezh.lexer.Token
-import org.nnezh.org.nnezh.Type
+import org.nnezh.org.nnezh.base.Type
 import org.nnezh.org.nnezh.ast.AstErrorFactory.buildError
+import org.nnezh.org.nnezh.ast.parsers.ForParser
+import org.nnezh.org.nnezh.ast.parsers.Parser
 
 class ForParserTest {
 

@@ -15,6 +15,7 @@ Requires a phase after AST construction (not parser-only).
 | G-31 | Missing return on non-Unit functions | `FunctionParser` appends synthetic `return Unit` even for `: Int` without return (`add`, `compute` in `ai_generated.bred`) | Report error when `resultType != Unit` and no explicit return; treat synthetic Unit on non-Unit as invalid |
 | G-09 | For-loop bound types | Desugar hardcodes `Int` counter; bounds are any expression syntactically | Type-check bounds (or document runtime-only behavior) when analysis exists |
 | G-03 | Type inference for `val` | `val z = expr` rejected; `: Type` required | Only with inference / typechecker — or keep explicit types as permanent design |
+| G-32 | Assignment to immutable `val` | `VariableScopeAnalyzer` has `// TODO: checking val/var` and `AssignmentStatementASTNode` currently checks only unknown variables | Add semantic error for assigning to immutable variables (error type TBD); add matching test in `VariableScopeAnalyzerTest` |
 
 ---
 
@@ -44,6 +45,6 @@ Not blocking parser completeness; implement when the language actually needs the
 
 | When | IDs |
 |------|-----|
-| **Next pipeline** | G-31, G-09, G-03 |
+| **Next pipeline** | G-31, G-09, G-03, G-32 |
 | **When language grows** | G-05, G-12, G-13 |
 | **Optional** | G-14, G-16, G-25 |

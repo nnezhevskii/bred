@@ -21,7 +21,12 @@ import org.nnezh.ast.StatementASTNode
 import org.nnezh.lexer.Lexer
 import org.nnezh.lexer.Position
 import org.nnezh.lexer.Token
-import org.nnezh.org.nnezh.Type
+import org.nnezh.org.nnezh.ast.parsers.AssignParser
+import org.nnezh.org.nnezh.ast.parsers.BlockParser
+import org.nnezh.org.nnezh.ast.parsers.ImmutableInitializationParser
+import org.nnezh.org.nnezh.ast.parsers.MutableInitializationParser
+import org.nnezh.org.nnezh.ast.parsers.Parser
+import org.nnezh.org.nnezh.base.Type
 
 class BlockParserTest {
 

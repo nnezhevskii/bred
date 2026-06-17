@@ -21,8 +21,9 @@ import org.nnezh.ast.ReturnFunctionStatementASTNode
 import org.nnezh.ast.StringLiteralExpressionNode
 import org.nnezh.ast.UnaryExpressionASTNode
 import org.nnezh.ast.VariableExpressionNode
+import org.nnezh.ast.VariableInitializationASTNode
 import org.nnezh.ast.WhileStatementASTNode
-import org.nnezh.org.nnezh.Type
+import org.nnezh.org.nnezh.base.Type
 
 class AbstractSyntaxTreeDrawer {
     private val indent = " ".repeat(1)
@@ -136,6 +137,12 @@ class AbstractSyntaxTreeDrawer {
                 acc.add("${shift}MutableVariableInitialization:")
                 acc.add("${shift + indent}Name: ${node.name}: ${node.type}")
                 acc.addAll(recursive(node.value, shift + indent.repeat(1)))
+            }
+
+            is VariableInitializationASTNode -> {
+                acc.add("${shift}MutableVariableInitialization:")
+                acc.add("${shift + indent}Name: ${node.variableName}: ${node.variableType}")
+                acc.addAll(recursive(node.valExpression, shift + indent.repeat(1)))
             }
             is ForStatementASTNode -> {
                 acc.add("${shift}ForStatement:")

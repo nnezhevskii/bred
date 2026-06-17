@@ -30,8 +30,18 @@ import org.nnezh.ast.WhileStatementASTNode
 import org.nnezh.lexer.Lexer
 import org.nnezh.lexer.Position
 import org.nnezh.lexer.Token
-import org.nnezh.org.nnezh.Type
+import org.nnezh.org.nnezh.base.Type
 import org.nnezh.org.nnezh.ast.AstErrorFactory.buildError
+import org.nnezh.org.nnezh.ast.parsers.AssignParser
+import org.nnezh.org.nnezh.ast.parsers.CallStatementParser
+import org.nnezh.org.nnezh.ast.parsers.ForParser
+import org.nnezh.org.nnezh.ast.parsers.IfParser
+import org.nnezh.org.nnezh.ast.parsers.ImmutableInitializationParser
+import org.nnezh.org.nnezh.ast.parsers.MutableInitializationParser
+import org.nnezh.org.nnezh.ast.parsers.Parser
+import org.nnezh.org.nnezh.ast.parsers.ReturnValueParser
+import org.nnezh.org.nnezh.ast.parsers.StatementParser
+import org.nnezh.org.nnezh.ast.parsers.WhileParser
 
 class StatementParserTest {
 

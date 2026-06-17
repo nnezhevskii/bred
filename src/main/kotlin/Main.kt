@@ -4,8 +4,10 @@ import org.nnezh.lexer.Lexer
 import org.nnezh.lexer.readSource
 import arrow.core.raise.either
 import org.nnezh.ast.AbstractSyntaxTreeBuilder
+import org.nnezh.ast.ProgramASTNode
 import org.nnezh.org.nnezh.ast.AbstractSyntaxTreeExpressionParser
-import org.nnezh.org.nnezh.ast.utils.AbstractSyntaxTreeDrawer
+import org.nnezh.org.nnezh.semantic.SemanticAnalyzer
+import org.nnezh.org.nnezh.semantic.analyzers.VariableScopeSubAnalyzer
 
 fun main(args: Array<String>) {
     val path = args.firstOrNull() ?: "examples/simple.bred"
@@ -21,9 +23,9 @@ fun main(args: Array<String>) {
         }
         stringBuilder.toString()
 
-        AbstractSyntaxTreeBuilder(AbstractSyntaxTreeExpressionParser())
-            .build(tokens).bind().let { AbstractSyntaxTreeDrawer().draw(it) }
+        val ast = AbstractSyntaxTreeBuilder(AbstractSyntaxTreeExpressionParser()).build(tokens).bind()
 
+        SemanticAnalyzer()(ast as ProgramASTNode).joinToString("\n")
     }
 
     result.fold(

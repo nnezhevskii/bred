@@ -13,7 +13,6 @@ import org.nnezh.ast.BinaryExpressionASTNode
 import org.nnezh.ast.BlockASTNode
 import org.nnezh.ast.BooleanLiteralExpressionNode
 import org.nnezh.ast.CallFunctionStatementASTNode
-import org.nnezh.ast.DeclareFunctionASTNode
 import org.nnezh.ast.DoubleLiteralExpressionNode
 import org.nnezh.ast.ExpressionASTNode
 import org.nnezh.ast.ForStatementASTNode
@@ -33,7 +32,7 @@ import org.nnezh.lexer.Lexer
 import org.nnezh.lexer.LexerError
 import org.nnezh.lexer.Token
 import org.nnezh.lexer.readSource
-import org.nnezh.org.nnezh.Type
+import org.nnezh.org.nnezh.base.Type
 
 /**
  * End-to-end grammar test: reads [EXAMPLE_PATH] from disk, runs it through the

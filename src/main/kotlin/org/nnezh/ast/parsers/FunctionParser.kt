@@ -1,4 +1,4 @@
-package org.nnezh.org.nnezh.ast
+package org.nnezh.org.nnezh.ast.parsers
 
 import arrow.core.left
 import arrow.core.raise.Raise
@@ -9,7 +9,12 @@ import org.nnezh.ast.FunctionArgumentASTNode
 import org.nnezh.ast.ReturnFunctionStatementASTNode
 import org.nnezh.ast.StatementASTNode
 import org.nnezh.lexer.Token
-import org.nnezh.org.nnezh.Type
+import org.nnezh.org.nnezh.ast.ASTError
+import org.nnezh.org.nnezh.ast.AstErrorFactory
+import org.nnezh.org.nnezh.ast.TokensContext
+import org.nnezh.org.nnezh.ast.match
+import org.nnezh.org.nnezh.ast.parseType
+import org.nnezh.org.nnezh.base.Type
 
 class FunctionParser(
     private val blockParser: Lazy<Parser<BlockASTNode>>,

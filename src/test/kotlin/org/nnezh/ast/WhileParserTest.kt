@@ -26,6 +26,8 @@ import org.nnezh.lexer.Lexer
 import org.nnezh.lexer.Position
 import org.nnezh.lexer.Token
 import org.nnezh.org.nnezh.ast.AstErrorFactory.buildError
+import org.nnezh.org.nnezh.ast.parsers.Parser
+import org.nnezh.org.nnezh.ast.parsers.WhileParser
 
 class WhileParserTest {
 

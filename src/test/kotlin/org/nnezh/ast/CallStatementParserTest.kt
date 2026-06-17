@@ -20,6 +20,8 @@ import org.nnezh.ast.VariableExpressionNode
 import org.nnezh.lexer.Lexer
 import org.nnezh.lexer.Position
 import org.nnezh.lexer.Token
+import org.nnezh.org.nnezh.ast.parsers.CallStatementParser
+import org.nnezh.org.nnezh.ast.parsers.Parser
 
 class CallStatementParserTest {
 

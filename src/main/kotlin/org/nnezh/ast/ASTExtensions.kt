@@ -3,7 +3,7 @@ package org.nnezh.org.nnezh.ast
 import arrow.core.raise.Raise
 import arrow.core.raise.ensure
 import org.nnezh.lexer.Token
-import org.nnezh.org.nnezh.Type
+import org.nnezh.org.nnezh.base.Type
 
 public inline fun <reified T : Token> Raise<ASTError>.match(actual: Token, onError: (Token) -> ASTError): T {
     ensure(actual is T) { onError(actual) }

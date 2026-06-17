@@ -6,13 +6,10 @@ package org.nnezh.org.nnezh.ast
 
 import arrow.core.Either
 import arrow.core.getOrElse
-import arrow.core.left
 import arrow.core.raise.Raise
 import arrow.core.raise.either
-import arrow.core.right
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.nnezh.ast.ExpressionASTNode
@@ -22,7 +19,9 @@ import org.nnezh.ast.VariableExpressionNode
 import org.nnezh.lexer.Lexer
 import org.nnezh.lexer.Position
 import org.nnezh.lexer.Token
-import org.nnezh.org.nnezh.Type
+import org.nnezh.org.nnezh.ast.parsers.Parser
+import org.nnezh.org.nnezh.ast.parsers.ReturnValueParser
+import org.nnezh.org.nnezh.base.Type
 
 class ReturnValueParserTest {
 

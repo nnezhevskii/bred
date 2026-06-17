@@ -2,7 +2,7 @@ package org.nnezh.ast
 
 import arrow.core.Either
 import org.nnezh.lexer.Token
-import org.nnezh.org.nnezh.Type
+import org.nnezh.org.nnezh.base.Type
 
 sealed interface ASTNode
 
@@ -24,15 +24,49 @@ data class FunctionArgumentASTNode(val name: String, val type: Type): ASTNode
 data class BlockASTNode(val statements: List<StatementASTNode>): ASTNode
 
 sealed interface StatementASTNode: ASTNode // i.e. val x: Double = 3 + 5
+
+interface VariableInitializationASTNode: StatementASTNode {
+    val variableName: String
+    val variableType: Type
+    val isMutable: Boolean
+    val valExpression: ExpressionASTNode
+}
+
 data class ImmutableVariableInitializationASTNode(
     val name: String,
     val type: Type,
-    val value: ExpressionASTNode): StatementASTNode
+    val value: ExpressionASTNode): VariableInitializationASTNode {
+
+    override val variableName: String
+        get() = name
+
+    override val variableType: Type
+        get() = type
+
+    override val isMutable: Boolean
+        get() = false
+
+    override val valExpression: ExpressionASTNode
+        get() = value
+}
 
 data class MutableVariableInitializationASTNode(
     val name: String,
     val type: Type,
-    val value: ExpressionASTNode): StatementASTNode
+    val value: ExpressionASTNode): VariableInitializationASTNode {
+
+    override val variableName: String
+        get() = name
+
+    override val variableType: Type
+        get() = type
+
+    override val isMutable: Boolean
+        get() = true
+
+    override val valExpression: ExpressionASTNode
+        get() = value
+}
 
 data class AssignmentStatementASTNode(
     val name: String,

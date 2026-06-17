@@ -1,4 +1,4 @@
-package org.nnezh.org.nnezh
+package org.nnezh.org.nnezh.base
 
 import arrow.core.Either
 import arrow.core.left

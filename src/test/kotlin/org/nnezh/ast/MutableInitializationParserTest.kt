@@ -23,7 +23,9 @@ import org.nnezh.ast.VariableExpressionNode
 import org.nnezh.lexer.Lexer
 import org.nnezh.lexer.Position
 import org.nnezh.lexer.Token
-import org.nnezh.org.nnezh.Type
+import org.nnezh.org.nnezh.ast.parsers.MutableInitializationParser
+import org.nnezh.org.nnezh.ast.parsers.Parser
+import org.nnezh.org.nnezh.base.Type
 
 class MutableInitializationParserTest {
 

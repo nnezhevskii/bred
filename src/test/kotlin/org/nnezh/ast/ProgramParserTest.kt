@@ -23,8 +23,12 @@ import org.nnezh.ast.ReturnFunctionStatementASTNode
 import org.nnezh.lexer.Lexer
 import org.nnezh.lexer.Position
 import org.nnezh.lexer.Token
-import org.nnezh.org.nnezh.Type
+import org.nnezh.org.nnezh.base.Type
 import org.nnezh.org.nnezh.ast.AstErrorFactory.buildError
+import org.nnezh.org.nnezh.ast.parsers.FunctionParser
+import org.nnezh.org.nnezh.ast.parsers.ImmutableInitializationParser
+import org.nnezh.org.nnezh.ast.parsers.Parser
+import org.nnezh.org.nnezh.ast.parsers.ProgramParser
 
 class ProgramParserTest {
 
