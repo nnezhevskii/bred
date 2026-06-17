@@ -71,6 +71,7 @@ abstract class SemanticSubAnalyzer {
         is VariableExpressionNode -> analyzeVariableExpressionNode(node)
     }
 
+    abstract fun analyzeProgramASTNode(node: ProgramASTNode): List<SemanticError>
     abstract fun analyzeBlockASTNode(node: BlockASTNode): List<SemanticError>
     abstract fun analyzeDeclareFunctionASTNode(node: DeclareFunctionASTNode): List<SemanticError>
     abstract fun analyzeEmptyNode(node: EmptyNode): List<SemanticError>
@@ -83,7 +84,6 @@ abstract class SemanticSubAnalyzer {
     abstract fun analyzeUnaryExpressionASTNode(node: UnaryExpressionASTNode): List<SemanticError>
     abstract fun analyzeVariableExpressionNode(node: VariableExpressionNode): List<SemanticError>
     abstract fun analyzeFunctionArgumentASTNode(node: FunctionArgumentASTNode): List<SemanticError>
-    abstract fun analyzeProgramASTNode(node: ProgramASTNode): List<SemanticError>
     abstract fun analyzeAssignmentStatementASTNode(node: AssignmentStatementASTNode): List<SemanticError>
     abstract fun analyzeCallFunctionStatementASTNode(node: CallFunctionStatementASTNode): List<SemanticError>
     abstract fun analyzeForStatementASTNode(node: ForStatementASTNode): List<SemanticError>

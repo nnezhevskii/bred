@@ -7,6 +7,7 @@ import org.nnezh.ast.AbstractSyntaxTreeBuilder
 import org.nnezh.ast.ProgramASTNode
 import org.nnezh.org.nnezh.ast.AbstractSyntaxTreeExpressionParser
 import org.nnezh.org.nnezh.semantic.SemanticAnalyzer
+import org.nnezh.org.nnezh.semantic.analyzers.FunctionSubAnalyzer
 import org.nnezh.org.nnezh.semantic.analyzers.VariableScopeSubAnalyzer
 
 fun main(args: Array<String>) {
@@ -25,7 +26,8 @@ fun main(args: Array<String>) {
 
         val ast = AbstractSyntaxTreeBuilder(AbstractSyntaxTreeExpressionParser()).build(tokens).bind()
 
-        SemanticAnalyzer()(ast as ProgramASTNode).joinToString("\n")
+//        SemanticAnalyzer()(ast as ProgramASTNode).joinToString("\n")
+        FunctionSubAnalyzer().analyzeProgramASTNode(ast as ProgramASTNode).joinToString("\n").ifEmpty { "<NoErrors>" }
     }
 
     result.fold(
