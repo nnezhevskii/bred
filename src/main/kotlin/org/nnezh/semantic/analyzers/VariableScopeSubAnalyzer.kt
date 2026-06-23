@@ -158,10 +158,21 @@ class VariableScopeSubAnalyzer: SemanticSubAnalyzer() {
     override fun analyzeAssignmentStatementASTNode(node: AssignmentStatementASTNode): List<SemanticError> {
         //                // TODO: checking val/var
         val listOfErrors = mutableListOf<SemanticError>()
-        if (scope.lookUp(node.name) == null) {
+        val variable = scope.lookUp(node.name)
+        if (variable == null) {
             listOfErrors.add(
                 SemanticError.VariableScopeSemanticError(where = node,
                     errorType = SemanticErrorType.UNKNOWN_VARIABLE,
+                    critical = true
+                )
+            )
+
+            return listOfErrors
+        }
+        if (!variable.first.isMutable) {
+            listOfErrors.add(
+                SemanticError.VariableScopeSemanticError(where = node,
+                    errorType = SemanticErrorType.VARIABLE_CHANGING_IMMUTABLE,
                     critical = true
                 )
             )

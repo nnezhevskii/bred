@@ -19,12 +19,12 @@ class ReturnValueParser(
         match<Token.Keyword.Return>(context.consumeToken()) { AstErrorFactory.buildError("return", it) }
         if (context.top() is Token.Identifier && (context.top() as Token.Identifier).lexeme == Type.toString(Type.UnitType)) {
             context.consumeToken()
-            return ReturnFunctionStatementASTNode(Type.UnitType.left())
+            return ReturnFunctionStatementASTNode(Type.UnitType.left(), true)
         } else if (context.top() is Token.Punctuation.RBrace) {
-            return ReturnFunctionStatementASTNode(Type.UnitType.left())
+            return ReturnFunctionStatementASTNode(Type.UnitType.left(), true)
         } else if (context.endOfInput) {
             raise(AstErrorFactory.unexpectedEOF(context.top()))
         }
-        return ReturnFunctionStatementASTNode(parseWith(expressionParser, context).right())
+        return ReturnFunctionStatementASTNode(parseWith(expressionParser, context).right(), true)
     }
 }

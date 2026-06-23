@@ -148,7 +148,7 @@ class StatementParserTest {
                 CallFunctionStatementASTNode(VariableExpressionNode(id)),
             ),
             returnStub = ReturnTaggingStubParser(
-                ReturnFunctionStatementASTNode(IntLiteralExpressionNode(0L).right()),
+                ReturnFunctionStatementASTNode(IntLiteralExpressionNode(0L).right(), true),
             ),
         )
     }

@@ -9,7 +9,12 @@ import org.nnezh.org.nnezh.ast.AbstractSyntaxTreeExpressionParser
 import org.nnezh.org.nnezh.semantic.SemanticAnalyzer
 import org.nnezh.org.nnezh.semantic.analyzers.FunctionSubAnalyzer
 import org.nnezh.org.nnezh.semantic.analyzers.VariableScopeSubAnalyzer
+import kotlin.random.Random
 
+
+
+// TODO: VARIABLE_CHANGING_IMMUTABLE
+// Необходимо добавить тесты
 fun main(args: Array<String>) {
     val path = args.firstOrNull() ?: "examples/simple.bred"
     val result = either {
@@ -28,6 +33,16 @@ fun main(args: Array<String>) {
 
         SemanticAnalyzer()(ast as ProgramASTNode).joinToString("\n").ifEmpty { "<NoErrors>" }
     }
+    /*
+    TODO: был найден баг по тайпчекингу ретурна. Нужно дописать тесты
+    fun getQuarter(a: Double, b: Double): String {
+    if (a > 0) {
+        return "2"
+    } else {
+        return a - b
+    }
+}
+     */
 
     result.fold(
         ifLeft = { System.err.println(it) },

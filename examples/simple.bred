@@ -1,7 +1,26 @@
-            fun add(a: Int, b: Int): Int {
-                return a
-            }
-            fun main(): Unit {
-                val sum: Int = add(1, tail)
-                val tail: Int = 2
-            }
+val eps: Double = 0.00001
+
+fun abs(x: Double): Double {
+    if (x > 0) {
+        return x
+    }
+    return -x
+}
+
+fun getQuarter(x: Double, y: Double): String {
+    if (abs(x * y) < eps) {
+        return "one or more values are zero"
+    }
+    if (x > 0) {
+        if (y > 0) {
+            return "1"
+        } else {
+            return "4"
+        }
+    } else {
+        if (y > 0) {
+            return "2"
+        }
+        return "3"
+    }
+}

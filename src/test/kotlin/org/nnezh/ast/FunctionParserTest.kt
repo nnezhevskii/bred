@@ -215,7 +215,7 @@ class FunctionParserTest {
 
     @Test
     fun `does not append implicit return when top-level return exists`() {
-        val returnStmt = ReturnFunctionStatementASTNode(Type.UnitType.left())
+        val returnStmt = ReturnFunctionStatementASTNode(Type.UnitType.left(), false)
         val blockWithReturn = BlockASTNode(listOf(returnStmt))
 
         val result = parseFromSource("fun f(): Unit { }", StubBlockParser(blockWithReturn))

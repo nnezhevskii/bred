@@ -92,7 +92,8 @@ data class CallFunctionStatementASTNode(
 ): StatementASTNode
 
 data class ReturnFunctionStatementASTNode(
-    val expression: Either<Type.UnitType, ExpressionASTNode>
+    val expression: Either<Type.UnitType, ExpressionASTNode>,
+    val explicit: Boolean
 ): StatementASTNode
 
 

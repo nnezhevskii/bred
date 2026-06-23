@@ -3,6 +3,7 @@ package org.nnezh.org.nnezh.semantic
 import com.sun.org.apache.xpath.internal.operations.Variable
 import org.nnezh.ast.ProgramASTNode
 import org.nnezh.org.nnezh.semantic.analyzers.FunctionSubAnalyzer
+import org.nnezh.org.nnezh.semantic.analyzers.SemanticControlFlowAnalyzer
 import org.nnezh.org.nnezh.semantic.analyzers.TypeChecker
 import org.nnezh.org.nnezh.semantic.analyzers.TypeValidator
 import org.nnezh.org.nnezh.semantic.analyzers.VariableScopeSubAnalyzer
@@ -31,6 +32,11 @@ class SemanticAnalyzer {
             typeValidator = TypeValidator()
         )
         res.addAll(typeChecker.analyzeProgramASTNode(program))
+        if (res.any { it.isCriticalError }) {
+            return res
+        }
+        val semanticControlFlowAnalyzer = SemanticControlFlowAnalyzer(functionSubAnalyzer.registry)
+        res.addAll(semanticControlFlowAnalyzer.analyzeProgramASTNode(program))
 
         return res
     }

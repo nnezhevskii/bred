@@ -81,7 +81,7 @@ class FunctionParser(
         }
         val block: BlockASTNode = parseWith(blockParser.value, context)
         val finalBlockStatements: List<StatementASTNode> = if (block.statements.none { statement -> statement is ReturnFunctionStatementASTNode } ) {
-            block.statements + ReturnFunctionStatementASTNode(Type.UnitType.left())
+            block.statements + ReturnFunctionStatementASTNode(Type.UnitType.left(), false)
         } else {
             block.statements
         }

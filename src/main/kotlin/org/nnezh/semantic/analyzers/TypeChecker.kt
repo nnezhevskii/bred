@@ -27,6 +27,7 @@ import org.nnezh.ast.VariableExpressionNode
 import org.nnezh.ast.VariableInitializationASTNode
 import org.nnezh.ast.WhileStatementASTNode
 import org.nnezh.org.nnezh.base.Type
+import org.nnezh.org.nnezh.semantic.generic.FunctionSignature
 import org.nnezh.org.nnezh.semantic.generic.SemanticError
 import org.nnezh.org.nnezh.semantic.generic.SemanticErrorType
 import org.nnezh.org.nnezh.semantic.generic.SemanticSubAnalyzer
@@ -35,8 +36,6 @@ import java.util.Collections.singletonList
 import java.util.IdentityHashMap
 import kotlin.math.exp
 
-
-// TODO: check very primitive control flow before: i.e. two returns, etc.
 
 class ASTNodeTypeTable {
     private val types = IdentityHashMap<ASTNode, Type>()
@@ -96,7 +95,8 @@ class TypeValidator {
             BinaryOperator.And, BinaryOperator.Or -> if (typeA == typeB && typeA == Type.BoolType) Type.BoolType else null
 
             BinaryOperator.Lt, BinaryOperator.Gt, BinaryOperator.Le, BinaryOperator.Ge -> {
-                if (typeA in setOf(Type.IntType, Type.DoubleType, Type.StringType) && typeA == typeB) Type.BoolType else null
+                if (typeA in setOf(Type.IntType, Type.DoubleType) && typeB in setOf(Type.IntType, Type.DoubleType) ||
+                    (typeA == Type.StringType && typeB == typeA)) Type.BoolType else null
             }
         }
     }
@@ -123,12 +123,15 @@ class TypeChecker(
 
     override fun analyzeFunctionCallExpressionNode(node: FunctionCallExpressionNode): List<SemanticError> {
         val errors = node.arguments.flatMap { expr -> routeExpressionHandling(expr) }.toMutableList()
+        if (errors.any { it.isCriticalError }) {
+            return errors
+        }
         val functionName = node.name.lexeme
         val args = node.arguments.map { expr -> typeScope.get(expr)!! }
         if (!functionRegistry.isFunctionRegistered(functionName, args)) {
             errors.add(SemanticError.TypeSemanticError(node, true, errorType = SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES))
         }
-        if (errors.isEmpty()) {
+        if (errors.none { it.isCriticalError }) {
             typeScope.put(node, functionRegistry.getResultType(functionName, args)!!)
         }
 
@@ -169,7 +172,18 @@ class TypeChecker(
                 if (errors.any { it.isCriticalError }) {
                     return errors
                 }
-                typeScope.put(expr, typeScope.get(expr)!!)
+                if (currentFunctionSignatureType!! != typeScope.get(expr)!!) {
+                    return errors + singletonList(
+                        SemanticError.TypeSemanticError(
+                            where = node,
+                            critical = true,
+                            errorType = SemanticErrorType.METHOD_HAS_WRONG_RETURN
+                        )
+                    )
+                }
+
+                typeScope.put(expr, typeScope.get(expr)!!) // << TODO: непонятное выражение, разобрать
+
             },
         )
 
@@ -177,6 +191,7 @@ class TypeChecker(
         return errors
     }
 
+    private var currentFunctionSignatureType: Type? = null
     override fun analyzeDeclareFunctionASTNode(node: DeclareFunctionASTNode): List<SemanticError> {
         val errors = mutableListOf<SemanticError>()
         errors.addAll(node.args.arguments.flatMap { arg ->
@@ -187,17 +202,21 @@ class TypeChecker(
             return errors
         }
 
-
+        currentFunctionSignatureType = functionRegistry.getResultType(node.name, node.args.arguments.map { it.type })!!
         errors.addAll(analyzeBlockASTNode(node.block))
         if (errors.any { it.isCriticalError }) {
             return errors
         }
 
         val retStatementType = findActualReturnValueOfFunction(node)
-        if (!typeValidator.check(node.resultType, retStatementType)) {
+        val explicit = (node.block.statements
+            .first { statement -> statement is ReturnFunctionStatementASTNode } as ReturnFunctionStatementASTNode).explicit
+
+        if (explicit && !typeValidator.check(node.resultType, retStatementType)) {
             errors.add(SemanticError.TypeSemanticError(node, true, errorType = SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES))
         }
 
+        currentFunctionSignatureType = null
         return errors
     }
 
@@ -295,6 +314,10 @@ class TypeChecker(
 
     override fun analyzeIfStatementASTNode(node: IfStatementASTNode): List<SemanticError> {
         val errors = routeExpressionHandling(node.condition).toMutableList()
+        if (errors.any { it.isCriticalError }) {
+            return errors
+        }
+
         if (!typeValidator.check(typeScope.get(node.condition)!! , Type.BoolType)) {
             errors.add(SemanticError.TypeSemanticError(node, true, errorType = SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES))
         }
