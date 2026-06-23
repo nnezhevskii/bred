@@ -24,6 +24,15 @@ sealed interface LLTACElement {
             )
         }
 
+        fun jumpIfNot(label: LLTACLabel, cond: String): LLTACElement {
+            return LLTACInstruction(
+                opcode = LLTACOperation.LLTAC_JMP_IF_NOT,
+                destination = Operand.Label(label),
+                arg1 = Operand.Variable(cond, Type.BoolType)
+            )
+        }
+
+
         fun assignVariable (name: String, type: Type, arg: String): LLTACElement {
             return LLTACInstruction(
                 opcode = LLTACOperation.LLTAC_ASSIGN,

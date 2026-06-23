@@ -80,7 +80,17 @@ class LLTACGenerator(
                 instructions.addAll(res)
             }
             is ForStatementASTNode -> TODO()
-            is IfStatementASTNode -> TODO()
+            is IfStatementASTNode -> {
+                val condVal = nameEmitter.nextVar()
+
+                val instructionSet = expressionLLTACGenerator
+                    .buildInstructionsForExpression(condVal, Type.BoolType, node.condition)
+                LLTACElement.jumpIfNot(
+
+                )
+
+
+            }
             is ReturnFunctionStatementASTNode -> {
 
                 node.expression.fold(

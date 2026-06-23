@@ -47,4 +47,12 @@ sealed class Operand {
         override fun toString() = "${name}:${type.name}"
     }
 
+    data class Label(
+        val label: LLTACLabel,
+    ): Operand() {
+        override val type: Type
+            get() = Type.UnitType
+        override fun toString() = "${label.name}:"
+    }
+
 }
