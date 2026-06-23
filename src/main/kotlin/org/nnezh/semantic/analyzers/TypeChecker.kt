@@ -108,7 +108,7 @@ class TypeChecker(
     ): SemanticSubAnalyzer() {
 
     private val typeTable = ASTNodeTypeTable()
-    private var typeScope = TypeScope(
+    var typeScope = TypeScope(
         parentScope = null,
         typeTable = typeTable,
     )
