@@ -1,10 +1,12 @@
 package org.nnezh
 
+import arrow.core.raise.context.bind
 import org.nnezh.lexer.Lexer
 import org.nnezh.lexer.readSource
 import arrow.core.raise.either
 import org.nnezh.ast.AbstractSyntaxTreeBuilder
 import org.nnezh.ast.ProgramASTNode
+import org.nnezh.org.nnezh.ICGenerator.LLTACGenerator
 import org.nnezh.org.nnezh.ast.AbstractSyntaxTreeExpressionParser
 import org.nnezh.org.nnezh.semantic.SemanticAnalyzer
 import org.nnezh.org.nnezh.semantic.analyzers.FunctionSubAnalyzer
@@ -13,10 +15,11 @@ import kotlin.random.Random
 
 
 
-// TODO: VARIABLE_CHANGING_IMMUTABLE
-// Необходимо добавить тесты
+// TODO: VARIABLE_CHANGING_IMMUTABLE -Необходимо добавить тесты
+// TODO - добавить проверку, что функция main() существует
 fun main(args: Array<String>) {
-    val path = args.firstOrNull() ?: "examples/simple.bred"
+
+    val path = args.firstOrNull() ?: "examples/3ac.bred"
     val result = either {
         val source = readSource(path).bind()
         val tokens = Lexer(source).tokenize().bind()
@@ -32,6 +35,8 @@ fun main(args: Array<String>) {
         val ast = AbstractSyntaxTreeBuilder(AbstractSyntaxTreeExpressionParser()).build(tokens).bind()
 
         SemanticAnalyzer()(ast as ProgramASTNode).joinToString("\n").ifEmpty { "<NoErrors>" }
+        val tacGenerator = LLTACGenerator()
+        tacGenerator.build(ast)
     }
     /*
     TODO: был найден баг по тайпчекингу ретурна. Нужно дописать тесты
