@@ -28,19 +28,26 @@ sealed interface Type {
         override fun toString(): String = name
     }
 
-    object StaticArrayType: Type {
+    data class StaticArrayType(val elementType: Type): Type {
         override val name = "Array"
         override fun toString(): String = name
     }
 
     companion object {
-        private val allTypes = listOf(IntType, StringType, DoubleType, BoolType, UnitType, StaticArrayType)
-
-        private val stringToTypeMap = allTypes.associateBy { it.name }
+//        private val allTypes = listOf(IntType, StringType, DoubleType, BoolType, UnitType, StaticArrayType)
+//
+//        private val stringToTypeMap = allTypes.associateBy { it.name }
 
         // Left message is internal; user-facing text (with position) comes from AstErrorFactory.invalidType.
         fun fromString(name: String): Either<String, Type> {
-            return stringToTypeMap[name]?.right() ?: "Invalid type: $name".left()
+            return when (name) {
+                "Int" -> IntType.right()
+                "String" -> StringType.right()
+                "Double" -> DoubleType.right()
+                "Boolean" -> BoolType.right()
+                "Unit" -> UnitType.right()
+                else -> ("Invalid type: $name").left()
+            }
         }
 
         fun toString(type: Type): String = type.name

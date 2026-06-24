@@ -1,13 +1,14 @@
 package org.nnezh.org.nnezh.ast
 
 import arrow.core.raise.Raise
+import org.nnezh.ast.ArrayAccessExpressionASTNode
 import org.nnezh.ast.BinaryExpressionASTNode
 import org.nnezh.ast.BooleanLiteralExpressionNode
 import org.nnezh.ast.DoubleLiteralExpressionNode
 import org.nnezh.ast.ExpressionASTNode
 import org.nnezh.ast.FunctionCallExpressionNode
 import org.nnezh.ast.IntLiteralExpressionNode
-import org.nnezh.ast.StaticArrayInitializationExpressionsList
+import org.nnezh.ast.StaticArrayInitializationExpressionsListNode
 import org.nnezh.ast.StringLiteralExpressionNode
 import org.nnezh.ast.UnaryExpressionASTNode
 import org.nnezh.ast.VariableExpressionNode
@@ -15,7 +16,6 @@ import org.nnezh.ast.toLocatedBinaryOperator
 import org.nnezh.ast.toLocatedUnaryOperator
 import org.nnezh.lexer.Token
 import org.nnezh.org.nnezh.ast.parsers.Parser
-import org.nnezh.org.nnezh.ast.parsers.parseWith
 
 /* The expression parser is one concrete [Parser] implementation among the
  * statement parsers wired together by [ParserFactory]. */
@@ -145,7 +145,10 @@ class AbstractSyntaxTreeExpressionParser : Parser<ExpressionASTNode> {
                 context.consumeToken()
                 if (context.top() is Token.Punctuation.LParen) {
                     parseCall(token, context)
-                } else {
+                } else if (context.top() is Token.Punctuation.LBracket) {
+                    parseArrayAccess(token, context)
+                }
+                else {
                     VariableExpressionNode(token)
                 }
             }
@@ -177,11 +180,18 @@ class AbstractSyntaxTreeExpressionParser : Parser<ExpressionASTNode> {
 
                 // ASTError(message=Expected ')' but ... << fix error: expected ']'
                 match<Token.Punctuation.RBracket>(context.consumeToken()) { AstErrorFactory.expectedClosingParen(it) }
-                StaticArrayInitializationExpressionsList(arguments)
+                StaticArrayInitializationExpressionsListNode(arguments)
             }
 
             else -> raise(AstErrorFactory.expectedExpression(token))
         }
+
+    private fun Raise<ASTError>.parseArrayAccess(name: Token, context: TokensContext): ArrayAccessExpressionASTNode {
+        context.consumeToken() // '['
+        val index = parse(context)
+        context.consumeToken() // ']'
+        return ArrayAccessExpressionASTNode(name.lexeme, index)
+    }
 
     private fun Raise<ASTError>.parseCall(name: Token, context: TokensContext): FunctionCallExpressionNode {
         context.consumeToken() // '('

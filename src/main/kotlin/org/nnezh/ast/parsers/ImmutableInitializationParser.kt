@@ -3,8 +3,9 @@ package org.nnezh.org.nnezh.ast.parsers
 import arrow.core.raise.Raise
 import org.nnezh.ast.ExpressionASTNode
 import org.nnezh.ast.ImmutableVariableInitializationASTNode
+import org.nnezh.ast.IntLiteralExpressionNode
 import org.nnezh.ast.StaticArrayExpressionNode
-import org.nnezh.ast.StaticArrayInitializationExpressionsList
+import org.nnezh.ast.StaticArrayInitializationExpressionsListNode
 import org.nnezh.ast.VariableInitializationASTNode
 import org.nnezh.lexer.Token
 import org.nnezh.org.nnezh.ast.ASTError
@@ -27,14 +28,25 @@ class ImmutableInitializationParser(
             context.consumeToken()
             val size = match<Token.Literal.IntLiteral>(context.consumeToken()) { token -> buildError("array size", token) }
             match<Token.Punctuation.RBracket>(context.consumeToken()) { token -> buildError("]", token) }
-            match<Token.Operator.Assign>(context.consumeToken()) { token -> buildError("assignation", token) }
-            val value: StaticArrayInitializationExpressionsList = parseWith(expressionParser, context) as StaticArrayInitializationExpressionsList
-            return StaticArrayExpressionNode(
-                variableName = valName.lexeme,
-                variableType = parseType(type),
-                size = size.value.toInt(),
-                isMutable = false,
-                value)
+            if (context.top() is Token.Operator.Assign) {
+                match<Token.Operator.Assign>(context.consumeToken()) { token -> buildError("assignation", token) }
+                val value: StaticArrayInitializationExpressionsListNode = parseWith(expressionParser, context) as StaticArrayInitializationExpressionsListNode
+
+                return StaticArrayExpressionNode(
+                    variableName = valName.lexeme,
+                    variableType = parseType(type),
+                    size = size.value.toInt(),
+                    isMutable = true, // TOOO: не совсем правда
+                    value)
+            } else {
+                return StaticArrayExpressionNode(
+                    variableName = valName.lexeme,
+                    variableType = parseType(type),
+                    size = size.value.toInt(),
+                    isMutable = true, // TOOO: не совсем правда
+                    valExpression = null)
+            }
+
         } else {
             match<Token.Operator.Assign>(context.consumeToken()) { token -> buildError("assignation", token) }
             val value: ExpressionASTNode = parseWith(expressionParser, context)

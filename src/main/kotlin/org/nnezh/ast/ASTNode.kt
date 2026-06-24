@@ -30,7 +30,7 @@ interface VariableInitializationASTNode : StatementASTNode {
     val variableName: String
     val variableType: Type
     val isMutable: Boolean
-    val valExpression: ExpressionASTNode
+    val valExpression: ExpressionASTNode?
 }
 
 data class ImmutableVariableInitializationASTNode(
@@ -115,10 +115,13 @@ data class StaticArrayExpressionNode(
     override val variableType: Type,
     val size: Int,
     override val isMutable: Boolean,
-    override val valExpression: StaticArrayInitializationExpressionsList
+    override val valExpression: StaticArrayInitializationExpressionsListNode?
 ) : VariableInitializationASTNode
 
-data class StaticArrayInitializationExpressionsList(val values: List<ExpressionASTNode>): ExpressionASTNode
+data class StaticArrayInitializationExpressionsListNode(
+    val values: List<ExpressionASTNode>
+): ExpressionASTNode
+
 data class BinaryExpressionASTNode(
     val left: ExpressionASTNode,
     val operator: LocatedBinaryOperator,
@@ -129,5 +132,10 @@ data class UnaryExpressionASTNode(
     val operator: LocatedUnaryOperator,
     val operand: ExpressionASTNode,
 ) : ExpressionASTNode
+
+data class ArrayAccessExpressionASTNode(
+    val array: String,
+    val index: ExpressionASTNode,
+): ExpressionASTNode
 
 data class FunctionCallExpressionNode(val name: Token, val arguments: List<ExpressionASTNode>) : ExpressionASTNode

@@ -1,6 +1,7 @@
 package org.nnezh.org.nnezh.semantic.analyzers
 
 import arrow.core.left
+import org.nnezh.ast.ArrayAccessExpressionASTNode
 import org.nnezh.ast.AssignmentStatementASTNode
 import org.nnezh.ast.BinaryExpressionASTNode
 import org.nnezh.ast.BlockASTNode
@@ -16,6 +17,7 @@ import org.nnezh.ast.IfStatementASTNode
 import org.nnezh.ast.IntLiteralExpressionNode
 import org.nnezh.ast.ProgramASTNode
 import org.nnezh.ast.ReturnFunctionStatementASTNode
+import org.nnezh.ast.StaticArrayInitializationExpressionsListNode
 import org.nnezh.ast.StringLiteralExpressionNode
 import org.nnezh.ast.UnaryExpressionASTNode
 import org.nnezh.ast.VariableExpressionNode
@@ -170,7 +172,7 @@ class FunctionSubAnalyzer: SemanticSubAnalyzer() {
 //                errorType = SemanticErrorType.FUNCTION_IS_USED_AS_VARIABLE
 //            ))
 //        }
-        result.addAll(routeExpressionHandling(node.valExpression))
+        node.valExpression?.let{ result.addAll(routeExpressionHandling(it)) }
 
         return result
     }
@@ -181,6 +183,14 @@ class FunctionSubAnalyzer: SemanticSubAnalyzer() {
         result.addAll(analyzeBlockASTNode(node.bodyBlock))
 
         return result
+    }
+
+    override fun analyzeStaticArrayInitializationExpressionsList(node: StaticArrayInitializationExpressionsListNode): List<SemanticError> {
+        return node.values.flatMap { routeExpressionHandling(it) }
+    }
+
+    override fun analyzeArrayAccessExpressionASTNode(node: ArrayAccessExpressionASTNode): List<SemanticError> {
+        return routeExpressionHandling(node.index)
     }
 }
 

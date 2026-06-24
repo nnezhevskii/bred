@@ -50,8 +50,15 @@ class FunctionParser(
                     match<Token.Punctuation.Colon>(context.consumeToken()) { token -> ASTError("Expected colon but got ${token.lexeme} in ${token.position}") }
                     val argType =
                         match<Token.Identifier>(context.consumeToken()) { token -> ASTError("Expected argument type but got ${token.lexeme} in ${token.position}") }
+                    if (context.top() is Token.Punctuation.LBracket) {
+                        context.consumeToken()
+                        match<Token.Punctuation.RBracket>(context.consumeToken()) { token -> ASTError("Expected ] but got ${token.lexeme} in ${token.position}") }
+                        arguments.add(FunctionArgumentASTNode(argName.lexeme, Type.StaticArrayType(parseType(argType))))
+                    } else {
+                        arguments.add(FunctionArgumentASTNode(argName.lexeme, parseType(argType)))
+                    }
 
-                    arguments.add(FunctionArgumentASTNode(argName.lexeme, parseType(argType)))
+
                     argumentWasJustParsed = true
                 }
 

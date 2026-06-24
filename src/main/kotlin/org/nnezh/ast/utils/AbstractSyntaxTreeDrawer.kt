@@ -1,6 +1,7 @@
 package org.nnezh.org.nnezh.ast.utils
 
 import org.nnezh.ast.ASTNode
+import org.nnezh.ast.ArrayAccessExpressionASTNode
 import org.nnezh.ast.AssignmentStatementASTNode
 import org.nnezh.ast.BinaryExpressionASTNode
 import org.nnezh.ast.BlockASTNode
@@ -18,7 +19,7 @@ import org.nnezh.ast.IntLiteralExpressionNode
 import org.nnezh.ast.MutableVariableInitializationASTNode
 import org.nnezh.ast.ProgramASTNode
 import org.nnezh.ast.ReturnFunctionStatementASTNode
-import org.nnezh.ast.StaticArrayInitializationExpressionsList
+import org.nnezh.ast.StaticArrayInitializationExpressionsListNode
 import org.nnezh.ast.StringLiteralExpressionNode
 import org.nnezh.ast.UnaryExpressionASTNode
 import org.nnezh.ast.VariableExpressionNode
@@ -142,9 +143,9 @@ class AbstractSyntaxTreeDrawer {
             }
 
             is VariableInitializationASTNode -> {
-                acc.add("${shift}MutableVariableInitialization:")
-                acc.add("${shift + indent}Name: ${node.variableName}: ${node.variableType}")
-                acc.addAll(recursive(node.valExpression, shift + indent.repeat(1)))
+//                acc.add("${shift}MutableVariableInitialization:")
+//                acc.add("${shift + indent}Name: ${node.variableName}: ${node.variableType}")
+//                acc.addAll(recursive(node.valExpression, shift + indent.repeat(1)))
             }
             is ForStatementASTNode -> {
                 acc.add("${shift}ForStatement:")
@@ -164,11 +165,13 @@ class AbstractSyntaxTreeDrawer {
                 )
             }
 
-            is StaticArrayInitializationExpressionsList -> {
+            is StaticArrayInitializationExpressionsListNode -> {
                 acc.add("${shift}Array<}")
 //                acc.addAll(recursive(node.expression, shift + indent))
 //                TODO()
             }
+
+            is ArrayAccessExpressionASTNode -> TODO()
         }
         return acc
     }

@@ -2,7 +2,9 @@ package org.nnezh.org.nnezh.semantic.analyzers
 
 import arrow.core.left
 import com.sun.tools.javac.tree.TreeInfo.types
+import jdk.javadoc.internal.doclets.formats.html.markup.HtmlStyles
 import org.nnezh.ast.ASTNode
+import org.nnezh.ast.ArrayAccessExpressionASTNode
 import org.nnezh.ast.AssignmentStatementASTNode
 import org.nnezh.ast.BinaryExpressionASTNode
 import org.nnezh.ast.BinaryOperator
@@ -20,6 +22,8 @@ import org.nnezh.ast.IfStatementASTNode
 import org.nnezh.ast.IntLiteralExpressionNode
 import org.nnezh.ast.ProgramASTNode
 import org.nnezh.ast.ReturnFunctionStatementASTNode
+import org.nnezh.ast.StaticArrayExpressionNode
+import org.nnezh.ast.StaticArrayInitializationExpressionsListNode
 import org.nnezh.ast.StringLiteralExpressionNode
 import org.nnezh.ast.UnaryExpressionASTNode
 import org.nnezh.ast.UnaryOperator
@@ -282,12 +286,24 @@ class TypeChecker(
     }
 
     override fun analyzeAssignmentStatementASTNode(node: AssignmentStatementASTNode): List<SemanticError> {
-        val variableType = typeScope.get(node.name)!!
-        val errors = routeExpressionHandling(node.value).toMutableList()
+        val errors = routeExpressionHandling(node.lValue).toMutableList()
+        errors.addAll(routeExpressionHandling(node.rValue))
+        if (errors.any { it.isCriticalError }) {
+            return errors
+        }
+        val lValueType: Type = if (typeScope.get(node.lValue) == null) {
+            if (node.lValue is ArrayAccessExpressionASTNode) {
+                typeScope.get(node.lValue.array)!!
+            } else {
+                return singletonList(SemanticError.TypeSemanticError(node, true, errorType = SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES))
+            }
+        } else {
+            typeScope.get(node.lValue)!!
+        }
 
-        val exprType = typeScope.get(node.value)!!
+        val rValueType = typeScope.get(node.rValue)!!
 
-        if (!typeValidator.check(variableType, exprType)) {
+        if (!typeValidator.check(lValueType, rValueType)) {
             errors.add(SemanticError.TypeSemanticError(node, true, errorType = SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES))
         }
 
@@ -309,6 +325,34 @@ class TypeChecker(
         }
         errors.addAll(analyzeBlockASTNode(node.bodyBlock))
 
+        return errors
+    }
+
+    override fun analyzeStaticArrayInitializationExpressionsList(node: StaticArrayInitializationExpressionsListNode): List<SemanticError> {
+        val errors = node.values.flatMap { routeExpressionHandling(it) }.toMutableList()
+        if (errors.any { it.isCriticalError }) {
+            return errors
+        }
+        val arrayTypes = node.values.map { typeScope.get(it)!! }.toSet()
+        if (arrayTypes.size > 1) {
+            errors.add(SemanticError.TypeSemanticError(node, true, errorType = SemanticErrorType.TYPE_CHECKER_INCONSISTENT_ARRAY_TYPE))
+            return errors
+        }
+        typeScope.put(node, arrayTypes.first())
+
+        return errors
+    }
+
+    override fun analyzeArrayAccessExpressionASTNode(node: ArrayAccessExpressionASTNode): List<SemanticError> {
+        val errors = routeExpressionHandling(node.index).toMutableList()
+        if (errors.any { it.isCriticalError }) {
+            return errors
+        }
+
+        if (typeScope.get(node.index) != Type.IntType) {
+            errors.add(SemanticError.TypeSemanticError(node, true, errorType = SemanticErrorType.ARRAY_INDEX_IS_NOT_INTEGER))
+        }
+        typeScope.put(node, typeScope.get(node.array)!!)
         return errors
     }
 
@@ -338,14 +382,26 @@ class TypeChecker(
 
     override fun analyzeVariableInitializationASTNode(node: VariableInitializationASTNode): List<SemanticError> {
         typeScope.put(node.variableName, node.variableType)
-        val errors = routeExpressionHandling(node.valExpression).toMutableList()
+        val errors = (node.valExpression?.let { routeExpressionHandling(it ) } ?: emptyList()) .toMutableList()
         if (errors.any { it.isCriticalError }) {
             return errors
         }
 
         // TODO: check nullability
-        if (!typeValidator.check(node.variableType, typeScope.get(node.valExpression)!!)) {
-            errors.add(SemanticError.TypeSemanticError(node, true, errorType = SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES))
+        node.valExpression?.let {
+            if (!typeValidator.check(node.variableType, typeScope.get(it)!!)) {
+                errors.add(SemanticError.TypeSemanticError(node, true, errorType = SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES))
+            }
+        }
+
+
+        node.valExpression?.let {
+            if (node is StaticArrayExpressionNode) {
+                if (node.size != node.valExpression!!.values.size) {
+                    errors.add(SemanticError.TypeSemanticError(node, true, errorType = SemanticErrorType.INVALID_AMOUNT_OF_ARGUMENTS_IN_ARRAYS_INITIALIZATION))
+                }
+            }
+
         }
 
         return errors

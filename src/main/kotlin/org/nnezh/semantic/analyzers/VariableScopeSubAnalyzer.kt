@@ -2,6 +2,7 @@ package org.nnezh.org.nnezh.semantic.analyzers
 
 import arrow.core.raise.nullable
 import org.nnezh.ast.ASTNode
+import org.nnezh.ast.ArrayAccessExpressionASTNode
 import org.nnezh.ast.AssignmentStatementASTNode
 import org.nnezh.ast.BinaryExpressionASTNode
 import org.nnezh.ast.BlockASTNode
@@ -17,6 +18,7 @@ import org.nnezh.ast.IfStatementASTNode
 import org.nnezh.ast.IntLiteralExpressionNode
 import org.nnezh.ast.ProgramASTNode
 import org.nnezh.ast.ReturnFunctionStatementASTNode
+import org.nnezh.ast.StaticArrayInitializationExpressionsListNode
 import org.nnezh.ast.StringLiteralExpressionNode
 import org.nnezh.ast.UnaryExpressionASTNode
 import org.nnezh.ast.VariableExpressionNode
@@ -156,9 +158,29 @@ class VariableScopeSubAnalyzer: SemanticSubAnalyzer() {
     }
 
     override fun analyzeAssignmentStatementASTNode(node: AssignmentStatementASTNode): List<SemanticError> {
-        //                // TODO: checking val/var
         val listOfErrors = mutableListOf<SemanticError>()
-        val variable = scope.lookUp(node.name)
+
+
+        var variable: Pair<VariableDeclaration, Boolean>? = null
+        when (node.lValue) {
+            is VariableExpressionNode -> {
+                variable = scope.lookUp(node.lValue.token.lexeme)
+            }
+            is ArrayAccessExpressionASTNode -> {
+                variable = scope.lookUp(node.lValue.array)
+            }
+
+            else -> {
+                listOfErrors.add(
+                    SemanticError.VariableScopeSemanticError(where = node,
+                        errorType = SemanticErrorType.UNEXPECTED_LVALUE,
+                        critical = true
+                    )
+                )
+                return listOfErrors
+            }
+        }
+
         if (variable == null) {
             listOfErrors.add(
                 SemanticError.VariableScopeSemanticError(where = node,
@@ -177,7 +199,7 @@ class VariableScopeSubAnalyzer: SemanticSubAnalyzer() {
                 )
             )
         }
-        listOfErrors.addAll(routeExpressionHandling(node.value))
+        listOfErrors.addAll(routeExpressionHandling(node.rValue))
 
         return listOfErrors
     }
@@ -226,7 +248,7 @@ class VariableScopeSubAnalyzer: SemanticSubAnalyzer() {
             ))
         }
 
-        result.addAll(routeExpressionHandling(node.valExpression))
+        node.valExpression?.let {result.addAll(routeExpressionHandling(it)) }
 
         if (result.none { it.isCriticalError }) {
             val variable = VariableDeclaration.build(node)
@@ -242,6 +264,27 @@ class VariableScopeSubAnalyzer: SemanticSubAnalyzer() {
         if (listOfErrors.none { it.isCriticalError }) {
             listOfErrors.addAll(analyzeBlockASTNode(node.bodyBlock))
         }
+        return listOfErrors
+    }
+
+    override fun analyzeStaticArrayInitializationExpressionsList(node: StaticArrayInitializationExpressionsListNode): List<SemanticError> {
+        return emptyList()
+    }
+
+    override fun analyzeArrayAccessExpressionASTNode(node: ArrayAccessExpressionASTNode): List<SemanticError> {
+        val listOfErrors = mutableListOf<SemanticError>()
+        listOfErrors.addAll(routeExpressionHandling(node.index))
+        if (listOfErrors.any { it.isCriticalError }) {
+            return listOfErrors
+        }
+        if (scope.lookUp(node.array) == null) {
+            listOfErrors.add(
+                SemanticError.VariableScopeSemanticError(where = node,
+                    errorType = SemanticErrorType.UNKNOWN_VARIABLE,
+                    critical = true
+                ))
+        }
+
         return listOfErrors
     }
 

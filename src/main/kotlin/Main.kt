@@ -39,19 +39,19 @@ fun main(args: Array<String>) {
 
         val ast = AbstractSyntaxTreeBuilder(AbstractSyntaxTreeExpressionParser()).build(tokens).bind()
 
-        ast
-//        val semanticAnalyzer = SemanticAnalyzer()
-//        val res = semanticAnalyzer(ast as ProgramASTNode)
-//        res.joinToString("\n").ifEmpty { "<NoErrors>" }
-//        if (res.any { it.isCriticalError }) {
-//            res.joinToString("\n")
-//        } else {
-//            val tacGenerator = LLTACGenerator(
-//                typeTable = semanticAnalyzer.typeTable,
-//                functionRegistry = semanticAnalyzer.functionRegistry
-//            )
-//            PrettyPrinter().format (tacGenerator.build(ast)).joinToString("\n")
-//        }
+        val semanticAnalyzer = SemanticAnalyzer()
+        val res = semanticAnalyzer(ast as ProgramASTNode)
+
+        res.joinToString("\n").ifEmpty { "<NoErrors>" }
+        if (res.any { it.isCriticalError }) {
+            res.joinToString("\n")
+        } else {
+            val tacGenerator = LLTACGenerator(
+                typeTable = semanticAnalyzer.typeTable,
+                functionRegistry = semanticAnalyzer.functionRegistry
+            )
+            PrettyPrinter().format (tacGenerator.build(ast)).joinToString("\n")
+        }
 
     }
     /*

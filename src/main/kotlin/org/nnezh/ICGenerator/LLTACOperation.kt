@@ -4,6 +4,11 @@ enum class LLTACOperation {
     LLTAC_GET_PARAM {
         override fun toString() = "GET_PARAM"
     },
+
+    LLTAC_ALLOC {
+        override fun toString() = "ALLOC"
+    },
+
     LLTAC_PARAM {
         override fun toString() = "PARAM"
     },
@@ -71,6 +76,14 @@ enum class LLTACOperation {
 
     LLTAC_JMP {
         override fun toString() = "JMP"
+    },
+
+    LLTAC_LDX {
+        override fun toString() = "LOAD"
+    },
+
+    LLTAC_STX {
+        override fun toString() = "STORE"
     },
 
 }

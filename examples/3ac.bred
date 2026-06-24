@@ -1,12 +1,21 @@
+fun random(): Int {
+    return 42
+}
+
+fun maxIndex(arr: Int[], size: Int): Int {
+    if (size <= 0) {
+        return -1
+    }
+    var max: Int = 0
+    for (i in 1 to size) {
+        if (arr[i] > arr[max]) {
+            max = i
+        }
+    }
+    return max
+}
+
 fun main() {
-    // Иммутабельный массив (читать можно, писать нельзя)
-
-    val arr: Int[3] = [1, 2, "str", true] // ok for parsing
-    arr[0] = 5 // ОШИБКА: массив константный
-
-    // Мутабельный массив (читать можно, писать в элементы можно)
-    //val mutArr: mut Int[3] = [1, 2, 3]
-    // или так: val mutArr: [var Int; 3] = [1, 2, 3]
-
-    //mutArr[0] = 5 // РАБОТАЕТ!
+    val arr: Int[100]
+    val maxInd: Int = maxIndex(arr, 100)
 }

@@ -1,6 +1,6 @@
 package org.nnezh.org.nnezh.ICGenerator
 
-import arrow.core.left
+import org.nnezh.ast.ArrayAccessExpressionASTNode
 import org.nnezh.ast.BinaryExpressionASTNode
 import org.nnezh.ast.BinaryOperator
 import org.nnezh.ast.BooleanLiteralExpressionNode
@@ -8,8 +8,7 @@ import org.nnezh.ast.DoubleLiteralExpressionNode
 import org.nnezh.ast.ExpressionASTNode
 import org.nnezh.ast.FunctionCallExpressionNode
 import org.nnezh.ast.IntLiteralExpressionNode
-import org.nnezh.ast.LiteralExpressionNode
-import org.nnezh.ast.StaticArrayInitializationExpressionsList
+import org.nnezh.ast.StaticArrayInitializationExpressionsListNode
 import org.nnezh.ast.StringLiteralExpressionNode
 import org.nnezh.ast.UnaryExpressionASTNode
 import org.nnezh.ast.UnaryOperator
@@ -192,7 +191,29 @@ class LLTACExpressionSubgenerator(
 
             }
 
-            is StaticArrayInitializationExpressionsList -> TODO()
+            is StaticArrayInitializationExpressionsListNode -> {
+                TODO() // I think we shouldn't go there
+            }
+            is ArrayAccessExpressionASTNode -> {
+                val instructionsList = mutableListOf<LLTACElement>(
+
+                )
+
+                val indexName = nameEmitter.nextVar()
+                instructionsList.addAll(buildInstructionsForExpression(indexName, Type.IntType, expression.index).instructions)
+
+                val dest = nameEmitter.nextVar()
+                instructionsList.add(
+                    LLTACElement.load(expression.array, dest, indexName, type)
+                )
+
+                return LLTACExpressionSubgeneratorResult(
+                    instructions = instructionsList,
+                    finalVariable = dest,
+                    finalType = type)
+
+
+            }
         }
     }
 }

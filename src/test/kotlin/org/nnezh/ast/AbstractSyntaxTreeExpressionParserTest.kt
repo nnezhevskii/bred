@@ -17,6 +17,7 @@ import org.nnezh.ast.DoubleLiteralExpressionNode
 import org.nnezh.ast.ExpressionASTNode
 import org.nnezh.ast.FunctionCallExpressionNode
 import org.nnezh.ast.IntLiteralExpressionNode
+import org.nnezh.ast.StaticArrayInitializationExpressionsListNode
 import org.nnezh.ast.StringLiteralExpressionNode
 import org.nnezh.ast.UnaryExpressionASTNode
 import org.nnezh.ast.VariableExpressionNode
@@ -41,6 +42,8 @@ class AbstractSyntaxTreeExpressionParserTest {
         is BinaryExpressionASTNode -> "(${node.operator.lexeme} ${render(node.left)} ${render(node.right)})"
         is FunctionCallExpressionNode ->
             "${node.name.lexeme}(${node.arguments.joinToString(", ") { render(it) }})"
+
+        is StaticArrayInitializationExpressionsListNode -> TODO()
     }
 
     private fun rendered(src: String): String =

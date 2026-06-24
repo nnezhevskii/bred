@@ -1,6 +1,7 @@
 package org.nnezh.org.nnezh.semantic.generic
 
 import org.nnezh.ast.ASTNode
+import org.nnezh.ast.ArrayAccessExpressionASTNode
 import org.nnezh.ast.AssignmentStatementASTNode
 import org.nnezh.ast.BinaryExpressionASTNode
 import org.nnezh.ast.BlockASTNode
@@ -18,7 +19,7 @@ import org.nnezh.ast.IntLiteralExpressionNode
 import org.nnezh.ast.ProgramASTNode
 import org.nnezh.ast.ReturnFunctionStatementASTNode
 import org.nnezh.ast.StatementASTNode
-import org.nnezh.ast.StaticArrayInitializationExpressionsList
+import org.nnezh.ast.StaticArrayInitializationExpressionsListNode
 import org.nnezh.ast.StringLiteralExpressionNode
 import org.nnezh.ast.UnaryExpressionASTNode
 import org.nnezh.ast.VariableExpressionNode
@@ -48,7 +49,8 @@ abstract class SemanticSubAnalyzer {
             is ReturnFunctionStatementASTNode -> analyzeReturnFunctionStatementASTNode(root)
             is VariableInitializationASTNode -> analyzeVariableInitializationASTNode(root)
             is WhileStatementASTNode -> analyzeWhileStatementASTNode(root)
-            is StaticArrayInitializationExpressionsList -> TODO()
+            is StaticArrayInitializationExpressionsListNode -> analyzeStaticArrayInitializationExpressionsList(root)
+            is ArrayAccessExpressionASTNode -> analyzeArrayAccessExpressionASTNode(root)
         }
     }
 
@@ -71,7 +73,8 @@ abstract class SemanticSubAnalyzer {
         is StringLiteralExpressionNode -> analyzeStringLiteralExpressionNode(node)
         is UnaryExpressionASTNode -> analyzeUnaryExpressionASTNode(node)
         is VariableExpressionNode -> analyzeVariableExpressionNode(node)
-        is StaticArrayInitializationExpressionsList -> TODO()
+        is StaticArrayInitializationExpressionsListNode -> analyzeStaticArrayInitializationExpressionsList(node)
+        is ArrayAccessExpressionASTNode -> analyzeArrayAccessExpressionASTNode(node)
     }
 
     abstract fun analyzeProgramASTNode(node: ProgramASTNode): List<SemanticError>
@@ -94,4 +97,7 @@ abstract class SemanticSubAnalyzer {
     protected abstract fun analyzeReturnFunctionStatementASTNode(node: ReturnFunctionStatementASTNode): List<SemanticError>
     protected abstract fun analyzeVariableInitializationASTNode(node: VariableInitializationASTNode): List<SemanticError>
     protected abstract fun analyzeWhileStatementASTNode(node: WhileStatementASTNode): List<SemanticError>
+    protected abstract fun analyzeStaticArrayInitializationExpressionsList(node: StaticArrayInitializationExpressionsListNode): List<SemanticError>
+    protected abstract fun analyzeArrayAccessExpressionASTNode(node: ArrayAccessExpressionASTNode): List<SemanticError>
+
 }

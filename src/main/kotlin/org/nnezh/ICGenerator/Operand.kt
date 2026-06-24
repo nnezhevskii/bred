@@ -12,6 +12,10 @@ sealed class Operand {
         override fun toString() = "${name}:${type.name}"
     }
 
+    data class TypeConst(override val type: Type): Operand() {
+        override fun toString(): String = type.name
+    }
+
     data class IntConst(
         val value: Long
     ) : Operand() {

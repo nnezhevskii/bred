@@ -19,6 +19,14 @@ sealed interface LLTACElement {
                 destination = Operand.Variable(name = name, type = type),
             )
         }
+        fun alloc(dest: String, type: Type, size: Int): LLTACElement {
+            return LLTACInstruction(
+                opcode = LLTACOperation.LLTAC_ALLOC,
+                destination = Operand.Variable(dest, type),
+                arg1 = Operand.TypeConst(type),
+                arg2 = Operand.IntConst(size.toLong()),
+            )
+        }
 
         fun param(name: String, type: Type): LLTACElement {
             return LLTACInstruction(
@@ -42,6 +50,24 @@ sealed interface LLTACElement {
             )
         }
 
+        //STORE  dest, offset, source
+        fun store(array: String, index: String, source: String, type: Type): LLTACElement {
+            return LLTACInstruction(
+                opcode = LLTACOperation.LLTAC_STX,
+                destination = Operand.Variable(name = array, type = type),
+                arg1 = Operand.Variable(index, type = Type.IntType),
+                arg2 = Operand.Variable(name = source, type = type),
+            )
+        }
+
+        fun load(array: String, destination: String, index: String, type: Type): LLTACElement {
+            return LLTACInstruction(
+                opcode = LLTACOperation.LLTAC_LDX,
+                destination = Operand.Variable(name = destination, type = type),
+                arg1 = Operand.Variable(name = array, type = type),
+                arg2 = Operand.Variable(index, Type.IntType),
+            )
+        }
 
         fun assignVariable (name: String, type: Type, arg: String): LLTACElement {
             return LLTACInstruction(
