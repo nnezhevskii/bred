@@ -9,6 +9,7 @@ import org.nnezh.ast.ExpressionASTNode
 import org.nnezh.ast.FunctionCallExpressionNode
 import org.nnezh.ast.IntLiteralExpressionNode
 import org.nnezh.ast.LiteralExpressionNode
+import org.nnezh.ast.StaticArrayInitializationExpressionsList
 import org.nnezh.ast.StringLiteralExpressionNode
 import org.nnezh.ast.UnaryExpressionASTNode
 import org.nnezh.ast.UnaryOperator
@@ -190,6 +191,8 @@ class LLTACExpressionSubgenerator(
                     finalType = typeTable.get(expression)!!)
 
             }
+
+            is StaticArrayInitializationExpressionsList -> TODO()
         }
     }
 }

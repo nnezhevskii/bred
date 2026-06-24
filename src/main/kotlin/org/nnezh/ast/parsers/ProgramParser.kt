@@ -4,6 +4,7 @@ import arrow.core.raise.Raise
 import org.nnezh.ast.DeclareFunctionASTNode
 import org.nnezh.ast.ImmutableVariableInitializationASTNode
 import org.nnezh.ast.ProgramASTNode
+import org.nnezh.ast.VariableInitializationASTNode
 import org.nnezh.lexer.Token
 import org.nnezh.org.nnezh.ast.ASTError
 import org.nnezh.org.nnezh.ast.AstErrorFactory
@@ -11,11 +12,11 @@ import org.nnezh.org.nnezh.ast.TokensContext
 
 class ProgramParser(
     private val functionParser: Parser<DeclareFunctionASTNode>,
-    private val globalVariableParser: Parser<ImmutableVariableInitializationASTNode>,
+    private val globalVariableParser: Parser<VariableInitializationASTNode>,
 ) : Parser<ProgramASTNode> {
     override fun Raise<ASTError>.parse(context: TokensContext): ProgramASTNode {
         val functions = mutableListOf<DeclareFunctionASTNode>()
-        val globalVariables = mutableListOf<ImmutableVariableInitializationASTNode>()
+        val globalVariables = mutableListOf<VariableInitializationASTNode>()
 
         while (true) {
             if (context.endOfInput) {

@@ -28,8 +28,13 @@ sealed interface Type {
         override fun toString(): String = name
     }
 
+    object StaticArrayType: Type {
+        override val name = "Array"
+        override fun toString(): String = name
+    }
+
     companion object {
-        private val allTypes = listOf(IntType, StringType, DoubleType, BoolType, UnitType)
+        private val allTypes = listOf(IntType, StringType, DoubleType, BoolType, UnitType, StaticArrayType)
 
         private val stringToTypeMap = allTypes.associateBy { it.name }
 

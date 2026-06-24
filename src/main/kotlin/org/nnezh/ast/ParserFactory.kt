@@ -10,6 +10,7 @@ import org.nnezh.ast.ImmutableVariableInitializationASTNode
 import org.nnezh.ast.MutableVariableInitializationASTNode
 import org.nnezh.ast.ProgramASTNode
 import org.nnezh.ast.ReturnFunctionStatementASTNode
+import org.nnezh.ast.VariableInitializationASTNode
 import org.nnezh.ast.WhileStatementASTNode
 import org.nnezh.org.nnezh.ast.parsers.AssignParser
 import org.nnezh.org.nnezh.ast.parsers.BlockParser
@@ -45,7 +46,7 @@ class ParserFactory(
             b
         )
     },
-    private val createInitImmutableParser: (Parser<ExpressionASTNode>) -> Parser<ImmutableVariableInitializationASTNode> = { e ->
+    private val createInitImmutableParser: (Parser<ExpressionASTNode>) -> Parser<VariableInitializationASTNode> = { e ->
         ImmutableInitializationParser(
             e
         )

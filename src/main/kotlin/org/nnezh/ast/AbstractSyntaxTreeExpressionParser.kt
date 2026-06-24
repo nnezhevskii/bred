@@ -7,6 +7,7 @@ import org.nnezh.ast.DoubleLiteralExpressionNode
 import org.nnezh.ast.ExpressionASTNode
 import org.nnezh.ast.FunctionCallExpressionNode
 import org.nnezh.ast.IntLiteralExpressionNode
+import org.nnezh.ast.StaticArrayInitializationExpressionsList
 import org.nnezh.ast.StringLiteralExpressionNode
 import org.nnezh.ast.UnaryExpressionASTNode
 import org.nnezh.ast.VariableExpressionNode
@@ -14,6 +15,7 @@ import org.nnezh.ast.toLocatedBinaryOperator
 import org.nnezh.ast.toLocatedUnaryOperator
 import org.nnezh.lexer.Token
 import org.nnezh.org.nnezh.ast.parsers.Parser
+import org.nnezh.org.nnezh.ast.parsers.parseWith
 
 /* The expression parser is one concrete [Parser] implementation among the
  * statement parsers wired together by [ParserFactory]. */
@@ -153,6 +155,29 @@ class AbstractSyntaxTreeExpressionParser : Parser<ExpressionASTNode> {
                 val inner = parse(context)
                 match<Token.Punctuation.RParen>(context.consumeToken()) { AstErrorFactory.expectedClosingParen(it) }
                 inner
+            }
+
+            is Token.Punctuation.LBracket -> {
+                context.consumeToken()
+                val arguments = mutableListOf<ExpressionASTNode>()
+                while (true) {
+                    when (context.top()) {
+                        is Token.Punctuation.RBracket -> {
+                            break
+                        }
+                        is Token.Punctuation.Comma -> {
+                            context.consumeToken()
+                        }
+                        else -> {
+                            arguments.add(parse(context))
+//                            AstErrorFactory.buildError("initialization array", context.top())
+                        }
+                    }
+                }
+
+                // ASTError(message=Expected ')' but ... << fix error: expected ']'
+                match<Token.Punctuation.RBracket>(context.consumeToken()) { AstErrorFactory.expectedClosingParen(it) }
+                StaticArrayInitializationExpressionsList(arguments)
             }
 
             else -> raise(AstErrorFactory.expectedExpression(token))

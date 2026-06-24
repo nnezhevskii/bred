@@ -5,6 +5,7 @@
 package org.nnezh.lexer
 
 import org.nnezh.lexer.Token.Keyword.In
+import org.nnezh.lexer.Token.Keyword.Mut
 
 /**
  * Position of a token in the source file. Both [line] and [column] are 1-based.
@@ -63,6 +64,10 @@ sealed class Token {
             override val lexeme: String = "to"
         }
 
+        data class Mut(override val position: Position) : Keyword() {
+            override val lexeme: String = "mut"
+        }
+
         data class In(override val position: Position) : Keyword() {
             override val lexeme: String = "in"
         }
@@ -90,6 +95,7 @@ sealed class Token {
                 "to" to ::To,
                 "true" to ::True,
                 "false" to ::False,
+                "mut" to ::Mut
             )
         }
     }
@@ -207,6 +213,14 @@ sealed class Token {
 
         data class RBrace(override val position: Position) : Punctuation() {
             override val lexeme: String = "}"
+        }
+
+        data class LBracket(override val position: Position) : Punctuation() {
+            override val lexeme: String = "["
+        }
+
+        data class RBracket(override val position: Position) : Punctuation() {
+            override val lexeme: String = "]"
         }
 
         data class Comma(override val position: Position) : Punctuation() {

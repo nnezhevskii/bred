@@ -18,6 +18,7 @@ import org.nnezh.ast.IntLiteralExpressionNode
 import org.nnezh.ast.MutableVariableInitializationASTNode
 import org.nnezh.ast.ProgramASTNode
 import org.nnezh.ast.ReturnFunctionStatementASTNode
+import org.nnezh.ast.StaticArrayInitializationExpressionsList
 import org.nnezh.ast.StringLiteralExpressionNode
 import org.nnezh.ast.UnaryExpressionASTNode
 import org.nnezh.ast.VariableExpressionNode
@@ -160,6 +161,12 @@ class AbstractSyntaxTreeDrawer {
                     ifLeft = { acc.add("${shift + indent}${Type.toString(it)}") },
                     ifRight = { acc.addAll(recursive(it, shift + indent.repeat(1))) },
                 )
+            }
+
+            is StaticArrayInitializationExpressionsList -> {
+                acc.add("${shift}Array<}")
+//                acc.addAll(recursive(node.expression, shift + indent))
+//                TODO()
             }
         }
         return acc

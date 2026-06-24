@@ -1,41 +1,12 @@
-fun complexShock(n: Int, limit: Int): Int {
-    var i: Int = 1
-    var result: Int = 0
+fun main() {
+    // Иммутабельный массив (читать можно, писать нельзя)
 
-    while (i <= n) {
-        var temp: Int = i * 2
+    val arr: Int[3] = [1, 2, "str", true] // ok for parsing
+    arr[0] = 5 // ОШИБКА: массив константный
 
-        // Edge case 1: Вложенный цикл использует переменную с тем же именем 'limit'
-        // Проверим, не поплывёт ли генерация меток и имён во вложенных структурах
-        var innerLimit: Int = limit
-        while (innerLimit > 0) {
+    // Мутабельный массив (читать можно, писать в элементы можно)
+    //val mutArr: mut Int[3] = [1, 2, 3]
+    // или так: val mutArr: [var Int; 3] = [1, 2, 3]
 
-            // Edge case 2: Сложное ветвление.
-            // Если i чётное и temp перешагнул локальный лимит ИЛИ result всё ещё 0
-            // Проверяем приоритеты операторов и генерацию цепочек JMP_IF_NOT
-            if (temp > innerLimit) {
-                result = result + temp
-            } else {
-                result = result - 1
-            }
-
-            innerLimit = innerLimit - 1
-        }
-
-        // Edge case 3: Переиспользование имени 'temp', но уже в другом типе/контексте
-        // (если твой язык позволяет переобъявлять в разных блоках, или просто присваиваем)
-        temp = result + i
-        if (temp > 100) {
-            return result
-        }
-
-        i = i + 1
-    }
-
-    return result
-}
-
-fun main(): Unit {
-    var res: Int = complexShock(5, 2)
-    println("Result is: " + intToString(res))
+    //mutArr[0] = 5 // РАБОТАЕТ!
 }

@@ -18,6 +18,7 @@ import org.nnezh.ast.IntLiteralExpressionNode
 import org.nnezh.ast.ProgramASTNode
 import org.nnezh.ast.ReturnFunctionStatementASTNode
 import org.nnezh.ast.StatementASTNode
+import org.nnezh.ast.StaticArrayInitializationExpressionsList
 import org.nnezh.ast.StringLiteralExpressionNode
 import org.nnezh.ast.UnaryExpressionASTNode
 import org.nnezh.ast.VariableExpressionNode
@@ -47,6 +48,7 @@ abstract class SemanticSubAnalyzer {
             is ReturnFunctionStatementASTNode -> analyzeReturnFunctionStatementASTNode(root)
             is VariableInitializationASTNode -> analyzeVariableInitializationASTNode(root)
             is WhileStatementASTNode -> analyzeWhileStatementASTNode(root)
+            is StaticArrayInitializationExpressionsList -> TODO()
         }
     }
 
@@ -69,6 +71,7 @@ abstract class SemanticSubAnalyzer {
         is StringLiteralExpressionNode -> analyzeStringLiteralExpressionNode(node)
         is UnaryExpressionASTNode -> analyzeUnaryExpressionASTNode(node)
         is VariableExpressionNode -> analyzeVariableExpressionNode(node)
+        is StaticArrayInitializationExpressionsList -> TODO()
     }
 
     abstract fun analyzeProgramASTNode(node: ProgramASTNode): List<SemanticError>

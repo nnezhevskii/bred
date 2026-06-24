@@ -147,6 +147,8 @@ class Lexer(private val source: String) {
             '%' -> Token.Operator.Percent(start)
             '(' -> Token.Punctuation.LParen(start)
             ')' -> Token.Punctuation.RParen(start)
+            '[' -> Token.Punctuation.LBracket(start)
+            ']' -> Token.Punctuation.RBracket(start)
             '{' -> Token.Punctuation.LBrace(start)
             '}' -> Token.Punctuation.RBrace(start)
             ',' -> Token.Punctuation.Comma(start)
