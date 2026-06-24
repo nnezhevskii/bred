@@ -2,15 +2,12 @@ func complexShock:
   GET_PARAM n:Int
   GET_PARAM limit:Int
   ASSIGN i:Int 1:Int
-  ASSIGN i:Int i:Int
   ASSIGN result:Int 0:Int
-  ASSIGN result:Int result:Int
 lbl1:
   LE var1:Boolean i:Int n:Int
   JMP_IF_NOT lbl2 var1:Boolean
   ASSIGN var5:Int 2:Int
   MUL temp:Int i:Int var5:Int
-  ASSIGN temp:Int temp:Int
   ASSIGN innerLimit:Int limit:Int
 lbl3:
   ASSIGN var8:Int 0:Int
@@ -19,20 +16,16 @@ lbl3:
   GT var9:Boolean temp:Int innerLimit:Int
   JMP_IF_NOT lbl5 var9:Boolean
   ADD result:Int result:Int temp:Int
-  ASSIGN result:Int result:Int
   JMP lbl6
 lbl5:
   ASSIGN var15:Int 1:Int
   SUB result:Int result:Int var15:Int
-  ASSIGN result:Int result:Int
 lbl6:
   ASSIGN var17:Int 1:Int
   SUB innerLimit:Int innerLimit:Int var17:Int
-  ASSIGN innerLimit:Int innerLimit:Int
   JMP lbl3
 lbl4:
   ADD temp:Int result:Int i:Int
-  ASSIGN temp:Int temp:Int
   ASSIGN var22:Int 100:Int
   GT var20:Boolean temp:Int var22:Int
   JMP_IF_NOT lbl7 var20:Boolean
@@ -40,7 +33,6 @@ lbl4:
 lbl7:
   ASSIGN var25:Int 1:Int
   ADD i:Int i:Int var25:Int
-  ASSIGN i:Int i:Int
   JMP lbl1
 lbl2:
   RET result:Int
@@ -50,7 +42,6 @@ func main:
   PARAM var27:Int
   PARAM var28:Int
   CALL res:Int complexShock:Int 2:Int
-  ASSIGN res:Int res:Int
   ASSIGN var30:String Result is: :String
   PARAM res:Int
   CALL var31:String intToString:String 1:Int

@@ -26,7 +26,6 @@ lbl2:
   RET var13:Int
 func main:
   ASSIGN num:Int 5:Int
-  ASSIGN num:Int num:Int
   PARAM num:Int
   CALL var18:Int isEven:Int 1:Int
   ASSIGN var20:Int 1:Int

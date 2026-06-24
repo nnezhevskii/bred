@@ -13,8 +13,8 @@ import java.nio.file.Paths
 class LLTAGSnapshotTester {
 
     @Test
-    fun testFactorial() {
-        listOf("factorial", "for", "sortThree", "isEven", "complexShock").forEach {
+    fun testFiles() {
+        listOf("factorial", "for", "sortThree", "isEven", "complexShock", "isPositive").forEach {
             compare(it)
         }
 

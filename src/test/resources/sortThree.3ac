@@ -6,7 +6,6 @@ func sortThree:
   ASSIGN y:Int b:Int
   ASSIGN z:Int c:Int
   ASSIGN temp:Int 0:Int
-  ASSIGN temp:Int temp:Int
   GT var1:Boolean x:Int y:Int
   JMP_IF_NOT lbl1 var1:Boolean
   ASSIGN temp:Int x:Int

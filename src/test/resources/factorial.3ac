@@ -1,23 +1,18 @@
 func factorial:
   GET_PARAM n:Int
   ASSIGN result:Int 1:Int
-  ASSIGN result:Int result:Int
   ASSIGN i:Int 1:Int
-  ASSIGN i:Int i:Int
 lbl1:
   LE var1:Boolean i:Int n:Int
   JMP_IF_NOT lbl2 var1:Boolean
   MUL result:Int result:Int i:Int
-  ASSIGN result:Int result:Int
   ASSIGN var7:Int 1:Int
   ADD i:Int i:Int var7:Int
-  ASSIGN i:Int i:Int
   JMP lbl1
 lbl2:
   RET result:Int
 func main:
   CALL x:Int readInt:Int 0:Int
-  ASSIGN x:Int x:Int
   ASSIGN var10:String factorial: :String
   PARAM x:Int
   CALL var12:Int factorial:Int 1:Int

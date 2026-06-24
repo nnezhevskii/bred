@@ -8,6 +8,7 @@ import org.nnezh.ast.DoubleLiteralExpressionNode
 import org.nnezh.ast.ExpressionASTNode
 import org.nnezh.ast.FunctionCallExpressionNode
 import org.nnezh.ast.IntLiteralExpressionNode
+import org.nnezh.ast.LiteralExpressionNode
 import org.nnezh.ast.StringLiteralExpressionNode
 import org.nnezh.ast.UnaryExpressionASTNode
 import org.nnezh.ast.UnaryOperator
@@ -55,6 +56,7 @@ class LLTACExpressionSubgenerator(
         expression: ExpressionASTNode): LLTACExpressionSubgeneratorResult {
         when (expression) {
             is BooleanLiteralExpressionNode -> {
+//                TODO()
                 val instructions: List<LLTACElement> = listOf(
                     LLTACElement.assign(variable!!, Type.BoolType, expression.value),
                 )
@@ -62,6 +64,7 @@ class LLTACExpressionSubgenerator(
             }
 
             is DoubleLiteralExpressionNode -> {
+//                TODO()
                 val instructions: List<LLTACElement> = listOf(
                     LLTACElement.assign(variable!!, type!!, expression.value),
                 )
@@ -74,13 +77,14 @@ class LLTACExpressionSubgenerator(
                     LLTACElement.assign(variable!!, type!!, expression.value),
                 )
                 return LLTACExpressionSubgeneratorResult(instructions, variable, Type.IntType)
-
+//                TODO()
             }
             is StringLiteralExpressionNode -> {
                 val instructions: List<LLTACElement> = listOf(
                     LLTACElement.assign(variable!!, type!!, expression.value),
                 )
                 return LLTACExpressionSubgeneratorResult(instructions, variable, Type.StringType)
+//                TODO()
             }
 
 

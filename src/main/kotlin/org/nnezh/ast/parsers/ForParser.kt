@@ -7,6 +7,7 @@ import org.nnezh.ast.BinaryOperator
 import org.nnezh.ast.BlockASTNode
 import org.nnezh.ast.ExpressionASTNode
 import org.nnezh.ast.ForStatementASTNode
+import org.nnezh.ast.ImmutableVariableInitializationASTNode
 import org.nnezh.ast.IntLiteralExpressionNode
 import org.nnezh.ast.LocatedBinaryOperator
 import org.nnezh.ast.MutableVariableInitializationASTNode
@@ -35,13 +36,17 @@ class ForParser(
         val innerBlockStatements = parseWith(blockParser.value, context).statements
         val syntheticOpPosition = toKeyword.position
         val counter = MutableVariableInitializationASTNode(counterName.lexeme, Type.IntType, initialValue)
+        val toVariableName = "\$right_border${counterName.lexeme}"
+        val rightBorderInit = ImmutableVariableInitializationASTNode(toVariableName, Type.IntType, finalValue)
+        val limitToken = Token.Identifier(toVariableName, syntheticOpPosition)
         val desugared = listOf(
             counter,
+            rightBorderInit,
             WhileStatementASTNode(
                 BinaryExpressionASTNode(
                     VariableExpressionNode(counterName),
                     LocatedBinaryOperator(BinaryOperator.Le, syntheticOpPosition),
-                    finalValue,
+                    VariableExpressionNode(limitToken),
                 ),
                 bodyBlock = BlockASTNode(
                     innerBlockStatements +

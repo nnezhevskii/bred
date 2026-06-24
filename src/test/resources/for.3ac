@@ -1,17 +1,13 @@
 func main:
   ASSIGN sum:Int 0:Int
-  ASSIGN sum:Int sum:Int
   ASSIGN i:Int 1:Int
-  ASSIGN i:Int i:Int
+  ASSIGN $right_borderi:Int 5:Int
 lbl1:
-  ASSIGN var3:Int 5:Int
-  LE var1:Boolean i:Int var3:Int
+  LE var1:Boolean i:Int $right_borderi:Int
   JMP_IF_NOT lbl2 var1:Boolean
   ADD sum:Int sum:Int i:Int
-  ASSIGN sum:Int sum:Int
   ASSIGN var7:Int 1:Int
   ADD i:Int i:Int var7:Int
-  ASSIGN i:Int i:Int
   JMP lbl1
 lbl2:
   PARAM sum:Int

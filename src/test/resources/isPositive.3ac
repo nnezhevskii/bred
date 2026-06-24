@@ -1,0 +1,30 @@
+func isPositive:
+  GET_PARAM x:Int
+  ASSIGN var3:Int 0:Int
+  GT var1:Boolean x:Int var3:Int
+  JMP_IF_NOT lbl1 var1:Boolean
+  ASSIGN var4:String positive:String
+  RET var4:String
+  JMP lbl2
+lbl1:
+  ASSIGN var7:Int 0:Int
+  LT var5:Boolean x:Int var7:Int
+  JMP_IF_NOT lbl3 var5:Boolean
+  ASSIGN var8:String negative:String
+  RET var8:String
+  JMP lbl4
+lbl3:
+  ASSIGN var9:String zero:String
+  RET var9:String
+lbl4:
+lbl2:
+  RET Unit
+func main:
+  CALL x:Int readInt:Int 0:Int
+  ASSIGN var11:String number: :String
+  PARAM x:Int
+  CALL var12:String isPositive:String 1:Int
+  ADD var10:String var11:String var12:String
+  PARAM var10:String
+  CALL  println:Unit 1:Int
+  RET Unit
