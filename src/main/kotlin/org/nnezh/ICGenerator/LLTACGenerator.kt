@@ -70,16 +70,17 @@ class LLTACGenerator(
             }
 
             is AssignmentStatementASTNode -> {
-                val varName = node.name
-                val varType = typeTable.get(node.value)!!
+                TODO()
+//                val varName = node.name
+//                val varType = typeTable.get(node.value)!!
 
-                val res = expressionLLTACGenerator.buildInstructionsForExpression(varName, varType, node.value)
-                instructions.addAll(res.instructions)
-                if (varName != res.finalVariable) {
-                    res.finalVariable?.let{
-                        instructions.add(LLTACElement.assignVariable(varName, varType, it))
-                    }
-                }
+//                val res = expressionLLTACGenerator.buildInstructionsForExpression(varName, varType, node.value)
+//                instructions.addAll(res.instructions)
+//                if (varName != res.finalVariable) {
+//                    res.finalVariable?.let{
+//                        instructions.add(LLTACElement.assignVariable(varName, varType, it))
+//                    }
+//                }
             }
             is CallFunctionStatementASTNode -> {
                 val res = expressionLLTACGenerator.buildInstructionsForExpression(

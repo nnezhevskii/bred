@@ -109,8 +109,9 @@ class AbstractSyntaxTreeDrawer {
             is EmptyNode -> acc.add("${indent}<Empty>")
             is AssignmentStatementASTNode -> {
                 acc.add("${shift}Assign")
-                acc.add("${shift + indent}${node.name}")
-                acc.addAll(recursive(node.value, shift + indent.repeat(1)))
+                TODO()
+//                acc.add("${shift + indent}${node.name}")
+//                acc.addAll(recursive(node.value, shift + indent.repeat(1)))
             }
 
             is IfStatementASTNode -> {

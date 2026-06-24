@@ -72,8 +72,8 @@ data class MutableVariableInitializationASTNode(
 }
 
 data class AssignmentStatementASTNode(
-    val name: String,
-    val value: ExpressionASTNode
+    val lValue: ExpressionASTNode,
+    val rValue: ExpressionASTNode
 ) : StatementASTNode
 
 data class IfStatementASTNode(

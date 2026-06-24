@@ -124,7 +124,8 @@ class FunctionSubAnalyzer: SemanticSubAnalyzer() {
     override fun analyzeAssignmentStatementASTNode(node: AssignmentStatementASTNode): List<SemanticError> {
         val result = mutableListOf<SemanticError>()
 
-        result.addAll(routeExpressionHandling(node.value))
+        result.addAll(routeExpressionHandling(node.lValue))
+        result.addAll(routeExpressionHandling(node.rValue))
 
         return result
     }

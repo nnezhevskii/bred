@@ -13,13 +13,14 @@ class AssignParser(
     private val expressionParser: Parser<ExpressionASTNode>,
 ) : Parser<AssignmentStatementASTNode> {
     override fun Raise<ASTError>.parse(context: TokensContext): AssignmentStatementASTNode {
-        val variableName: String =
-            (match<Token.Identifier>(context.consumeToken()) { token ->
-                AstErrorFactory.buildError(
-                    "variable name",
-                    token
-                )
-            }).lexeme
+        val lValue = parseWith(expressionParser, context)
+//        val variableName: String =
+//            (match<Token.Identifier>(context.consumeToken()) { token ->
+//                AstErrorFactory.buildError(
+//                    "variable name",
+//                    token
+//                )
+//            }).lexeme
         match<Token.Operator.Assign>(context.consumeToken()) { token ->
             AstErrorFactory.buildError(
                 "assignation",
@@ -27,8 +28,8 @@ class AssignParser(
             )
         }
 
-        val value: ExpressionASTNode = parseWith(expressionParser, context)
+        val rValue: ExpressionASTNode = parseWith(expressionParser, context)
 
-        return AssignmentStatementASTNode(variableName, value)
+        return AssignmentStatementASTNode(lValue, rValue)
     }
 }

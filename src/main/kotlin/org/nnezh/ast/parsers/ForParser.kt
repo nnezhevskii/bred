@@ -35,25 +35,26 @@ class ForParser(
         match<Token.Punctuation.RParen>(context.consumeToken()) { buildError(")", it) }
         val innerBlockStatements = parseWith(blockParser.value, context).statements
         val syntheticOpPosition = toKeyword.position
-        val counter = MutableVariableInitializationASTNode(counterName.lexeme, Type.IntType, initialValue)
+        val counterInit = MutableVariableInitializationASTNode(counterName.lexeme, Type.IntType, initialValue)
         val toVariableName = "\$right_border${counterName.lexeme}"
         val rightBorderInit = ImmutableVariableInitializationASTNode(toVariableName, Type.IntType, finalValue)
         val limitToken = Token.Identifier(toVariableName, syntheticOpPosition)
+        val counter = VariableExpressionNode(counterName)
         val desugared = listOf(
-            counter,
+            counterInit,
             rightBorderInit,
             WhileStatementASTNode(
                 BinaryExpressionASTNode(
-                    VariableExpressionNode(counterName),
+                    counter,
                     LocatedBinaryOperator(BinaryOperator.Le, syntheticOpPosition),
                     VariableExpressionNode(limitToken),
                 ),
                 bodyBlock = BlockASTNode(
                     innerBlockStatements +
                             AssignmentStatementASTNode(
-                                counterName.lexeme,
+                                counter,
                                 BinaryExpressionASTNode(
-                                    VariableExpressionNode(counterName),
+                                    counter,
                                     LocatedBinaryOperator(BinaryOperator.Plus, syntheticOpPosition),
                                     IntLiteralExpressionNode(1)
                                 )
