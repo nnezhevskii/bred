@@ -2,6 +2,8 @@ package org.nnezh.org.nnezh.semantic
 
 import com.sun.org.apache.xpath.internal.operations.Variable
 import org.nnezh.ast.ProgramASTNode
+import org.nnezh.org.nnezh.semantic.analyzers.ASTNodeTypeTable
+import org.nnezh.org.nnezh.semantic.analyzers.FunctionRegistry
 import org.nnezh.org.nnezh.semantic.analyzers.FunctionSubAnalyzer
 import org.nnezh.org.nnezh.semantic.analyzers.SemanticControlFlowAnalyzer
 import org.nnezh.org.nnezh.semantic.analyzers.TypeChecker
@@ -15,6 +17,9 @@ class SemanticAnalyzer {
 //        VariableScopeSubAnalyzer(),
 //        FunctionSubAnalyzer()
 //    )
+    //    val
+    lateinit var typeTable: ASTNodeTypeTable
+    lateinit var functionRegistry: FunctionRegistry
 
     operator fun invoke(program: ProgramASTNode): List<SemanticError> {
         val res = VariableScopeSubAnalyzer().analyzeProgramASTNode(program).toMutableList()
@@ -27,10 +32,12 @@ class SemanticAnalyzer {
         if (res.any { it.isCriticalError }) {
             return res
         }
+        functionRegistry = functionSubAnalyzer.registry
         val typeChecker = TypeChecker(
             functionRegistry = functionSubAnalyzer.registry,
             typeValidator = TypeValidator()
         )
+        typeTable = typeChecker.typeScope.typeTable
         res.addAll(typeChecker.analyzeProgramASTNode(program))
         if (res.any { it.isCriticalError }) {
             return res

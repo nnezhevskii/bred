@@ -6,7 +6,9 @@ import org.nnezh.lexer.readSource
 import arrow.core.raise.either
 import org.nnezh.ast.AbstractSyntaxTreeBuilder
 import org.nnezh.ast.ProgramASTNode
+import org.nnezh.org.nnezh.ICGenerator.LLTACElement
 import org.nnezh.org.nnezh.ICGenerator.LLTACGenerator
+import org.nnezh.org.nnezh.ICGenerator.LLTACLabel
 import org.nnezh.org.nnezh.ast.AbstractSyntaxTreeExpressionParser
 import org.nnezh.org.nnezh.semantic.SemanticAnalyzer
 import org.nnezh.org.nnezh.semantic.analyzers.FunctionSubAnalyzer
@@ -34,8 +36,13 @@ fun main(args: Array<String>) {
 
         val ast = AbstractSyntaxTreeBuilder(AbstractSyntaxTreeExpressionParser()).build(tokens).bind()
 
-        SemanticAnalyzer()(ast as ProgramASTNode).joinToString("\n").ifEmpty { "<NoErrors>" }
-        val tacGenerator = LLTACGenerator()
+        val semanticAnalyzer = SemanticAnalyzer()
+        val res = semanticAnalyzer(ast as ProgramASTNode)
+        res.joinToString("\n").ifEmpty { "<NoErrors>" }
+        val tacGenerator = LLTACGenerator(
+            typeTable = semanticAnalyzer.typeTable,
+            functionRegistry = semanticAnalyzer.functionRegistry
+            )
         tacGenerator.build(ast)
     }
     /*
@@ -51,6 +58,19 @@ fun main(args: Array<String>) {
 
     result.fold(
         ifLeft = { System.err.println(it) },
-        ifRight = { println(it) }
+        ifRight = { println(program3ac(it)) }
     )
 }
+
+fun program3ac(list: List<LLTACElement>): String {
+    val stringBuilder = StringBuilder()
+    list.forEach { element ->
+        if (element is LLTACLabel) {
+            stringBuilder.append("$element").append("\n")
+        } else {
+            stringBuilder.append("  $element").append("\n")
+        }
+    }
+    return stringBuilder.toString()
+}
+

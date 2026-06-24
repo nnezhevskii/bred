@@ -1,3 +1,8 @@
-fun main(): Unit {
+fun neg(a: Int): Int {
+    return -a
+}
+
+fun main(a: Int): Unit {
+    var b: Int = neg(a)
 
 }
