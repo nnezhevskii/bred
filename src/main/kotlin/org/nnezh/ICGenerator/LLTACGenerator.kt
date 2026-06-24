@@ -1,5 +1,6 @@
 package org.nnezh.org.nnezh.ICGenerator
 
+import arrow.core.flatMap
 import org.nnezh.ast.ASTNode
 import org.nnezh.ast.AssignmentStatementASTNode
 import org.nnezh.ast.BinaryExpressionASTNode
@@ -65,9 +66,11 @@ class LLTACGenerator(
                 val varName = node.name
                 val varType = typeTable.get(node.value)!!
 
-                instructions.addAll(
-                    expressionLLTACGenerator.buildInstructionsForExpression(varName, varType, node.value).instructions
-                )
+                val res = expressionLLTACGenerator.buildInstructionsForExpression(varName, varType, node.value)
+                instructions.addAll(res.instructions)
+                res.finalVariable?.let{
+                    instructions.add(LLTACElement.assignVariable(varName, varType, it))
+                }
 
 
             }
@@ -79,14 +82,33 @@ class LLTACGenerator(
                 ).instructions
                 instructions.addAll(res)
             }
-            is ForStatementASTNode -> TODO()
+            is ForStatementASTNode -> {
+                instructions.addAll(visit(node.desugaredContent))
+            }
             is IfStatementASTNode -> {
                 val condVal = nameEmitter.nextVar()
 
-                val instructionSet = expressionLLTACGenerator
+                instructions.addAll(expressionLLTACGenerator
                     .buildInstructionsForExpression(condVal, Type.BoolType, node.condition)
-                LLTACElement.jumpIfNot(
+                    .instructions)
 
+                val ifNotLabel = LLTACElement.label(nameEmitter.nextLbl()) as LLTACLabel
+                instructions.add(LLTACElement.jumpIfNot(ifNotLabel, condVal))
+                val then = visit(node.thenBlock)
+                instructions.addAll(then)
+
+                node.elseBlock.fold(
+                    ifLeft = {
+                        val label = nameEmitter.nextLbl()
+                        val endOfThenLabel = LLTACElement.label(label) as LLTACLabel
+                        instructions.add(LLTACElement.jump(endOfThenLabel))
+                        instructions.add(ifNotLabel)
+                        instructions.addAll(visit(it))
+                        instructions.add(endOfThenLabel)
+                    },
+                    ifRight = {
+                        instructions.add(ifNotLabel)
+                    }
                 )
 
 
@@ -112,9 +134,30 @@ class LLTACGenerator(
                     node.variableType,
                     node.valExpression)
                 instructions.addAll(res.instructions)
+                instructions.add(
+                    LLTACElement.assignVariable(node.variableName, node.variableType, res.finalVariable!!)
+                )
 
             }
-            is WhileStatementASTNode -> TODO()
+            is WhileStatementASTNode -> {
+                val beginOfWhile = LLTACElement.label(nameEmitter.nextLbl()) as LLTACLabel
+                instructions.add(beginOfWhile)
+                val condVal = nameEmitter.nextVar()
+//                nameEmitter.nextLbl().also {
+//                    instructions.add(LLTACElement.label(it))
+//                }
+                instructions.addAll(expressionLLTACGenerator
+                    .buildInstructionsForExpression(condVal, Type.BoolType, node.condition)
+                    .instructions
+                )
+                val ifNotLabel = LLTACElement.label(nameEmitter.nextLbl()) as LLTACLabel
+                instructions.add(LLTACElement.jumpIfNot(ifNotLabel, condVal))
+
+                instructions.addAll(visit(node.bodyBlock))
+                instructions.add(LLTACElement.jump(beginOfWhile))
+                instructions.add(ifNotLabel)
+
+            }
 
             is EmptyNode -> {}
             is FunctionArgumentASTNode -> {}

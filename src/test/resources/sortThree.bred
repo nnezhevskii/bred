@@ -1,0 +1,29 @@
+fun sortThree(a: Int, b: Int, c: Int): Unit {
+    var x: Int = a
+    var y: Int = b
+    var z: Int = c
+    var temp: Int = 0
+
+    // Имитируем проход сортировки
+    if (x > y) {
+        temp = x
+        x = y
+        y = temp
+    }
+    if (y > z) {
+        temp = y
+        y = z
+        z = temp
+    }
+    if (x > y) {
+        temp = x
+        x = y
+        y = temp
+    }
+
+    println(intToString(x) + " " + intToString(y) + " " + intToString(z))
+}
+
+fun main(): Unit {
+    sortThree(3, 1, 2)
+}

@@ -31,7 +31,7 @@ class LLTACExpressionSubgenerator(
 
     val binaryOperatorToTACCommand = mapOf<BinaryOperator, LLTACOperation>(
         BinaryOperator.Plus to LLTACOperation.LLTAC_ADD,
-        BinaryOperator.Minus to LLTACOperation.LLTAC_ADD,
+        BinaryOperator.Minus to LLTACOperation.LLTAC_SUB,
         BinaryOperator.Star to LLTACOperation.LLTAC_MUL,
         BinaryOperator.Slash to LLTACOperation.LLTAC_DIV,
         BinaryOperator.Percent to LLTACOperation.LLTAC_MOD,

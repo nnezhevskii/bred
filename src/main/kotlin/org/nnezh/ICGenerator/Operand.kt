@@ -52,7 +52,7 @@ sealed class Operand {
     ): Operand() {
         override val type: Type
             get() = Type.UnitType
-        override fun toString() = "${label.name}:"
+        override fun toString() = "${label.name}"
     }
 
 }

@@ -69,4 +69,8 @@ enum class LLTACOperation {
         override fun toString() = "JMP_IF_NOT"
     },
 
+    LLTAC_JMP {
+        override fun toString() = "JMP"
+    },
+
 }

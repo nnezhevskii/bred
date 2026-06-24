@@ -8,6 +8,9 @@ import org.nnezh.org.nnezh.base.Type
 sealed interface LLTACElement {
     companion object {
         fun function(name: String): LLTACElement {
+            return LLTACFunc(name)
+        }
+        fun label(name: String): LLTACElement {
             return LLTACLabel(name)
         }
         fun getParam(name: String, type: Type): LLTACElement {
@@ -29,6 +32,13 @@ sealed interface LLTACElement {
                 opcode = LLTACOperation.LLTAC_JMP_IF_NOT,
                 destination = Operand.Label(label),
                 arg1 = Operand.Variable(cond, Type.BoolType)
+            )
+        }
+
+        fun jump(label: LLTACLabel): LLTACElement {
+            return LLTACInstruction(
+                opcode = LLTACOperation.LLTAC_JMP,
+                destination = Operand.Label(label)
             )
         }
 
@@ -152,7 +162,10 @@ data class LLTACRetInstruction(
 
 }
 
+data class LLTACFunc(val name: String): LLTACElement {
+    override fun toString() = "func $name"
+}
 
 data class LLTACLabel(val name: String): LLTACElement {
-    override fun toString() = "func $name:"
+    override fun toString() = "$name"
 }

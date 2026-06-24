@@ -1,0 +1,44 @@
+func isEven:
+  GET_PARAM n:Int
+  ASSIGN var3:Int 0:Int
+  EQ var1:Boolean n:Int var3:Int
+  JMP_IF_NOT lbl1 var1:Boolean
+  ASSIGN var4:Int 1:Int
+  RET var4:Int
+lbl1:
+  ASSIGN var8:Int 1:Int
+  SUB var6:Int n:Int var8:Int
+  PARAM var6:Int
+  CALL var5:Int isOdd:Int 1:Int
+  RET var5:Int
+func isOdd:
+  GET_PARAM n:Int
+  ASSIGN var11:Int 0:Int
+  EQ var9:Boolean n:Int var11:Int
+  JMP_IF_NOT lbl2 var9:Boolean
+  ASSIGN var12:Int 0:Int
+  RET var12:Int
+lbl2:
+  ASSIGN var16:Int 1:Int
+  SUB var14:Int n:Int var16:Int
+  PARAM var14:Int
+  CALL var13:Int isEven:Int 1:Int
+  RET var13:Int
+func main:
+  ASSIGN num:Int 5:Int
+  ASSIGN num:Int num:Int
+  PARAM num:Int
+  CALL var18:Int isEven:Int 1:Int
+  ASSIGN var20:Int 1:Int
+  EQ var17:Boolean var18:Int var20:Int
+  JMP_IF_NOT lbl3 var17:Boolean
+  ASSIGN var21:String Even:String
+  PARAM var21:String
+  CALL  println:Unit 1:Int
+  JMP lbl4
+lbl3:
+  ASSIGN var22:String Odd:String
+  PARAM var22:String
+  CALL  println:Unit 1:Int
+lbl4:
+  RET Unit

@@ -1,0 +1,51 @@
+func sortThree:
+  GET_PARAM a:Int
+  GET_PARAM b:Int
+  GET_PARAM c:Int
+  ASSIGN x:Int a:Int
+  ASSIGN y:Int b:Int
+  ASSIGN z:Int c:Int
+  ASSIGN temp:Int 0:Int
+  ASSIGN temp:Int temp:Int
+  GT var1:Boolean x:Int y:Int
+  JMP_IF_NOT lbl1 var1:Boolean
+  ASSIGN temp:Int x:Int
+  ASSIGN x:Int y:Int
+  ASSIGN y:Int temp:Int
+lbl1:
+  GT var4:Boolean y:Int z:Int
+  JMP_IF_NOT lbl2 var4:Boolean
+  ASSIGN temp:Int y:Int
+  ASSIGN y:Int z:Int
+  ASSIGN z:Int temp:Int
+lbl2:
+  GT var7:Boolean x:Int y:Int
+  JMP_IF_NOT lbl3 var7:Boolean
+  ASSIGN temp:Int x:Int
+  ASSIGN x:Int y:Int
+  ASSIGN y:Int temp:Int
+lbl3:
+  PARAM x:Int
+  CALL var14:String intToString:String 1:Int
+  ASSIGN var16:String  :String
+  ADD var13:String var14:String var16:String
+  PARAM y:Int
+  CALL var17:String intToString:String 1:Int
+  ADD var12:String var13:String var17:String
+  ASSIGN var19:String  :String
+  ADD var11:String var12:String var19:String
+  PARAM z:Int
+  CALL var20:String intToString:String 1:Int
+  ADD var10:String var11:String var20:String
+  PARAM var10:String
+  CALL  println:Unit 1:Int
+  RET Unit
+func main:
+  ASSIGN var22:Int 3:Int
+  ASSIGN var23:Int 1:Int
+  ASSIGN var24:Int 2:Int
+  PARAM var22:Int
+  PARAM var23:Int
+  PARAM var24:Int
+  CALL  sortThree:Unit 3:Int
+  RET Unit

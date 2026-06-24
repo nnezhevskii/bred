@@ -7,12 +7,15 @@ import arrow.core.raise.either
 import org.nnezh.ast.AbstractSyntaxTreeBuilder
 import org.nnezh.ast.ProgramASTNode
 import org.nnezh.org.nnezh.ICGenerator.LLTACElement
+import org.nnezh.org.nnezh.ICGenerator.LLTACFunc
 import org.nnezh.org.nnezh.ICGenerator.LLTACGenerator
 import org.nnezh.org.nnezh.ICGenerator.LLTACLabel
+import org.nnezh.org.nnezh.ICGenerator.PrettyPrinter
 import org.nnezh.org.nnezh.ast.AbstractSyntaxTreeExpressionParser
 import org.nnezh.org.nnezh.semantic.SemanticAnalyzer
 import org.nnezh.org.nnezh.semantic.analyzers.FunctionSubAnalyzer
 import org.nnezh.org.nnezh.semantic.analyzers.VariableScopeSubAnalyzer
+import org.nnezh.org.nnezh.semantic.generic.SemanticError
 import kotlin.random.Random
 
 
@@ -39,11 +42,16 @@ fun main(args: Array<String>) {
         val semanticAnalyzer = SemanticAnalyzer()
         val res = semanticAnalyzer(ast as ProgramASTNode)
         res.joinToString("\n").ifEmpty { "<NoErrors>" }
-        val tacGenerator = LLTACGenerator(
-            typeTable = semanticAnalyzer.typeTable,
-            functionRegistry = semanticAnalyzer.functionRegistry
+        if (res.any { it.isCriticalError }) {
+            res.joinToString("\n")
+        } else {
+            val tacGenerator = LLTACGenerator(
+                typeTable = semanticAnalyzer.typeTable,
+                functionRegistry = semanticAnalyzer.functionRegistry
             )
-        tacGenerator.build(ast)
+            PrettyPrinter().format (tacGenerator.build(ast)).joinToString("\n")
+        }
+
     }
     /*
     TODO: был найден баг по тайпчекингу ретурна. Нужно дописать тесты
@@ -58,19 +66,6 @@ fun main(args: Array<String>) {
 
     result.fold(
         ifLeft = { System.err.println(it) },
-        ifRight = { println(program3ac(it)) }
+        ifRight = { println(it) }
     )
 }
-
-fun program3ac(list: List<LLTACElement>): String {
-    val stringBuilder = StringBuilder()
-    list.forEach { element ->
-        if (element is LLTACLabel) {
-            stringBuilder.append("$element").append("\n")
-        } else {
-            stringBuilder.append("  $element").append("\n")
-        }
-    }
-    return stringBuilder.toString()
-}
-

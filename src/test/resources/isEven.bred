@@ -1,0 +1,22 @@
+fun isEven(n: Int): Int {
+    if (n == 0) {
+        return 1 // true
+    }
+    return isOdd(n - 1)
+}
+
+fun isOdd(n: Int): Int {
+    if (n == 0) {
+        return 0 // false
+    }
+    return isEven(n - 1)
+}
+
+fun main(): Unit {
+    var num: Int = 5
+    if (isEven(num) == 1) {
+        println("Even")
+    } else {
+        println("Odd")
+    }
+}
