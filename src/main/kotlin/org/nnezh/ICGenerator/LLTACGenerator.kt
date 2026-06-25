@@ -81,7 +81,9 @@ class LLTACGenerator(
 
                         val index = expressionLLTACGenerator.buildInstructionsForExpression(indexName, Type.IntType, node.lValue.index)
                         instructions.addAll(index.instructions)
-                        instructions.add(LLTACElement.assignVariable(indexName, Type.IntType, index.finalVariable!!))
+                        if (indexName != index.finalVariable!!) {
+                            instructions.add(LLTACElement.assignVariable(indexName, Type.IntType, index.finalVariable))
+                        }
 
                         val rightValueName = nameEmitter.nextVar()
                         val rightValue = expressionLLTACGenerator.buildInstructionsForExpression(rightValueName, typeTable.get(node.rValue)!!, node.rValue)
