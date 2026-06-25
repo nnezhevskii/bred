@@ -20,7 +20,7 @@ class TACCompiler {
         val semanticAnalyzer = SemanticAnalyzer().also { analyzer ->
             val errors = analyzer.invoke(ast as ProgramASTNode)
             if (errors.any { it.isCriticalError }) {
-                error("unexpected parse error: $errors")
+                error("semantic analysis failed: $errors")
             }
         }
         val tacGenerator = LLTACGenerator(

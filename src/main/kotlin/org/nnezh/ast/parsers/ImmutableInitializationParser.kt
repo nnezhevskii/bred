@@ -31,20 +31,22 @@ class ImmutableInitializationParser(
             match<Token.Punctuation.RBracket>(context.consumeToken()) { token -> buildError("]", token) }
             if (context.top() is Token.Operator.Assign) {
                 match<Token.Operator.Assign>(context.consumeToken()) { token -> buildError("assignation", token) }
-                val value: StaticArrayInitializationExpressionsListNode = parseWith(expressionParser, context) as StaticArrayInitializationExpressionsListNode
+                val parsed = parseWith(expressionParser, context)
+                val value = parsed as? StaticArrayInitializationExpressionsListNode
+                    ?: raise(buildError("array initialization list", context.top()))
 
                 return StaticArrayExpressionNode(
                     variableName = valName.lexeme,
                     variableType = Type.StaticArrayType(parseType(type)),
                     size = size.value.toInt(),
-                    isMutable = true, // TOOO: не совсем правда
+                    isMutable = false,
                     value)
             } else {
                 return StaticArrayExpressionNode(
                     variableName = valName.lexeme,
                     variableType = Type.StaticArrayType(parseType(type)),
                     size = size.value.toInt(),
-                    isMutable = true, // TOOO: не совсем правда
+                    isMutable = false,
                     valExpression = null)
             }
 

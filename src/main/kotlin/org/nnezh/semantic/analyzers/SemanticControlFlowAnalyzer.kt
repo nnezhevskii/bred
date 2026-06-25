@@ -19,20 +19,12 @@ import org.nnezh.ast.IntLiteralExpressionNode
 import org.nnezh.ast.ProgramASTNode
 import org.nnezh.ast.ReturnFunctionStatementASTNode
 import org.nnezh.ast.StatementASTNode
-import org.nnezh.ast.StringLiteralExpressionNode
-import org.nnezh.ast.UnaryExpressionASTNode
-import org.nnezh.ast.VariableExpressionNode
 import org.nnezh.ast.VariableInitializationASTNode
 import org.nnezh.ast.WhileStatementASTNode
-import org.nnezh.org.nnezh.ast.AstErrorFactory
 import org.nnezh.org.nnezh.base.Type
-import org.nnezh.org.nnezh.semantic.SemanticAnalyzer
 import org.nnezh.org.nnezh.semantic.generic.SemanticError
 import org.nnezh.org.nnezh.semantic.generic.SemanticErrorType
-import org.nnezh.org.nnezh.semantic.generic.SemanticSubAnalyzer
 import java.util.Collections.singletonList
-import javax.naming.ldap.Control
-import kotlin.compareTo
 
 class SemanticControlFlowAnalyzer(private val functionRegistry: FunctionRegistry) {
     fun analyzeProgramASTNode(node: ProgramASTNode): List<SemanticError> {

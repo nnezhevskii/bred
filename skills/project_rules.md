@@ -29,9 +29,10 @@ Important:
 * Tests must be based on documented behavior and intended logic.
 * If implementation behavior conflicts with `docs/grammar.md`, stop and report the mismatch.
 * Do not silently rewrite expectations to match actual broken behavior.
+* For documented features (e.g. static arrays in `docs/grammar.md`), tests and grammar take precedence over buggy production until explicitly fixed.
 
 When uncertain:
 
 * Do not invent language behavior.
-* Add the uncertainty to `TODO.md`.
+* Add the uncertainty to `docs/TODO.md`.
 * Ask the user for a decision.

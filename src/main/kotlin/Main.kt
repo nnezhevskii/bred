@@ -6,17 +6,10 @@ import org.nnezh.lexer.readSource
 import arrow.core.raise.either
 import org.nnezh.ast.AbstractSyntaxTreeBuilder
 import org.nnezh.ast.ProgramASTNode
-import org.nnezh.org.nnezh.ICGenerator.LLTACElement
-import org.nnezh.org.nnezh.ICGenerator.LLTACFunc
 import org.nnezh.org.nnezh.ICGenerator.LLTACGenerator
-import org.nnezh.org.nnezh.ICGenerator.LLTACLabel
 import org.nnezh.org.nnezh.ICGenerator.PrettyPrinter
 import org.nnezh.org.nnezh.ast.AbstractSyntaxTreeExpressionParser
 import org.nnezh.org.nnezh.semantic.SemanticAnalyzer
-import org.nnezh.org.nnezh.semantic.analyzers.FunctionSubAnalyzer
-import org.nnezh.org.nnezh.semantic.analyzers.VariableScopeSubAnalyzer
-import org.nnezh.org.nnezh.semantic.generic.SemanticError
-import kotlin.random.Random
 
 
 

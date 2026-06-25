@@ -30,8 +30,6 @@ import org.nnezh.org.nnezh.semantic.generic.SemanticError
 import org.nnezh.org.nnezh.semantic.generic.SemanticErrorType
 import org.nnezh.org.nnezh.semantic.generic.SemanticSubAnalyzer
 import java.util.Collections.singletonList
-import java.util.IdentityHashMap
-import kotlin.collections.fold
 
 data class Scope(
     val variablesTable: MutableMap<String, VariableDeclaration>,
@@ -168,6 +166,7 @@ class VariableScopeSubAnalyzer: SemanticSubAnalyzer() {
             }
             is ArrayAccessExpressionASTNode -> {
                 variable = scope.lookUp(node.lValue.array)
+                listOfErrors.addAll(routeExpressionHandling(node.lValue.index))
             }
 
             else -> {
@@ -191,7 +190,7 @@ class VariableScopeSubAnalyzer: SemanticSubAnalyzer() {
 
             return listOfErrors
         }
-        if (!variable.first.isMutable) {
+        if (node.lValue is VariableExpressionNode && !variable.first.isMutable) {
             listOfErrors.add(
                 SemanticError.VariableScopeSemanticError(where = node,
                     errorType = SemanticErrorType.VARIABLE_CHANGING_IMMUTABLE,

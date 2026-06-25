@@ -220,7 +220,7 @@ class FunctionRegistry {
     fun getResultType(function: String, args: List<Type>): Type? {
         return functionsRegistry
             .get(function)
-            ?.firstOrNull { signature -> signature.args.size == args.size && signature.args.all { type -> type in args }  }
+            ?.firstOrNull { signature -> signature.args == args }
             ?.returnType
     }
 }

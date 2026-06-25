@@ -71,6 +71,8 @@ Rules:
 * Keep tests readable even if they are detailed.
 * If current implementation fails a correct test, do not change the expectation. Report the mismatch.
 
+**Array tests:** see `TypeCheckerTest` region **Arrays**, `VariableScopeAnalyzerTest` region **Arrays**, and parser tests in `ImmutableInitializationParserTest`, `AssignParserTest`, `FunctionParserTest`, `AbstractSyntaxTreeExpressionParserTest` as reference style for new language features.
+
 Before writing tests:
 
 1. Read `docs/grammar.md`.

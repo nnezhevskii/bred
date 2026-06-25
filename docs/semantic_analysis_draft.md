@@ -9,6 +9,7 @@ Technical reference for **semantic checks after AST construction**. Not part of 
 | `VariableScopeSubAnalyzer` | `src/test/kotlin/org/nnezh/semantic/VariableScopeAnalyzerTest.kt` |
 | `FunctionSubAnalyzer` | `src/test/kotlin/org/nnezh/semantic/FunctionAnalyzerTest.kt` |
 | `TypeChecker` | `src/test/kotlin/org/nnezh/semantic/TypeCheckerTest.kt` (intended semantics; failures track gaps) |
+| `SemanticControlFlowAnalyzer` | no dedicated test file (behavior covered indirectly) |
 | Full pipeline | `SemanticAnalyzer` (sequential orchestration) |
 
 **Implementation:**
@@ -20,6 +21,7 @@ Technical reference for **semantic checks after AST construction**. Not part of 
 | Variable scope | `src/main/kotlin/org/nnezh/semantic/analyzers/VariableScopeSubAnalyzer.kt` |
 | Function registry | `src/main/kotlin/org/nnezh/semantic/analyzers/FunctionSubAnalyzer.kt` |
 | Type checking | `src/main/kotlin/org/nnezh/semantic/analyzers/TypeChecker.kt` |
+| Control flow | `src/main/kotlin/org/nnezh/semantic/analyzers/SemanticControlFlowAnalyzer.kt` |
 | Errors | `src/main/kotlin/org/nnezh/semantic/generic/SemanticError.kt` |
 | Types | `src/main/kotlin/org/nnezh/base/Types.kt` |
 
@@ -27,7 +29,7 @@ Technical reference for **semantic checks after AST construction**. Not part of 
 
 ## Pipeline
 
-`SemanticAnalyzer` runs three passes **sequentially**. Each later pass starts only if no **critical** error was reported by an earlier pass.
+`SemanticAnalyzer` runs **four** passes **sequentially**. Passes 1–3 short-circuit on critical errors; pass 4 runs if pass 3 produced no critical errors.
 
 ```mermaid
 flowchart LR
@@ -35,18 +37,22 @@ flowchart LR
     vsa[VariableScopeSubAnalyzer]
     fsa[FunctionSubAnalyzer]
     tc[TypeChecker]
+    scfa[SemanticControlFlowAnalyzer]
     errs[List of SemanticError]
     ast --> vsa
     vsa -->|no critical errors| fsa
     fsa -->|no critical errors| tc
+    tc -->|no critical errors| scfa
     vsa --> errs
     fsa --> errs
     tc --> errs
+    scfa --> errs
 ```
 
-1. **Variable scope** — name resolution, redeclaration, overshadowing.
+1. **Variable scope** — name resolution, redeclaration, overshadowing, array index variables in assignments.
 2. **Functions** — registry, arity at call sites, duplicate signatures.
 3. **Types** — expression type inference (side table), compatibility checks; uses `FunctionSubAnalyzer.registry` for overload resolution by argument types.
+4. **Control flow** — return-path / explicit-return expectations per function (`SemanticControlFlowAnalyzer`).
 
 The AST (`org.nnezh.ast`) is **never modified**. Inferred expression types are stored in `ASTNodeTypeTable` (`IdentityHashMap<ExpressionASTNode, Type>`).
 
@@ -63,7 +69,8 @@ The AST (`org.nnezh.ast`) is **never modified**. Inferred expression types are s
 |---------|---------------------------|
 | `VariableScopeSemanticError` | `UNKNOWN_VARIABLE`, `VARIABLE_REDECLARATION`, `VARIABLE_OVERSHADOW` |
 | `FunctionSemanticError` | `FUNCTION_NOT_FOUND`, `FUNCTION_EXISTS_BUT_WRONG_ARGUMENTS_AMOUNT`, `REDEFINE_FUNCTION` |
-| `TypeSemanticError` | `TYPE_CHECKER_INCOMPATIBLE_TYPES` |
+| `TypeSemanticError` | `TYPE_CHECKER_INCOMPATIBLE_TYPES`, `TYPE_CHECKER_INCONSISTENT_ARRAY_TYPE`, `ARRAY_INDEX_IS_NOT_INTEGER`, `INVALID_AMOUNT_OF_ARGUMENTS_IN_ARRAYS_INITIALIZATION`, `METHOD_HAS_WRONG_RETURN` |
+| `ControlFlowSemanticError` | `EXPLICIT_RETURN_IS_EXPECTED` |
 
 `FUNCTION_IS_USED_AS_VARIABLE` exists in the enum but is **not emitted** (legacy).
 
@@ -279,15 +286,30 @@ Tests in `TypeCheckerTest` define **target** behavior (not current implementatio
 | `BinaryExpressionASTNode` | per operator table above |
 | `UnaryExpressionASTNode` | per operator table; result **must** be stored on the unary node |
 | `FunctionCallExpressionNode` | `returnType` of the resolved overload; args must match signature |
+| `ArrayAccessExpressionASTNode` | element type of `StaticArrayType`; index must be `Int` |
+| `StaticArrayInitializationExpressionsListNode` | unified element type of all values |
 
 All inferred expression types are recorded in `ASTNodeTypeTable` (identity map).
+
+### Arrays (semantic)
+
+| Scenario | `SemanticErrorType` | `where` |
+|----------|---------------------|---------|
+| Init list mixed element types | `TYPE_CHECKER_INCONSISTENT_ARRAY_TYPE` | `StaticArrayInitializationExpressionsListNode` |
+| Non-integer index | `ARRAY_INDEX_IS_NOT_INTEGER` | `ArrayAccessExpressionASTNode` |
+| `size != values.size` on init | `INVALID_AMOUNT_OF_ARGUMENTS_IN_ARRAYS_INITIALIZATION` | `StaticArrayExpressionNode` |
+| `arr[0] = incompatible` | `TYPE_CHECKER_INCOMPATIBLE_TYPES` | `AssignmentStatementASTNode` |
+| Unknown array name | `UNKNOWN_VARIABLE` | `ArrayAccessExpressionASTNode` or `AssignmentStatementASTNode` |
+| `val arr: Int[n] = [1, 2]` | no type errors when element types match | — |
+
+Tests: `TypeCheckerTest` region **Arrays**, `VariableScopeAnalyzerTest` region **Arrays**.
 
 ### Statement / declaration checks
 
 | Construct | Check |
 |-----------|-------|
-| `VariableInitializationASTNode` | `variableType == infer(valExpression)` |
-| `AssignmentStatementASTNode` | `scopeType(name) == infer(value)` |
+| `VariableInitializationASTNode` | scalar: `variableType == infer(valExpression)`; static array: element type == init-list unified type; size == list length |
+| `AssignmentStatementASTNode` | `infer(lvalue) == infer(rvalue)`; array lvalue → element type |
 | `IfStatementASTNode` / `WhileStatementASTNode` | `infer(condition) == BoolType` |
 | `DeclareFunctionASTNode` | `resultType == type(first ReturnFunctionStatementASTNode in body)` |
 | `FunctionCallExpressionNode` | inferred arg types match a registered signature |
@@ -323,7 +345,10 @@ Emitted when types do not match. `where` points to the offending node:
 | Unary `-` on `Double` | allowed | `checkUnaryOperation` allows `Int` only |
 | Call result type | store callee `returnType` on call node | not stored |
 | `if` condition error | short-circuit then-block | then-block still analyzed |
-| Return analysis | all paths / last return | first top-level `return` only |
+| Return analysis | all paths / nested returns | per-return checks in `analyzeReturnFunctionStatementASTNode`; redundant top-level-only check removed |
+| Static array init | element type match, size check | fixed in `TypeChecker` (G-37) |
+| Array index in assign scope | index variables resolved | fixed in `VariableScopeSubAnalyzer` (G-40) |
+| `FunctionRegistry.getResultType` | positional arg equality | fixed (G-41) |
 | Multiple errors in one expr | report incompatible comparison | may report on wrong node |
 | Cyclic / forward initializers | diagnostic, no crash | some cases **throw** (NPE); `val a = a + 1` may report **no** error |
 | Function as value | `takeInt(foo)` when only `fun foo()` exists → error, no crash | **throws** on bare function identifier in value position |
@@ -349,7 +374,7 @@ Helper `assertTypeCheckSurvives` / `assertSurvivesWithAtLeastOneError` enforce *
 
 ### Test coverage map
 
-`TypeCheckerTest` — **109 tests** (intended semantics; failures = work items).
+`TypeCheckerTest` — **~116 tests** (intended semantics; region **Arrays** specifies target array behavior).
 
 | Category | Examples |
 |----------|----------|
@@ -367,7 +392,25 @@ Helper `assertTypeCheckSurvives` / `assertSurvivesWithAtLeastOneError` enforce *
 | Deep nesting positive | `deeply nested arithmetic with precedence`, `chained comparisons and logical operators`, `triple nested unary and comparison`, `nested if else with boolean guards`, `while nested in if`, `for loop body with int arithmetic`, nested calls, builtin chains, `function and variable same name` |
 | Deep nesting negative | nested non-boolean `if`, outer wrong `if` short-circuit, wrong type in parentheses, logical chain with int, comparison in arithmetic, nested wrong calls (3 levels), `substring` wrong index type, for/while/else body errors |
 | Multi-function | `forward reference call chain`, fail-fast vs independent function checks |
+| **Arrays** | `static array with matching initialization list`, `array read with int index`, `incompatible type in array element assignment`, init list inconsistent types, non-integer index, size mismatch |
 | **Pathological** | cyclic initializers (self/mutual/global/forward), function-as-argument (bare name, nested depth 3, `return foo`), unit-in-arithmetic, builtin chain break, overload with no match, cascading wrong args, second return wrong type, assignment to param, 7-deep `if` nesting |
+
+---
+
+## 4. Control flow (`SemanticControlFlowAnalyzer`)
+
+### Responsibilities
+
+- Per-function return-path analysis after type checking.
+- Detect implicit `return Unit` in non-`Unit` functions when explicit return is expected.
+
+### Diagnostics
+
+| Error | When | `where` |
+|-------|------|---------|
+| `EXPLICIT_RETURN_IS_EXPECTED` | Non-`Unit` function body terminates with implicit/synthetic return only | `BlockASTNode` |
+
+Does not extend `SemanticSubAnalyzer`; uses a separate walker.
 
 ---
 
@@ -391,5 +434,10 @@ Helper `assertTypeCheckSurvives` / `assertSurvivesWithAtLeastOneError` enforce *
 | G-35 | Function parameter names vs registry |
 | G-09 | For-loop bound types |
 | G-31 | Missing return on non-Unit functions (parser synthetic `return Unit`) |
+| G-37 | Static array init: element type vs `StaticArrayType` mismatch |
+| G-38 | Scalar rhs on array decl → parse error, not `ClassCastException` |
+| G-39 | `val` static arrays: `isMutable = false` |
+| G-40 | Array assignment: validate index expression in scope pass |
+| G-41 | `FunctionRegistry.getResultType`: positional overload match |
 
-TypeChecker-specific follow-ups (not yet in TODO): unary result typing, per-operator binary rules, call result types, multiple-return analysis.
+TypeChecker-specific follow-ups (not yet in TODO): unary result typing, per-operator binary rules, call result types.

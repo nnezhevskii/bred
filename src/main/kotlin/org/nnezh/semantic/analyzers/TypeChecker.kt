@@ -1,8 +1,5 @@
 package org.nnezh.org.nnezh.semantic.analyzers
 
-import arrow.core.left
-import com.sun.tools.javac.tree.TreeInfo.types
-import jdk.javadoc.internal.doclets.formats.html.markup.HtmlStyles
 import org.nnezh.ast.ASTNode
 import org.nnezh.ast.ArrayAccessExpressionASTNode
 import org.nnezh.ast.AssignmentStatementASTNode
@@ -31,14 +28,11 @@ import org.nnezh.ast.VariableExpressionNode
 import org.nnezh.ast.VariableInitializationASTNode
 import org.nnezh.ast.WhileStatementASTNode
 import org.nnezh.org.nnezh.base.Type
-import org.nnezh.org.nnezh.semantic.generic.FunctionSignature
 import org.nnezh.org.nnezh.semantic.generic.SemanticError
 import org.nnezh.org.nnezh.semantic.generic.SemanticErrorType
 import org.nnezh.org.nnezh.semantic.generic.SemanticSubAnalyzer
-import java.util.Collections
 import java.util.Collections.singletonList
 import java.util.IdentityHashMap
-import kotlin.math.exp
 
 
 class ASTNodeTypeTable {
@@ -212,14 +206,6 @@ class TypeChecker(
             return errors
         }
 
-        val retStatementType = findActualReturnValueOfFunction(node)
-        val explicit = (node.block.statements
-            .first { statement -> statement is ReturnFunctionStatementASTNode } as ReturnFunctionStatementASTNode).explicit
-
-        if (explicit && !typeValidator.check(node.resultType, retStatementType)) {
-            errors.add(SemanticError.TypeSemanticError(node, true, errorType = SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES))
-        }
-
         currentFunctionSignatureType = null
         return errors
     }
@@ -291,14 +277,17 @@ class TypeChecker(
         if (errors.any { it.isCriticalError }) {
             return errors
         }
-        val lValueType: Type = if (typeScope.get(node.lValue) == null) {
+        val lValueType: Type = typeScope.get(node.lValue) ?: run {
             if (node.lValue is ArrayAccessExpressionASTNode) {
-                typeScope.get(node.lValue.array)!!
+                val arrayType = typeScope.get(node.lValue.array)
+                if (arrayType is Type.StaticArrayType) {
+                    arrayType.elementType
+                } else {
+                    return singletonList(SemanticError.TypeSemanticError(node, true, errorType = SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES))
+                }
             } else {
                 return singletonList(SemanticError.TypeSemanticError(node, true, errorType = SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES))
             }
-        } else {
-            typeScope.get(node.lValue)!!
         }
 
         val rValueType = typeScope.get(node.rValue)!!
@@ -352,8 +341,11 @@ class TypeChecker(
         if (typeScope.get(node.index) != Type.IntType) {
             errors.add(SemanticError.TypeSemanticError(node, true, errorType = SemanticErrorType.ARRAY_INDEX_IS_NOT_INTEGER))
         }
-        val arrayType = (typeScope.get(node.array)!! as Type.StaticArrayType).elementType
-        typeScope.put(node, arrayType)
+        val arrayVarType = typeScope.get(node.array)
+        if (arrayVarType !is Type.StaticArrayType) {
+            return errors
+        }
+        typeScope.put(node, arrayVarType.elementType)
         return errors
     }
 
@@ -388,21 +380,26 @@ class TypeChecker(
             return errors
         }
 
-        // TODO: check nullability
-        node.valExpression?.let {
-            if (!typeValidator.check(node.variableType, typeScope.get(it)!!)) {
-                errors.add(SemanticError.TypeSemanticError(node, true, errorType = SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES))
-            }
-        }
-
-
-        node.valExpression?.let {
-            if (node is StaticArrayExpressionNode) {
-                if (node.size != node.valExpression!!.values.size) {
-                    errors.add(SemanticError.TypeSemanticError(node, true, errorType = SemanticErrorType.INVALID_AMOUNT_OF_ARGUMENTS_IN_ARRAYS_INITIALIZATION))
+        node.valExpression?.let { initExpr ->
+            when (node) {
+                is StaticArrayExpressionNode -> {
+                    val elementType = (node.variableType as Type.StaticArrayType).elementType
+                    val initListType = typeScope.get(initExpr)
+                    if (initListType != null && !typeValidator.check(elementType, initListType)) {
+                        errors.add(SemanticError.TypeSemanticError(node, true, errorType = SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES))
+                    }
+                    if (initExpr is StaticArrayInitializationExpressionsListNode &&
+                        node.size != initExpr.values.size
+                    ) {
+                        errors.add(SemanticError.TypeSemanticError(node, true, errorType = SemanticErrorType.INVALID_AMOUNT_OF_ARGUMENTS_IN_ARRAYS_INITIALIZATION))
+                    }
+                }
+                else -> {
+                    if (!typeValidator.check(node.variableType, typeScope.get(initExpr)!!)) {
+                        errors.add(SemanticError.TypeSemanticError(node, true, errorType = SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES))
+                    }
                 }
             }
-
         }
 
         return errors
@@ -426,15 +423,5 @@ class TypeChecker(
     override fun analyzeStringLiteralExpressionNode(node: StringLiteralExpressionNode): List<SemanticError> {
         typeScope.put(node, Type.StringType)
         return emptyList()
-    }
-
-
-    private fun findActualReturnValueOfFunction(node: DeclareFunctionASTNode): Type {
-        val returnStatement = node.block.statements
-            .first { statement -> statement is ReturnFunctionStatementASTNode } as ReturnFunctionStatementASTNode
-        return returnStatement.expression.fold(
-            ifLeft = { Type.UnitType },
-            ifRight = { typeScope.get(it)!! }
-        )
     }
 }

@@ -341,7 +341,7 @@ val Pi: Double = 3.1417
 ```ebnf
 functionDecl ::= 'fun' identifier '(' [ param { ',' param } ] ')' [ ':' typeName ] block ;
 
-param          ::= identifier ':' typeName ;
+param          ::= identifier ':' typeName [ '[]' ] ;
 typeName       ::= identifier ;   (* validated — see §7 *)
 ```
 
@@ -355,11 +355,17 @@ fun max(a: Int, b: Int): Int {
         println("a")
     }
 }
+
+fun sum(arr: Int[], n: Int): Int {
+    return arr[0]
+}
 ```
 
 **Notes:**
 
 - Parameter list may be empty: `fun main() { }` or `fun main(): Unit { }`.
+- Array parameters use `typeName '[]'` (no size literal): `arr: Int[]` → `StaticArrayType(IntType)` in AST.
+- Sized arrays `Int[n]` in parameters are **not** supported (`fun f(a: Int[3])` → parse error).
 - If `:` and return type are omitted and `{` follows `)`, return type defaults to **`Unit`** (`Type.UnitType` in AST).
 - Explicit `: typeName` is validated via `Type.fromString` (see [§7](#7-type-names)).
 - `fun foo() Unit { }` (type name without `:`) is a **parse error**.
@@ -388,14 +394,23 @@ return Unit ;
 ### 3.2 Immutable variable declaration (`val`)
 
 ```ebnf
-globalValDecl ::= 'val' identifier ':' typeName '=' expression ;
-valDecl       ::= globalValDecl ;   (* same syntax inside blocks *)
+scalarValDecl      ::= 'val' identifier ':' typeName '=' expression ;
+staticArrayValDecl ::= 'val' identifier ':' typeName '[' intLiteral ']' [ '=' arrayInitList ] ;
+arrayInitList      ::= '[' [ expression { ',' expression } ] ']' ;
+globalValDecl      ::= scalarValDecl | staticArrayValDecl ;
+valDecl            ::= globalValDecl ;   (* same syntax inside blocks *)
 ```
 
-**Example:**
+**Examples:**
 
 ```bred
 val Pi: Double = 3.1417
+```
+
+```bred
+val arr: Int[10]
+
+val buf: Int[3] = [1, 2, 3]
 ```
 
 ```bred
@@ -406,8 +421,11 @@ fun main(): Unit {
 
 **Notes:**
 
-- Type annotation is **required**; `val x = 1` — **not supported**.
+- Scalar `val`: type annotation and `=` initializer are **required**; `val x = 1` — **not supported**.
+- Static array `val`: `=` and initializer are **optional**; without `=`, `valExpression` is `null` in AST (`StaticArrayExpressionNode`).
+- Array initializer must be `[ expression { ',' expression } ]` (`StaticArrayInitializationExpressionsListNode`); scalar rhs → parse error.
 - `typeName` must resolve via `Type.fromString` (see [§7](#7-type-names)).
+- Array size in declaration must be an integer literal (`IntLiteral`).
 
 **Implementation:** `ImmutableInitializationParser.kt`, `ImmutableInitializationParserTest`.
 
@@ -530,20 +548,25 @@ return          (* valid only when immediately followed by `}` — same as `retu
 ### 4.4 Assignment
 
 ```ebnf
-assignment ::= identifier '=' expression ;
+assignment  ::= lvalue '=' expression ;
+lvalue      ::= identifier | arrayAccess ;
+arrayAccess ::= identifier '[' expression ']' ;
 ```
 
-**Example:**
+**Examples:**
 
 ```bred
 x = 42
 counter = counter + 1
+arr[0] = 1
+arr[i] = arr[i + 1]
 ```
 
 **Notes:**
 
-- Only a plain identifier on the left; no `a[i]` or destructuring.
+- Left-hand side is parsed via the expression parser; plain identifier or array access (`arr[index]`).
 - `==` is not assignment.
+- `AssignParser` rejects lvalues that are not `VariableExpressionNode` or `ArrayAccessExpressionASTNode`.
 
 **Implementation:** `AssignParser.kt`, `AssignParserTest`.
 
@@ -683,11 +706,31 @@ primary        ::= intLiteral
                  | stringLiteral
                  | 'true'
                  | 'false'
-                 | identifier [ callSuffix ]
+                 | identifier [ callSuffix | arrayAccessSuffix ]
+                 | arrayInitList
                  | '(' expression ')' ;
 
-callSuffix     ::= '(' [ expression { ',' expression } ] ')' ;
+callSuffix         ::= '(' [ expression { ',' expression } ] ')' ;
+arrayAccessSuffix  ::= '[' expression ']' ;
+arrayInitList      ::= '[' [ expression { ',' expression } ] ']' ;
 ```
+
+**Array examples:**
+
+```bred
+arr[0]
+arr[i + 1]
+[1, 2, 3]
+[]
+```
+
+**Notes:**
+
+- After `identifier`, `[` starts array **access**; call suffix `(` attaches only to bare identifier primary, not after `arr[i]`.
+- `arr[0](1)` — **parse error** (call suffix after array access is not allowed).
+- Empty init list `[]` is valid.
+
+**Implementation:** `AbstractSyntaxTreeExpressionParser.kt`, `AbstractSyntaxTreeExpressionParserTest`.
 
 ### 5.1 Operator precedence and associativity
 
@@ -750,7 +793,7 @@ f(a + 1, b * 2)
 
 ## 7. Type names
 
-The type enum ([`Types.kt`](src/main/kotlin/org/nnezh/Types.kt)) contains five types:
+The type enum ([`Types.kt`](src/main/kotlin/org/nnezh/base/Types.kt)) contains scalar types and static array types:
 
 | Name      | `Type` object   |
 |-----------|-----------------|
@@ -759,6 +802,14 @@ The type enum ([`Types.kt`](src/main/kotlin/org/nnezh/Types.kt)) contains five t
 | `Double`  | `DoubleType`    |
 | `Boolean` | `BoolType`      |
 | `Unit`    | `UnitType`      |
+
+**Static arrays (syntax → AST):**
+
+| Surface syntax | `Type` in AST |
+|----------------|---------------|
+| `Int[n]` in `val arr: Int[n]` | `StaticArrayType(IntType)` + `size = n` on `StaticArrayExpressionNode` |
+| `Int[]` in function parameter | `StaticArrayType(IntType)` (no fixed size) |
+| `arr[i]` expression | element type (`Int`, `Double`, …) inferred on access node |
 
 **Where validated:**
 
@@ -817,7 +868,7 @@ fun f(): Foo { }            (* parse error: Invalid type Foo at … *)
 
 - No global `var` declaration (block-only; top-level `var` → `Expected function or constant declaration`).
 - No member access (`.` not in expression grammar).
-- No array indexing, generics, or user-defined types in the parser.
+- No generics, user-defined types, or dynamically sized arrays beyond static `Type[n]` / `Type[]`.
 - No string interpolation.
 - Files under `examples/` (except `ai_generated.bred`) are ad-hoc test fixtures, not normative programs.
 
@@ -835,6 +886,9 @@ fun f(): Foo { }            (* parse error: Invalid type Foo at … *)
 | 6 | Call statement vs expression routing mismatch | `CallStatementParser` accepts any expression; `StatementParser` only routes `identifier '('` |
 | 9 | AST appends synthetic `return Unit` even for `: Int` without return | `FunctionParser.kt`; `add` / `compute` in `ai_generated.bred` — semantic error deferred to analysis phase |
 | 10 | Implicit-return check is top-level only | Nested `return` in `if`/`while` does not suppress append; `FunctionParser.kt` |
+| 11 | `val` static arrays: binding vs element mutation | `isMutable = false`; `arr[i] = …` allowed (element write), identifier reassignment rejected |
+| 12 | Scalar rhs `val arr: Int[3] = 42` | **Fixed:** parse error via `ImmutableInitializationParser` |
+| 13 | `TypeChecker` array init typing | **Fixed:** element-type comparison in `TypeChecker` |
 
 See also [`docs/TODO.md`](TODO.md) for actionable follow-ups.
 
@@ -842,7 +896,7 @@ See also [`docs/TODO.md`](TODO.md) for actionable follow-ups.
 
 ## 11. Checklist for parser tests
 
-Current suite: **16 test files** in `src/test/kotlin/`.
+Current suite: **~20 test files** in `src/test/kotlin/` (plus `AstTestFixtures.kt` helpers).
 
 ### Covered
 
@@ -850,15 +904,15 @@ Current suite: **16 test files** in `src/test/kotlin/`.
 |------|-----------|-----------|
 | Lexer | `LexerTest.kt` | empty input, keywords, identifiers, int/double/string, operators, punctuation, comments, positions, lexical errors |
 | Source I/O | `SourceReaderTest.kt` | read `.bred` files |
-| Expressions | `AbstractSyntaxTreeExpressionParserTest.kt` | precedence, associativity, unary, calls, grouping, literals, negative malformed |
+| Expressions | `AbstractSyntaxTreeExpressionParserTest.kt` | precedence, associativity, unary, calls, grouping, literals, **array access**, **init lists**, negative malformed |
 | Integration (e2e) | `AiGeneratedProgramIntegrationTest.kt` | `ai_generated.bred`: lex + build, full AST structure, implicit return in `add`/`compute`/`noArgs`, negative lex/parse |
-| Program | `ProgramParserTest.kt` | empty program, fun/val routing, integration, top-level errors (incl. global `var`) |
-| Functions | `FunctionParserTest.kt` | params, return type, block, implicit return append, no duplicate when return present, Int-without-return, commas, invalid types |
-| `val` init | `ImmutableInitializationParserTest.kt` | type/name/assign, invalid types, integration |
+| Program | `ProgramParserTest.kt` | empty program, fun/val routing, integration, **array param + global static array**, top-level errors (incl. global `var`) |
+| Functions | `FunctionParserTest.kt` | params, **Int[] params**, return type, block, implicit return append, no duplicate when return present, Int-without-return, commas, invalid types |
+| `val` init | `ImmutableInitializationParserTest.kt` | type/name/assign, **static arrays** `Int[n]`, init lists, invalid types, integration |
 | `var` init | `MutableInitializationParserTest.kt` | type/name/assign, invalid types, integration (block-only) |
 | Blocks | `BlockParserTest.kt` | empty/multiple statements, braces, EOF inside block |
 | Statements | `StatementParserTest.kt` | routing to all statement kinds, integration, dispatch errors |
-| Assign | `AssignParserTest.kt` | name, expression delegation, malformed |
+| Assign | `AssignParserTest.kt` | name, **array index lvalue**, expression delegation, malformed |
 | Call stmt | `CallStatementParserTest.kt` | delegation, wrapping, integration calls, errors |
 | `if` | `IfParserTest.kt` | condition parens, else, blocks, errors |
 | `while` | `WhileParserTest.kt` | condition parens required, block, errors |
@@ -873,7 +927,16 @@ Current suite: **16 test files** in `src/test/kotlin/`.
 - [x] **Indirect call `(f)()` as statement:** rejected at `StatementParser` dispatch → `Didn't expect` (`StatementParserTest`).
 - [ ] **Bare expression statement:** e.g. `{ 1 + foo() }` (first token is literal, not `identifier '('`) → `Didn't expect` at dispatch; distinct from valid `x = 1 + foo()`.
 - [ ] **Lexer keywords `for`, `in`, `to`:** explicit keyword recognition test (subset tested in `keywords are recognized`).
-- [ ] **`else if` chain:** confirm rejection (not implemented).
+- [ ] **`minMax.bred` snapshot:** fixture exists in `src/test/resources/` but is not registered in `LLTAGSnapshotTester` (optional follow-up G-42).
+
+### Semantic (separate from parser suite)
+
+| Area | Test file | Key cases |
+|------|-----------|-----------|
+| Variable scope | `VariableScopeAnalyzerTest.kt` | redeclaration, overshadowing, **arrays** region |
+| Functions | `FunctionAnalyzerTest.kt` | registry, arity, duplicates |
+| Types | `TypeCheckerTest.kt` | literals, operators, control flow, **arrays** region (~116 tests) |
+| Codegen snapshots | `LLTAGSnapshotTester.kt` | `.bred` vs `.3ac` for factorial, for, sortThree, etc. |
 
 ---
 
@@ -889,21 +952,21 @@ Current suite: **16 test files** in `src/test/kotlin/`.
 ### AST
 
 - `src/main/kotlin/org/nnezh/ast/ASTNode.kt`
-- `src/main/kotlin/org/nnezh/Types.kt`
+- `src/main/kotlin/org/nnezh/base/Types.kt`
 
 ### Parsers
 
-- `src/main/kotlin/org/nnezh/ast/ProgramParser.kt`
-- `src/main/kotlin/org/nnezh/ast/FunctionParser.kt`
-- `src/main/kotlin/org/nnezh/ast/ImmutableInitializationParser.kt`
-- `src/main/kotlin/org/nnezh/ast/MutableInitializationParser.kt`
-- `src/main/kotlin/org/nnezh/ast/BlockParser.kt`
-- `src/main/kotlin/org/nnezh/ast/StatementParser.kt`
-- `src/main/kotlin/org/nnezh/ast/AssignParser.kt`
-- `src/main/kotlin/org/nnezh/ast/CallStatementParser.kt`
-- `src/main/kotlin/org/nnezh/ast/IfParser.kt`
-- `src/main/kotlin/org/nnezh/ast/WhileParser.kt`
-- `src/main/kotlin/org/nnezh/ast/ForParser.kt`
+- `src/main/kotlin/org/nnezh/ast/parsers/ProgramParser.kt`
+- `src/main/kotlin/org/nnezh/ast/parsers/FunctionParser.kt`
+- `src/main/kotlin/org/nnezh/ast/parsers/ImmutableInitializationParser.kt`
+- `src/main/kotlin/org/nnezh/ast/parsers/MutableInitializationParser.kt`
+- `src/main/kotlin/org/nnezh/ast/parsers/BlockParser.kt`
+- `src/main/kotlin/org/nnezh/ast/parsers/StatementParser.kt`
+- `src/main/kotlin/org/nnezh/ast/parsers/AssignParser.kt`
+- `src/main/kotlin/org/nnezh/ast/parsers/CallStatementParser.kt`
+- `src/main/kotlin/org/nnezh/ast/parsers/IfParser.kt`
+- `src/main/kotlin/org/nnezh/ast/parsers/WhileParser.kt`
+- `src/main/kotlin/org/nnezh/ast/parsers/ForParser.kt`
 - `src/main/kotlin/org/nnezh/ast/AbstractSyntaxTreeExpressionParser.kt`
 - `src/main/kotlin/org/nnezh/ast/ParserFactory.kt`
 - `src/main/kotlin/org/nnezh/ast/AstErrorBuilder.kt`
