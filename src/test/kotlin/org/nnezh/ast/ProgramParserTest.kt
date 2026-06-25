@@ -13,11 +13,13 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.nnezh.ast.AbstractSyntaxTreeBuilder
 import org.nnezh.ast.BlockASTNode
 import org.nnezh.ast.DeclareFunctionASTNode
 import org.nnezh.ast.FunctionArgsASTNode
 import org.nnezh.ast.ImmutableVariableInitializationASTNode
 import org.nnezh.ast.IntLiteralExpressionNode
+import org.nnezh.ast.StaticArrayExpressionNode
 import org.nnezh.ast.ProgramASTNode
 import org.nnezh.ast.ReturnFunctionStatementASTNode
 import org.nnezh.lexer.Lexer
@@ -121,6 +123,12 @@ class ProgramParserTest {
         return either { with(parser) { parse(TokensContext(tokens)) } }
     }
 
+    private fun parseFullProgramFromSource(src: String): ProgramASTNode {
+        val tokens = Lexer(src).tokenize().getOrElse { error("lexer error: $it") }
+        val ast = AbstractSyntaxTreeBuilder().build(tokens).getOrElse { error("unexpected parse error: $it") }
+        return assertInstanceOf(ProgramASTNode::class.java, ast)
+    }
+
     // region Positive scenarios
 
     @Test
@@ -200,8 +208,8 @@ class ProgramParserTest {
         assertEquals(1, result.globalVariables.size)
         val global = result.globalVariables.single()
         assertInstanceOf(ImmutableVariableInitializationASTNode::class.java, global)
-        assertEquals("Pi", global.name)
-        assertEquals(Type.DoubleType, global.type)
+        assertEquals("Pi", global.variableName)
+        assertEquals(Type.DoubleType, global.variableType)
     }
 
     @Test
@@ -216,7 +224,7 @@ class ProgramParserTest {
         assertEquals(1, result.functions.size)
         assertEquals(1, result.globalVariables.size)
         assertEquals("min", result.functions.single().name)
-        assertEquals("Pi", result.globalVariables.single().name)
+        assertEquals("Pi", result.globalVariables.single().variableName)
     }
 
     @Test
@@ -228,7 +236,7 @@ class ProgramParserTest {
             """.trimIndent(),
         ).getOrElse { error("unexpected parse error: $it") }
 
-        assertEquals("a", result.globalVariables.single().name)
+        assertEquals("a", result.globalVariables.single().variableName)
         assertEquals("f", result.functions.single().name)
     }
 
@@ -255,7 +263,31 @@ class ProgramParserTest {
         ).getOrElse { error("unexpected parse error: $it") }
 
         assertEquals(2, result.globalVariables.size)
-        assertEquals(listOf("a", "b"), result.globalVariables.map { it.name })
+        assertEquals(listOf("a", "b"), result.globalVariables.map { it.variableName })
+    }
+
+    @Test
+    fun `parses program with array parameter and global static array`() {
+        val result = parseFullProgramFromSource(
+            """
+            fun sum(arr: Int[], n: Int): Int {
+                return arr[0]
+            }
+            val buf: Int[10]
+            """.trimIndent(),
+        )
+
+        assertEquals(1, result.functions.size)
+        assertEquals(1, result.globalVariables.size)
+
+        val sum = result.functions.single()
+        assertEquals("sum", sum.name)
+        assertEquals(Type.StaticArrayType(Type.IntType), sum.args.arguments[0].type)
+        assertEquals(Type.IntType, sum.args.arguments[1].type)
+
+        val global = assertInstanceOf(StaticArrayExpressionNode::class.java, result.globalVariables.single())
+        assertEquals("buf", global.variableName)
+        assertEquals(10, global.size)
     }
 
     @Test

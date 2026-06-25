@@ -13,9 +13,13 @@ import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.nnezh.ast.AssignmentStatementASTNode
+import org.nnezh.ast.ArrayAccessExpressionASTNode
 import org.nnezh.ast.ExpressionASTNode
 import org.nnezh.ast.IntLiteralExpressionNode
 import org.nnezh.ast.VariableExpressionNode
+import org.nnezh.ast.lvalueName
+import org.nnezh.ast.arrayAccessLValue
+import org.nnezh.ast.varExpr
 import org.nnezh.lexer.Lexer
 import org.nnezh.lexer.Position
 import org.nnezh.lexer.Token
@@ -32,6 +36,21 @@ class AssignParserTest {
 
     private fun eof() = Token.Eof(pos)
 
+    private class SequentialStubExpressionParser(
+        private val results: List<ExpressionASTNode>,
+        private val onParse: ((Int, TokensContext) -> Unit)? = null,
+    ) : Parser<ExpressionASTNode> {
+        private var callIndex = 0
+
+        override fun Raise<ASTError>.parse(context: TokensContext): ExpressionASTNode {
+            onParse?.invoke(callIndex, context)
+            if (!context.endOfInput) {
+                context.consumeToken()
+            }
+            return results[callIndex++]
+        }
+    }
+
     private class StubExpressionParser(
         private val result: ExpressionASTNode,
         private val onParse: ((TokensContext) -> Unit)? = null,
@@ -44,7 +63,9 @@ class AssignParserTest {
 
     private fun parseAssign(
         tokens: List<Token>,
-        expressionParser: Parser<ExpressionASTNode> = StubExpressionParser(IntLiteralExpressionNode(0L)),
+        expressionParser: Parser<ExpressionASTNode> = SequentialStubExpressionParser(
+            listOf(varExpr("stub"), IntLiteralExpressionNode(0L)),
+        ),
     ): Either<ASTError, AssignmentStatementASTNode> {
         val parser = AssignParser(expressionParser)
         return either { with(parser) { parse(TokensContext(tokens)) } }
@@ -59,24 +80,25 @@ class AssignParserTest {
 
     @Test
     fun `parses variable name and delegates expression to nested parser`() {
-        val expression = IntLiteralExpressionNode(99L)
+        val lValue = varExpr("x")
+        val rValue = IntLiteralExpressionNode(99L)
         val result = parseAssign(
             listOf(identifier("x"), assign(), eof()),
-            StubExpressionParser(expression),
+            SequentialStubExpressionParser(listOf(lValue, rValue)),
         ).getOrElse { error("unexpected parse error: $it") }
 
-        assertEquals("x", result.name)
-        assertEquals(expression, result.value)
+        assertEquals("x", result.lvalueName())
+        assertEquals(rValue, result.rValue)
     }
 
     @Test
     fun `accepts underscore-prefixed identifier`() {
         val result = parseAssign(
             listOf(identifier("_count"), assign(), eof()),
-            StubExpressionParser(IntLiteralExpressionNode(1L)),
+            SequentialStubExpressionParser(listOf(varExpr("_count"), IntLiteralExpressionNode(1L))),
         ).getOrElse { error("unexpected parse error: $it") }
 
-        assertEquals("_count", result.name)
+        assertEquals("_count", result.lvalueName())
     }
 
     @Test
@@ -86,9 +108,9 @@ class AssignParserTest {
 
         parseAssign(
             listOf(identifier("total"), assign(), valueToken, eof()),
-            StubExpressionParser(
-                result = IntLiteralExpressionNode(42L),
-                onParse = { tokenAtExpressionStart = it.top() },
+            SequentialStubExpressionParser(
+                results = listOf(varExpr("total"), IntLiteralExpressionNode(42L)),
+                onParse = { index, context -> if (index == 1) tokenAtExpressionStart = context.top() },
             ),
         ).getOrElse { error("unexpected parse error: $it") }
 
@@ -99,27 +121,55 @@ class AssignParserTest {
     fun `parses assignment with literal expression`() {
         val result = parseFromSource("counter = 42").getOrElse { error("unexpected parse error: $it") }
 
-        assertEquals("counter", result.name)
-        assertInstanceOf(IntLiteralExpressionNode::class.java, result.value)
-        assertEquals(42L, (result.value as IntLiteralExpressionNode).value)
+        assertEquals("counter", result.lvalueName())
+        assertInstanceOf(IntLiteralExpressionNode::class.java, result.rValue)
+        assertEquals(42L, (result.rValue as IntLiteralExpressionNode).value)
     }
 
     @Test
     fun `parses assignment with complex expression`() {
         val result = parseFromSource("x = a + b * 2").getOrElse { error("unexpected parse error: $it") }
 
-        assertEquals("x", result.name)
-        assertInstanceOf(org.nnezh.ast.BinaryExpressionASTNode::class.java, result.value)
+        assertEquals("x", result.lvalueName())
+        assertInstanceOf(org.nnezh.ast.BinaryExpressionASTNode::class.java, result.rValue)
     }
 
     @Test
     fun `parses assignment with variable expression`() {
         val result = parseFromSource("y = other").getOrElse { error("unexpected parse error: $it") }
 
-        assertEquals("y", result.name)
-        assertInstanceOf(VariableExpressionNode::class.java, result.value)
-        assertEquals("other", (result.value as VariableExpressionNode).token.lexeme)
+        assertEquals("y", result.lvalueName())
+        assertInstanceOf(VariableExpressionNode::class.java, result.rValue)
+        assertEquals("other", (result.rValue as VariableExpressionNode).token.lexeme)
     }
+
+    // region Arrays
+
+    @Test
+    fun `parses assignment with array access lvalue`() {
+        val result = parseFromSource("arr[i] = 1").getOrElse { error("unexpected parse error: $it") }
+
+        val access = result.arrayAccessLValue()
+        assertEquals("arr", access.array)
+        assertInstanceOf(VariableExpressionNode::class.java, access.index)
+        assertEquals("i", (access.index as VariableExpressionNode).token.lexeme)
+        assertEquals(1L, (result.rValue as IntLiteralExpressionNode).value)
+    }
+
+    @Test
+    fun `parses assignment between array accesses`() {
+        val result = parseFromSource("arr[0] = arr[1]").getOrElse { error("unexpected parse error: $it") }
+
+        val lValue = result.arrayAccessLValue()
+        assertEquals("arr", lValue.array)
+        assertEquals(0L, (lValue.index as IntLiteralExpressionNode).value)
+
+        val rValue = assertInstanceOf(ArrayAccessExpressionASTNode::class.java, result.rValue)
+        assertEquals("arr", rValue.array)
+        assertEquals(1L, (rValue.index as IntLiteralExpressionNode).value)
+    }
+
+    // endregion
 
     // endregion
 
@@ -131,26 +181,20 @@ class AssignParserTest {
     }
 
     @Test
-    fun `missing variable name fails`() {
-        val result = parseAssign(listOf(assign(), eof()))
-        assertTrue(result.isLeft())
-        assertTrue(result.leftOrNull()?.message?.contains("variable name") == true)
+    fun `missing lvalue expression fails`() {
+        assertTrue(parseFromSource("= 1").isLeft())
     }
 
     @Test
     fun `keyword instead of variable name fails`() {
-        val result = parseAssign(listOf(Token.Keyword.If(pos), assign(), eof()))
-        assertTrue(result.isLeft())
-        assertTrue(result.leftOrNull()?.message?.contains("variable name") == true)
+        assertTrue(parseFromSource("if = 1").isLeft())
     }
 
     @Test
-    fun `literal instead of variable name fails`() {
-        val result = parseAssign(
-            listOf(Token.Literal.IntLiteral(1L, "1", pos), assign(), eof()),
-        )
-        assertTrue(result.isLeft())
-        assertTrue(result.leftOrNull()?.message?.contains("variable name") == true)
+    fun `literal lvalue is accepted syntactically`() {
+        val result = parseFromSource("1 = 2").getOrElse { error("unexpected parse error: $it") }
+        assertInstanceOf(IntLiteralExpressionNode::class.java, result.lValue)
+        assertEquals(2L, (result.rValue as IntLiteralExpressionNode).value)
     }
 
     @Test

@@ -14,6 +14,8 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.nnezh.ast.AssignmentStatementASTNode
 import org.nnezh.ast.BlockASTNode
+import org.nnezh.ast.assignStmt
+import org.nnezh.ast.lvalueName
 import org.nnezh.ast.ImmutableVariableInitializationASTNode
 import org.nnezh.ast.IntLiteralExpressionNode
 import org.nnezh.ast.MutableVariableInitializationASTNode
@@ -102,7 +104,7 @@ class BlockParserTest {
     private fun parseBlock(
         tokens: List<Token>,
         statementParser: Parser<StatementASTNode> = StubStatementParser(
-            AssignmentStatementASTNode("x", IntLiteralExpressionNode(0L)),
+            assignStmt("x", IntLiteralExpressionNode(0L)),
         ),
     ): Either<ASTError, BlockASTNode> {
         val parser = BlockParser(lazy { statementParser })
@@ -129,7 +131,7 @@ class BlockParserTest {
 
     @Test
     fun `parses block with single stub statement`() {
-        val statement = AssignmentStatementASTNode("x", IntLiteralExpressionNode(1L))
+        val statement = assignStmt("x", IntLiteralExpressionNode(1L))
         val result = parseBlock(
             listOf(lbrace(), identifier("x"), rbrace(), eof()),
             StubStatementParser(statement, tokensToConsume = 1),
@@ -141,9 +143,9 @@ class BlockParserTest {
 
     @Test
     fun `parses block with multiple sequential stub statements`() {
-        val s1 = AssignmentStatementASTNode("a", IntLiteralExpressionNode(1L))
-        val s2 = AssignmentStatementASTNode("b", IntLiteralExpressionNode(2L))
-        val s3 = AssignmentStatementASTNode("c", IntLiteralExpressionNode(3L))
+        val s1 = assignStmt("a", IntLiteralExpressionNode(1L))
+        val s2 = assignStmt("b", IntLiteralExpressionNode(2L))
+        val s3 = assignStmt("c", IntLiteralExpressionNode(3L))
         val result = parseBlock(
             listOf(lbrace(), identifier("a"), identifier("b"), identifier("c"), rbrace(), eof()),
             SequentialStubStatementParser(
@@ -168,8 +170,8 @@ class BlockParserTest {
             listOf(lbrace(), tokenA, tokenB, rbrace(), eof()),
             SequentialStubStatementParser(
                 specs = listOf(
-                    StubStatementSpec(AssignmentStatementASTNode("a", IntLiteralExpressionNode(1L)), 1),
-                    StubStatementSpec(AssignmentStatementASTNode("b", IntLiteralExpressionNode(2L)), 1),
+                    StubStatementSpec(assignStmt("a", IntLiteralExpressionNode(1L)), 1),
+                    StubStatementSpec(assignStmt("b", IntLiteralExpressionNode(2L)), 1),
                 ),
                 onParse = { index, context -> tokensAtCall.add(context.top()) },
             ),
@@ -184,10 +186,9 @@ class BlockParserTest {
             .getOrElse { error("unexpected parse error: $it") }
 
         assertEquals(1, result.statements.size)
-        val assignment = result.statements.single()
-        assertInstanceOf(AssignmentStatementASTNode::class.java, assignment)
-        assertEquals("x", (assignment as AssignmentStatementASTNode).name)
-        assertEquals(1L, (assignment.value as IntLiteralExpressionNode).value)
+        val assignment = assertInstanceOf(AssignmentStatementASTNode::class.java, result.statements.single())
+        assertEquals("x", assignment.lvalueName())
+        assertEquals(1L, (assignment.rValue as IntLiteralExpressionNode).value)
     }
 
     @Test
@@ -196,8 +197,8 @@ class BlockParserTest {
             .getOrElse { error("unexpected parse error: $it") }
 
         assertEquals(2, result.statements.size)
-        assertEquals("x", (result.statements[0] as AssignmentStatementASTNode).name)
-        assertEquals("y", (result.statements[1] as AssignmentStatementASTNode).name)
+        assertEquals("x", (result.statements[0] as AssignmentStatementASTNode).lvalueName())
+        assertEquals("y", (result.statements[1] as AssignmentStatementASTNode).lvalueName())
     }
 
     @Test
@@ -232,12 +233,12 @@ class BlockParserTest {
             .getOrElse { error("unexpected parse error: $it") }
 
         assertEquals(1, result.statements.size)
-        assertEquals("x", (result.statements.single() as AssignmentStatementASTNode).name)
+        assertEquals("x", (result.statements.single() as AssignmentStatementASTNode).lvalueName())
     }
 
     @Test
     fun `preserves different statement types from sequential stub`() {
-        val assignment = AssignmentStatementASTNode("x", IntLiteralExpressionNode(1L))
+        val assignment = assignStmt("x", IntLiteralExpressionNode(1L))
         val init = ImmutableVariableInitializationASTNode("n", Type.IntType, IntLiteralExpressionNode(0L))
 
         val result = parseBlock(
@@ -261,7 +262,7 @@ class BlockParserTest {
         val result = parseBlock(
             listOf(lbrace(), rbrace(), identifier("tail"), eof()),
             StubStatementParser(
-                AssignmentStatementASTNode("x", IntLiteralExpressionNode(0L)),
+                assignStmt("x", IntLiteralExpressionNode(0L)),
                 onParse = { callCount++ },
             ),
         ).getOrElse { error("unexpected parse error: $it") }
@@ -292,8 +293,8 @@ class BlockParserTest {
             ),
             SequentialStubStatementParser(
                 listOf(
-                    StubStatementSpec(AssignmentStatementASTNode("a", IntLiteralExpressionNode(1L)), 2),
-                    StubStatementSpec(AssignmentStatementASTNode("b", IntLiteralExpressionNode(2L)), 2),
+                    StubStatementSpec(assignStmt("a", IntLiteralExpressionNode(1L)), 2),
+                    StubStatementSpec(assignStmt("b", IntLiteralExpressionNode(2L)), 2),
                 ),
             ),
         ).getOrElse { error("unexpected parse error: $it") }
@@ -347,7 +348,7 @@ class BlockParserTest {
     fun `unclosed block with stub statement fails`() {
         val result = parseBlock(
             listOf(lbrace(), identifier("x"), eof()),
-            StubStatementParser(AssignmentStatementASTNode("x", IntLiteralExpressionNode(0L)), tokensToConsume = 1),
+            StubStatementParser(assignStmt("x", IntLiteralExpressionNode(0L)), tokensToConsume = 1),
         )
         assertTrue(result.isLeft())
         assertTrue(result.leftOrNull()?.message?.contains("Unexpected EOF") == true)
@@ -380,7 +381,7 @@ class BlockParserTest {
             listOf(lbrace(), identifier("a"), identifier("b"), rbrace(), eof()),
             FailingStubStatementParser(
                 succeedCount = 1,
-                result = AssignmentStatementASTNode("a", IntLiteralExpressionNode(1L)),
+                result = assignStmt("a", IntLiteralExpressionNode(1L)),
                 failureMessage = "stub statement failure",
             ),
         )

@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.nnezh.ast.AssignmentStatementASTNode
+import org.nnezh.ast.assignStmt
 import org.nnezh.ast.BinaryExpressionASTNode
 import org.nnezh.ast.BinaryOperator
 import org.nnezh.ast.BlockASTNode
@@ -111,6 +112,8 @@ class ForParserTest {
     private fun forTokensWithStubBounds(vararg tail: Token): List<Token> =
         listOf(forKeyword(), lparen(), identifier("i"), inKeyword(), toKeyword(), rparen(), *tail)
 
+    private fun rightBorderName(counterName: String) = "\$right_border$counterName"
+
     private fun extractDesugared(
         result: ForStatementASTNode,
     ): Triple<MutableVariableInitializationASTNode, ImmutableVariableInitializationASTNode, WhileStatementASTNode> {
@@ -119,13 +122,13 @@ class ForParserTest {
         val limit = result.desugaredContent.statements[1]
         val whileStmt = result.desugaredContent.statements[2]
         assertInstanceOf(MutableVariableInitializationASTNode::class.java, init)
-        assertInstanceOf(ImmutableVariableInitializationASTNode::class.java, init)
+        assertInstanceOf(ImmutableVariableInitializationASTNode::class.java, limit)
         assertInstanceOf(WhileStatementASTNode::class.java, whileStmt)
         @Suppress("UNCHECKED_CAST")
         return Triple(
             init as MutableVariableInitializationASTNode,
             limit as ImmutableVariableInitializationASTNode,
-            whileStmt as WhileStatementASTNode
+            whileStmt as WhileStatementASTNode,
         )
     }
 
@@ -138,17 +141,23 @@ class ForParserTest {
         syntheticOpPosition: Position? = null,
     ) {
         val (init, limit, whileStmt) = extractDesugared(result)
+        val borderName = rightBorderName(counterName)
 
         assertEquals(counterName, init.name)
         assertEquals(Type.IntType, init.type)
         assertEquals(start, init.value)
+
+        assertEquals(borderName, limit.name)
+        assertEquals(Type.IntType, limit.type)
+        assertEquals(end, limit.value)
 
         assertInstanceOf(BinaryExpressionASTNode::class.java, whileStmt.condition)
         val condition = whileStmt.condition as BinaryExpressionASTNode
         assertInstanceOf(VariableExpressionNode::class.java, condition.left)
         assertEquals(counterName, (condition.left as VariableExpressionNode).token.lexeme)
         assertEquals(BinaryOperator.Le, condition.operator.kind)
-        assertEquals(end, condition.right)
+        assertInstanceOf(VariableExpressionNode::class.java, condition.right)
+        assertEquals(borderName, (condition.right as VariableExpressionNode).token.lexeme)
 
         assertEquals(innerStatements.size + 1, whileStmt.bodyBlock.statements.size)
         assertEquals(innerStatements, whileStmt.bodyBlock.statements.dropLast(1))
@@ -156,9 +165,9 @@ class ForParserTest {
         val increment = whileStmt.bodyBlock.statements.last()
         assertInstanceOf(AssignmentStatementASTNode::class.java, increment)
         val assignment = increment as AssignmentStatementASTNode
-        assertEquals(counterName, assignment.name)
-        assertInstanceOf(BinaryExpressionASTNode::class.java, assignment.value)
-        val incrementExpr = assignment.value as BinaryExpressionASTNode
+        assertEquals(counterName, (assignment.lValue as VariableExpressionNode).token.lexeme)
+        assertInstanceOf(BinaryExpressionASTNode::class.java, assignment.rValue)
+        val incrementExpr = assignment.rValue as BinaryExpressionASTNode
         assertInstanceOf(VariableExpressionNode::class.java, incrementExpr.left)
         assertEquals(counterName, (incrementExpr.left as VariableExpressionNode).token.lexeme)
         assertEquals(BinaryOperator.Plus, incrementExpr.operator.kind)
@@ -174,32 +183,30 @@ class ForParserTest {
 
     @Test
     fun `desugars for into init and while statements`() {
-        //        TODO тесты надо пофиксить
-//        val start = IntLiteralExpressionNode(0L)
-//        val end = IntLiteralExpressionNode(10L)
-//        val result = parseFor(
-//            forTokensWithStubBounds(lbrace(), rbrace(), eof()),
-//            SequentialStubExpressionParser(listOf(start, end)),
-//        ).getOrElse { error("unexpected parse error: $it") }
-//
-//        assertDesugaredShape(result, "i", start, end)
+        val start = IntLiteralExpressionNode(0L)
+        val end = IntLiteralExpressionNode(10L)
+        val result = parseFor(
+            forTokensWithStubBounds(lbrace(), rbrace(), eof()),
+            SequentialStubExpressionParser(listOf(start, end)),
+        ).getOrElse { error("unexpected parse error: $it") }
+
+        assertDesugaredShape(result, "i", start, end)
     }
 
     @Test
     fun `counter init uses Int type and start expression`() {
-        //        TODO тесты надо пофиксить
-//        val start = IntLiteralExpressionNode(3L)
-//        val end = IntLiteralExpressionNode(7L)
-//        val result = parseFor(
-//            forTokensWithStubBounds(lbrace(), rbrace(), eof()),
-//            SequentialStubExpressionParser(listOf(start, end)),
-//        ).getOrElse { error("unexpected parse error: $it") }
-//
-//        val (init,_, _) = extractDesugared(result)
-//        assertEquals("i", init.name)
-//        assertEquals(Type.IntType, init.type)
-//        assertEquals(start, init.value)
-//        assertEquals(end, (extractDesugared(result).third.condition as BinaryExpressionASTNode).right)
+        val start = IntLiteralExpressionNode(3L)
+        val end = IntLiteralExpressionNode(7L)
+        val result = parseFor(
+            forTokensWithStubBounds(lbrace(), rbrace(), eof()),
+            SequentialStubExpressionParser(listOf(start, end)),
+        ).getOrElse { error("unexpected parse error: $it") }
+
+        val (init, limit, _) = extractDesugared(result)
+        assertEquals("i", init.name)
+        assertEquals(Type.IntType, init.type)
+        assertEquals(start, init.value)
+        assertEquals(end, limit.value)
     }
 
     @Test
@@ -211,104 +218,100 @@ class ForParserTest {
             SequentialStubExpressionParser(listOf(start, end)),
         ).getOrElse { error("unexpected parse error: $it") }
 
-        //        TODO тесты надо пофиксить
-//        val (_, _, whileStmt) = extractDesugared(result)
-//        val condition = whileStmt.condition as BinaryExpressionASTNode
-//        assertEquals("i", (condition.left as VariableExpressionNode).token.lexeme)
-//        assertEquals(BinaryOperator.Le, condition.operator.kind)
-//        assertEquals(end, condition.right)
+        val (_, _, whileStmt) = extractDesugared(result)
+        val condition = whileStmt.condition as BinaryExpressionASTNode
+        assertEquals("i", (condition.left as VariableExpressionNode).token.lexeme)
+        assertEquals(BinaryOperator.Le, condition.operator.kind)
+        assertEquals(rightBorderName("i"), (condition.right as VariableExpressionNode).token.lexeme)
     }
 
     @Test
     fun `while body contains inner statements followed by increment`() {
-        val innerStatement = AssignmentStatementASTNode("a", IntLiteralExpressionNode(42L))
+        val innerStatement = assignStmt("a", IntLiteralExpressionNode(42L))
         val innerBlock = BlockASTNode(listOf(innerStatement))
         val result = parseFor(
             forTokensWithStubBounds(lbrace(), rbrace(), eof()),
             blockParser = StubBlockParser(innerBlock),
         ).getOrElse { error("unexpected parse error: $it") }
 
-        //        TODO тесты надо пофиксить
-//        val (_, _, whileStmt) = extractDesugared(result)
-//        assertEquals(2, whileStmt.bodyBlock.statements.size)
-//        assertEquals(innerStatement, whileStmt.bodyBlock.statements[0])
-//        assertInstanceOf(AssignmentStatementASTNode::class.java, whileStmt.bodyBlock.statements[1])
+        val (_, _, whileStmt) = extractDesugared(result)
+        assertEquals(2, whileStmt.bodyBlock.statements.size)
+        assertEquals(innerStatement, whileStmt.bodyBlock.statements[0])
+        assertInstanceOf(AssignmentStatementASTNode::class.java, whileStmt.bodyBlock.statements[1])
     }
 
     @Test
     fun `increment is counter equals counter plus one`() {
-        //        TODO тесты надо пофиксить
-//        val result = parseFor(
-//            forTokensWithStubBounds(lbrace(), rbrace(), eof()),
-//        ).getOrElse { error("unexpected parse error: $it") }
-//
-//        val increment = extractDesugared(result).third.bodyBlock.statements.single()
-//        val assignment = increment as AssignmentStatementASTNode
-//        assertEquals("i", assignment.name)
-//        val expr = assignment.value as BinaryExpressionASTNode
-//        assertEquals(BinaryOperator.Plus, expr.operator.kind)
-//        assertEquals(IntLiteralExpressionNode(1L), expr.right)
+        val result = parseFor(
+            forTokensWithStubBounds(lbrace(), rbrace(), eof()),
+        ).getOrElse { error("unexpected parse error: $it") }
+
+        val increment = extractDesugared(result).third.bodyBlock.statements.single()
+        val assignment = increment as AssignmentStatementASTNode
+        assertEquals("i", (assignment.lValue as VariableExpressionNode).token.lexeme)
+        val expr = assignment.rValue as BinaryExpressionASTNode
+        assertEquals(BinaryOperator.Plus, expr.operator.kind)
+        assertEquals(IntLiteralExpressionNode(1L), expr.right)
     }
 
     @Test
     fun `synthetic operator positions match to keyword position`() {
-        //        TODO тесты надо пофиксить
-//        val src = "for (i in 0 to 10) { }"
-//        val tokens = Lexer(src).tokenize().getOrElse { error("lexer error: $it") }
-//        val toPosition = tokens.filterIsInstance<Token.Keyword.To>().single().position
-//
-//        val result = parseFromSource(src).getOrElse { error("unexpected parse error: $it") }
-//        assertDesugaredShape(
-//            result,
-//            counterName = "i",
-//            start = IntLiteralExpressionNode(0L),
-//            end = IntLiteralExpressionNode(10L),
-//            syntheticOpPosition = toPosition,
-//        )
+        val src = "for (i in 0 to 10) { }"
+        val tokens = Lexer(src).tokenize().getOrElse { error("lexer error: $it") }
+        val toPosition = tokens.filterIsInstance<Token.Keyword.To>().single().position
+
+        val result = parseFromSource(src).getOrElse { error("unexpected parse error: $it") }
+        assertDesugaredShape(
+            result,
+            counterName = "i",
+            start = IntLiteralExpressionNode(0L),
+            end = IntLiteralExpressionNode(10L),
+            syntheticOpPosition = toPosition,
+        )
     }
 
     @Test
     fun `parses for with literal bounds via lexer`() {
-        //        TODO тесты надо пофиксить
-//        val result = parseFromSource("for (i in 0 to 10) { }")
-//            .getOrElse { error("unexpected parse error: $it") }
-//
-//        assertDesugaredShape(
-//            result,
-//            counterName = "i",
-//            start = IntLiteralExpressionNode(0L),
-//            end = IntLiteralExpressionNode(10L),
-//        )
+        val result = parseFromSource("for (i in 0 to 10) { }")
+            .getOrElse { error("unexpected parse error: $it") }
+
+        assertDesugaredShape(
+            result,
+            counterName = "i",
+            start = IntLiteralExpressionNode(0L),
+            end = IntLiteralExpressionNode(10L),
+        )
     }
 
     @Test
     fun `parses for with complex bounds via lexer`() {
-        //        TODO тесты надо пофиксить
-//        val result = parseFromSource("for (i in a to b * 2) { }")
-//            .getOrElse { error("unexpected parse error: $it") }
-//
-//        val (init, _, whileStmt) = extractDesugared(result)
-//        assertInstanceOf(VariableExpressionNode::class.java, init.value)
-//        assertEquals("a", (init.value as VariableExpressionNode).token.lexeme)
-//        assertInstanceOf(BinaryExpressionASTNode::class.java, (whileStmt.condition as BinaryExpressionASTNode).right)
+        val result = parseFromSource("for (i in a to b * 2) { }")
+            .getOrElse { error("unexpected parse error: $it") }
+
+        val (init, limit, whileStmt) = extractDesugared(result)
+        assertInstanceOf(VariableExpressionNode::class.java, init.value)
+        assertEquals("a", (init.value as VariableExpressionNode).token.lexeme)
+        assertInstanceOf(BinaryExpressionASTNode::class.java, limit.value)
+        assertEquals(rightBorderName("i"), (whileStmt.condition as BinaryExpressionASTNode).let {
+            (it.right as VariableExpressionNode).token.lexeme
+        })
     }
 
     @Test
     fun `preserves non-empty inner block before increment`() {
-        //        TODO тесты надо пофиксить
-//        val innerStatement = AssignmentStatementASTNode("a", IntLiteralExpressionNode(1L))
-//        val result = parseFor(
-//            forTokensWithStubBounds(lbrace(), rbrace(), eof()),
-//            blockParser = StubBlockParser(BlockASTNode(listOf(innerStatement))),
-//        ).getOrElse { error("unexpected parse error: $it") }
-//
-//        assertDesugaredShape(
-//            result,
-//            counterName = "i",
-//            start = IntLiteralExpressionNode(0L),
-//            end = IntLiteralExpressionNode(10L),
-//            innerStatements = listOf(innerStatement),
-//        )
+        val innerStatement = assignStmt("a", IntLiteralExpressionNode(1L))
+        val result = parseFor(
+            forTokensWithStubBounds(lbrace(), rbrace(), eof()),
+            blockParser = StubBlockParser(BlockASTNode(listOf(innerStatement))),
+        ).getOrElse { error("unexpected parse error: $it") }
+
+        assertDesugaredShape(
+            result,
+            counterName = "i",
+            start = IntLiteralExpressionNode(0L),
+            end = IntLiteralExpressionNode(10L),
+            innerStatements = listOf(innerStatement),
+        )
     }
 
     @Test
@@ -347,36 +350,34 @@ class ForParserTest {
             ),
         ).getOrElse { error("unexpected parse error: $it") }
 
-//        TODO тесты надо пофиксить
-//        assertEquals("_idx", extractDesugared(result).first.name)
+        assertEquals("_idx", extractDesugared(result).first.name)
     }
 
     @Test
     fun `parses for with extra spaces via lexer`() {
-        //        TODO тесты надо пофиксить
-//        val result = parseFromSource("for  ( i  in  0  to  10 )  {  }")
-//            .getOrElse { error("unexpected parse error: $it") }
-//
-//        assertDesugaredShape(
-//            result,
-//            counterName = "i",
-//            start = IntLiteralExpressionNode(0L),
-//            end = IntLiteralExpressionNode(10L),
-//        )
+        val result = parseFromSource("for  ( i  in  0  to  10 )  {  }")
+            .getOrElse { error("unexpected parse error: $it") }
+
+        assertDesugaredShape(
+            result,
+            counterName = "i",
+            start = IntLiteralExpressionNode(0L),
+            end = IntLiteralExpressionNode(10L),
+        )
     }
 
     @Test
     fun `parses for with boolean start bound like simple bred example`() {
-        //TODO: тест надо пофиксить
-//        val result = parseFromSource("for (i in true to x) { }")
-//            .getOrElse { error("unexpected parse error: $it") }
-//
-//        val (init, _, whileStmt) = extractDesugared(result)
-//        assertInstanceOf(BooleanLiteralExpressionNode::class.java, init.value)
-//        assertEquals(true, (init.value as BooleanLiteralExpressionNode).value)
-//        val condition = whileStmt.condition as BinaryExpressionASTNode
-//        assertInstanceOf(VariableExpressionNode::class.java, condition.right)
-//        assertEquals("x", (condition.right as VariableExpressionNode).token.lexeme)
+        val result = parseFromSource("for (i in true to x) { }")
+            .getOrElse { error("unexpected parse error: $it") }
+
+        val (init, limit, whileStmt) = extractDesugared(result)
+        assertInstanceOf(BooleanLiteralExpressionNode::class.java, init.value)
+        assertEquals(true, (init.value as BooleanLiteralExpressionNode).value)
+        assertInstanceOf(VariableExpressionNode::class.java, limit.value)
+        assertEquals("x", (limit.value as VariableExpressionNode).token.lexeme)
+        val condition = whileStmt.condition as BinaryExpressionASTNode
+        assertEquals(rightBorderName("i"), (condition.right as VariableExpressionNode).token.lexeme)
     }
 
     // endregion

@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import org.nnezh.ast.AssignmentStatementASTNode
+import org.nnezh.ast.assignStmt
 import org.nnezh.ast.BinaryExpressionASTNode
 import org.nnezh.ast.BinaryOperator
 import org.nnezh.ast.BlockASTNode
@@ -181,7 +181,7 @@ class WhileParserTest {
     @Test
     fun `uses block returned by block parser`() {
         val customStatement: StatementASTNode =
-            AssignmentStatementASTNode("a", IntLiteralExpressionNode(1L))
+            assignStmt("a", IntLiteralExpressionNode(1L))
         val customBlock = BlockASTNode(listOf(customStatement))
 
         val result = parseWhile(

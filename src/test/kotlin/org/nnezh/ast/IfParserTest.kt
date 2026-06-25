@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.nnezh.ast.AssignmentStatementASTNode
+import org.nnezh.ast.assignStmt
 import org.nnezh.ast.BinaryExpressionASTNode
 import org.nnezh.ast.BinaryOperator
 import org.nnezh.ast.BlockASTNode
@@ -227,9 +228,9 @@ class IfParserTest {
     @Test
     fun `uses different blocks for then and else from block parser`() {
         val thenStatement: StatementASTNode =
-            AssignmentStatementASTNode("a", IntLiteralExpressionNode(1L))
+            assignStmt("a", IntLiteralExpressionNode(1L))
         val elseStatement: StatementASTNode =
-            AssignmentStatementASTNode("b", IntLiteralExpressionNode(2L))
+            assignStmt("b", IntLiteralExpressionNode(2L))
         val thenBlock = BlockASTNode(listOf(thenStatement))
         val elseBlock = BlockASTNode(listOf(elseStatement))
 

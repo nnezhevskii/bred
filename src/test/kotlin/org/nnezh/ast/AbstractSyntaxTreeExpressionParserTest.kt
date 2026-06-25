@@ -44,8 +44,9 @@ class AbstractSyntaxTreeExpressionParserTest {
         is FunctionCallExpressionNode ->
             "${node.name.lexeme}(${node.arguments.joinToString(", ") { render(it) }})"
 
-        is StaticArrayInitializationExpressionsListNode -> TODO()
-        is ArrayAccessExpressionASTNode -> TODO()
+        is ArrayAccessExpressionASTNode -> "${node.array}[${render(node.index)}]"
+        is StaticArrayInitializationExpressionsListNode ->
+            "[${node.values.joinToString(", ") { render(it) }}]"
     }
 
     private fun rendered(src: String): String =
@@ -141,6 +142,56 @@ class AbstractSyntaxTreeExpressionParserTest {
         assertInstanceOf(BooleanLiteralExpressionNode::class.java, parse("false").getOrElse { error("$it") })
     }
 
+    // region Arrays
+
+    @Test
+    fun `array access with literal index`() {
+        assertEquals("arr[0]", rendered("arr[0]"))
+        val node = parse("arr[0]").getOrElse { error("unexpected: $it") }
+        val access = assertInstanceOf(ArrayAccessExpressionASTNode::class.java, node)
+        assertEquals("arr", access.array)
+        assertInstanceOf(IntLiteralExpressionNode::class.java, access.index)
+        assertEquals(0L, (access.index as IntLiteralExpressionNode).value)
+    }
+
+    @Test
+    fun `array access index respects expression precedence`() {
+        assertEquals("arr[(+ i 1)]", rendered("arr[i + 1]"))
+    }
+
+    @Test
+    fun `static array initialization list`() {
+        assertEquals("[1, 2, 3]", rendered("[1, 2, 3]"))
+        val node = parse("[1, 2, 3]").getOrElse { error("unexpected: $it") }
+        val list = assertInstanceOf(StaticArrayInitializationExpressionsListNode::class.java, node)
+        assertEquals(3, list.values.size)
+        assertEquals(listOf(1L, 2L, 3L), list.values.map { (it as IntLiteralExpressionNode).value })
+    }
+
+    @Test
+    fun `empty static array initialization list`() {
+        assertEquals("[]", rendered("[]"))
+        val list = assertInstanceOf(
+            StaticArrayInitializationExpressionsListNode::class.java,
+            parse("[]").getOrElse { error("unexpected: $it") },
+        )
+        assertTrue(list.values.isEmpty())
+    }
+
+    @Test
+    fun `identifier followed by lparen is call not array access`() {
+        val node = parse("f()").getOrElse { error("unexpected: $it") }
+        assertInstanceOf(FunctionCallExpressionNode::class.java, node)
+    }
+
+    @Test
+    fun `identifier followed by lbracket is array access not call`() {
+        val node = parse("arr[0]").getOrElse { error("unexpected: $it") }
+        assertInstanceOf(ArrayAccessExpressionASTNode::class.java, node)
+    }
+
+    // endregion
+
     // endregion
 
     // region Negative scenarios
@@ -174,6 +225,30 @@ class AbstractSyntaxTreeExpressionParserTest {
     fun `truncated call fails`() {
         assertTrue(parse("max(").isLeft())
     }
+
+    // region Arrays — negative
+
+    @Test
+    fun `unclosed array index fails`() {
+        assertTrue(parse("arr[").isLeft())
+    }
+
+    @Test
+    fun `empty array index fails`() {
+        assertTrue(parse("arr[]").isLeft())
+    }
+
+    @Test
+    fun `unclosed initialization list fails`() {
+        assertTrue(parse("[1, 2").isLeft())
+    }
+
+    @Test
+    fun `array access cannot be called`() {
+        assertTrue(parse("arr[0](1)").isLeft())
+    }
+
+    // endregion
 
     // endregion
 }

@@ -17,6 +17,9 @@ import org.nnezh.ast.BooleanLiteralExpressionNode
 import org.nnezh.ast.DoubleLiteralExpressionNode
 import org.nnezh.ast.ExpressionASTNode
 import org.nnezh.ast.ImmutableVariableInitializationASTNode
+import org.nnezh.ast.StaticArrayExpressionNode
+import org.nnezh.ast.StaticArrayInitializationExpressionsListNode
+import org.nnezh.ast.VariableInitializationASTNode
 import org.nnezh.ast.IntLiteralExpressionNode
 import org.nnezh.ast.StringLiteralExpressionNode
 import org.nnezh.ast.VariableExpressionNode
@@ -54,12 +57,12 @@ class ImmutableInitializationParserTest {
     private fun parseInit(
         tokens: List<Token>,
         expressionParser: Parser<ExpressionASTNode> = StubExpressionParser(IntLiteralExpressionNode(0L)),
-    ): Either<ASTError, ImmutableVariableInitializationASTNode> {
+    ): Either<ASTError, VariableInitializationASTNode> {
         val parser = ImmutableInitializationParser(expressionParser)
         return either { with(parser) { parse(TokensContext(tokens)) } }
     }
 
-    private fun parseFromSource(src: String): Either<ASTError, ImmutableVariableInitializationASTNode> {
+    private fun parseFromSource(src: String): Either<ASTError, VariableInitializationASTNode> {
         val tokens = Lexer(src).tokenize().getOrElse { error("lexer error: $it") }
         return parseInit(tokens, AbstractSyntaxTreeExpressionParser())
     }
@@ -87,9 +90,9 @@ class ImmutableInitializationParserTest {
             StubExpressionParser(expression),
         ).getOrElse { error("unexpected parse error: $it") }
 
-        assertEquals("x", result.name)
-        assertEquals(Type.IntType, result.type)
-        assertEquals(expression, result.value)
+        assertEquals("x", result.variableName)
+        assertEquals(Type.IntType, result.variableType)
+        assertEquals(expression, result.valExpression)
     }
 
     @Test
@@ -99,7 +102,7 @@ class ImmutableInitializationParserTest {
             StubExpressionParser(IntLiteralExpressionNode(1L)),
         ).getOrElse { error("unexpected parse error: $it") }
 
-        assertEquals("_count", result.name)
+        assertEquals("_count", result.variableName)
     }
 
     @Test
@@ -123,10 +126,10 @@ class ImmutableInitializationParserTest {
         val result = parseFromSource("val Pi: Double = 3.1417")
             .getOrElse { error("unexpected parse error: $it") }
 
-        assertEquals("Pi", result.name)
-        assertEquals(Type.DoubleType, result.type)
-        assertInstanceOf(DoubleLiteralExpressionNode::class.java, result.value)
-        assertEquals(3.1417, (result.value as DoubleLiteralExpressionNode).value)
+        assertEquals("Pi", result.variableName)
+        assertEquals(Type.DoubleType, result.variableType)
+        assertInstanceOf(DoubleLiteralExpressionNode::class.java, result.valExpression)
+        assertEquals(3.1417, (result.valExpression as DoubleLiteralExpressionNode).value)
     }
 
     @Test
@@ -134,10 +137,10 @@ class ImmutableInitializationParserTest {
         val result = parseFromSource("val flag: Boolean = true")
             .getOrElse { error("unexpected parse error: $it") }
 
-        assertEquals("flag", result.name)
-        assertEquals(Type.BoolType, result.type)
-        assertInstanceOf(BooleanLiteralExpressionNode::class.java, result.value)
-        assertEquals(true, (result.value as BooleanLiteralExpressionNode).value)
+        assertEquals("flag", result.variableName)
+        assertEquals(Type.BoolType, result.variableType)
+        assertInstanceOf(BooleanLiteralExpressionNode::class.java, result.valExpression)
+        assertEquals(true, (result.valExpression as BooleanLiteralExpressionNode).value)
     }
 
     @Test
@@ -145,10 +148,10 @@ class ImmutableInitializationParserTest {
         val result = parseFromSource("val msg: String = \"hi\"")
             .getOrElse { error("unexpected parse error: $it") }
 
-        assertEquals("msg", result.name)
-        assertEquals(Type.StringType, result.type)
-        assertInstanceOf(StringLiteralExpressionNode::class.java, result.value)
-        assertEquals("hi", (result.value as StringLiteralExpressionNode).value)
+        assertEquals("msg", result.variableName)
+        assertEquals(Type.StringType, result.variableType)
+        assertInstanceOf(StringLiteralExpressionNode::class.java, result.valExpression)
+        assertEquals("hi", (result.valExpression as StringLiteralExpressionNode).value)
     }
 
     @Test
@@ -156,10 +159,10 @@ class ImmutableInitializationParserTest {
         val result = parseFromSource("val n: Int = 42")
             .getOrElse { error("unexpected parse error: $it") }
 
-        assertEquals("n", result.name)
-        assertEquals(Type.IntType, result.type)
-        assertInstanceOf(IntLiteralExpressionNode::class.java, result.value)
-        assertEquals(42L, (result.value as IntLiteralExpressionNode).value)
+        assertEquals("n", result.variableName)
+        assertEquals(Type.IntType, result.variableType)
+        assertInstanceOf(IntLiteralExpressionNode::class.java, result.valExpression)
+        assertEquals(42L, (result.valExpression as IntLiteralExpressionNode).value)
     }
 
     @Test
@@ -167,8 +170,8 @@ class ImmutableInitializationParserTest {
         val result = parseFromSource("val x: Int = a + b * 2")
             .getOrElse { error("unexpected parse error: $it") }
 
-        assertEquals("x", result.name)
-        assertInstanceOf(BinaryExpressionASTNode::class.java, result.value)
+        assertEquals("x", result.variableName)
+        assertInstanceOf(BinaryExpressionASTNode::class.java, result.valExpression)
     }
 
     @Test
@@ -176,9 +179,9 @@ class ImmutableInitializationParserTest {
         val result = parseFromSource("val y: Int = other")
             .getOrElse { error("unexpected parse error: $it") }
 
-        assertEquals("y", result.name)
-        assertInstanceOf(VariableExpressionNode::class.java, result.value)
-        assertEquals("other", (result.value as VariableExpressionNode).token.lexeme)
+        assertEquals("y", result.variableName)
+        assertInstanceOf(VariableExpressionNode::class.java, result.valExpression)
+        assertEquals("other", (result.valExpression as VariableExpressionNode).token.lexeme)
     }
 
     @Test
@@ -186,9 +189,9 @@ class ImmutableInitializationParserTest {
         val result = parseFromSource("val x : Int = 42")
             .getOrElse { error("unexpected parse error: $it") }
 
-        assertEquals("x", result.name)
-        assertEquals(Type.IntType, result.type)
-        assertEquals(42L, (result.value as IntLiteralExpressionNode).value)
+        assertEquals("x", result.variableName)
+        assertEquals(Type.IntType, result.variableType)
+        assertEquals(42L, (result.valExpression as IntLiteralExpressionNode).value)
     }
 
     @Test
@@ -206,7 +209,7 @@ class ImmutableInitializationParserTest {
                 StubExpressionParser(IntLiteralExpressionNode(0L)),
             ).getOrElse { error("unexpected parse error for $typeName: $it") }
 
-            assertEquals(expectedType, result.type, "type mismatch for $typeName")
+            assertEquals(expectedType, result.variableType, "type mismatch for $typeName")
         }
     }
 
@@ -217,8 +220,47 @@ class ImmutableInitializationParserTest {
             StubExpressionParser(IntLiteralExpressionNode(0L)),
         ).getOrElse { error("unexpected parse error: $it") }
 
-        assertEquals("my_var_2", result.name)
+        assertEquals("my_var_2", result.variableName)
     }
+
+    // region Arrays
+
+    @Test
+    fun `parses static array without initializer`() {
+        val result = parseFromSource("val arr: Int[10]")
+            .getOrElse { error("unexpected parse error: $it") }
+
+        val array = assertInstanceOf(StaticArrayExpressionNode::class.java, result)
+        assertEquals("arr", array.variableName)
+        assertEquals(Type.StaticArrayType(Type.IntType), array.variableType)
+        assertEquals(10, array.size)
+        assertEquals(null, array.valExpression)
+    }
+
+    @Test
+    fun `parses static array with initialization list`() {
+        val result = parseFromSource("val buf: Int[3] = [1, 2, 3]")
+            .getOrElse { error("unexpected parse error: $it") }
+
+        val array = assertInstanceOf(StaticArrayExpressionNode::class.java, result)
+        assertEquals("buf", array.variableName)
+        assertEquals(3, array.size)
+        val init = assertInstanceOf(StaticArrayInitializationExpressionsListNode::class.java, array.valExpression)
+        assertEquals(listOf(1L, 2L, 3L), init.values.map { (it as IntLiteralExpressionNode).value })
+    }
+
+    @Test
+    fun `parses static array with double element type`() {
+        val result = parseFromSource("val xs: Double[2] = [1.0, 2.0]")
+            .getOrElse { error("unexpected parse error: $it") }
+
+        val array = assertInstanceOf(StaticArrayExpressionNode::class.java, result)
+        assertEquals(Type.StaticArrayType(Type.DoubleType), array.variableType)
+        val init = assertInstanceOf(StaticArrayInitializationExpressionsListNode::class.java, array.valExpression)
+        assertEquals(2, init.values.size)
+    }
+
+    // endregion
 
     // endregion
 
@@ -352,6 +394,34 @@ class ImmutableInitializationParserTest {
     fun `val name colon and type only fails`() {
         assertTrue(parseFromSource("val x : Int").isLeft())
     }
+
+    // region Arrays — negative
+
+    @Test
+    fun `array declaration without size fails`() {
+        val result = parseFromSource("val arr: Int[]")
+        assertTrue(result.isLeft())
+        assertTrue(result.leftOrNull()?.message?.contains("array size") == true)
+    }
+
+    @Test
+    fun `array declaration with non-int size fails`() {
+        assertTrue(parseFromSource("val arr: Int[3.0]").isLeft())
+    }
+
+    @Test
+    fun `array declaration with scalar initializer fails`() {
+        assertTrue(parseFromSource("val arr: Int[3] = 42").isLeft())
+    }
+
+    @Test
+    fun `array declaration with unknown element type fails`() {
+        val result = parseFromSource("val arr: Foo[3]")
+        assertTrue(result.isLeft())
+        assertTrue(result.leftOrNull()?.message?.contains("Invalid type Foo at") == true)
+    }
+
+    // endregion
 
     // endregion
 }

@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import org.nnezh.ast.AssignmentStatementASTNode
+import org.nnezh.ast.assignStmt
 import org.nnezh.ast.BlockASTNode
 import org.nnezh.ast.DeclareFunctionASTNode
 import org.nnezh.ast.FunctionArgumentASTNode
@@ -130,10 +130,34 @@ class FunctionParserTest {
         assertEquals(Type.BoolType, result.args.arguments[2].type)
     }
 
+    // region Arrays
+
+    @Test
+    fun `parses function with static array parameter`() {
+        val result = parseFromSource("fun f(arr: Int[]): Unit { }")
+            .getOrElse { error("unexpected parse error: $it") }
+
+        assertEquals(1, result.args.arguments.size)
+        assertEquals("arr", result.args.arguments.single().name)
+        assertEquals(Type.StaticArrayType(Type.IntType), result.args.arguments.single().type)
+    }
+
+    @Test
+    fun `parses function with mixed scalar and array parameters`() {
+        val result = parseFromSource("fun g(a: Int, b: String[]): Unit { }")
+            .getOrElse { error("unexpected parse error: $it") }
+
+        assertEquals(2, result.args.arguments.size)
+        assertEquals(Type.IntType, result.args.arguments[0].type)
+        assertEquals(Type.StaticArrayType(Type.StringType), result.args.arguments[1].type)
+    }
+
+    // endregion
+
     @Test
     fun `delegates body to block parser`() {
         val customStatement: StatementASTNode =
-            AssignmentStatementASTNode("a", IntLiteralExpressionNode(1L))
+            assignStmt("a", IntLiteralExpressionNode(1L))
         val customBlock = BlockASTNode(listOf(customStatement))
 
         val result = parseFromSource("fun foo(): Unit { }", StubBlockParser(customBlock))
@@ -375,6 +399,11 @@ class FunctionParserTest {
         val result = parseFromSource("fun foo(a: Foo): Unit { }")
         assertTrue(result.isLeft())
         assertTrue(result.leftOrNull()?.message?.contains("Invalid type Foo at") == true)
+    }
+
+    @Test
+    fun `array parameter with size suffix fails`() {
+        assertTrue(parseFromSource("fun f(arr: Int[3]): Unit { }").isLeft())
     }
 
     // endregion

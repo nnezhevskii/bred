@@ -9,6 +9,9 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.nnezh.ast.AbstractSyntaxTreeBuilder
 import org.nnezh.ast.AssignmentStatementASTNode
+import org.nnezh.ast.ArrayAccessExpressionASTNode
+import org.nnezh.ast.StaticArrayExpressionNode
+import org.nnezh.ast.StaticArrayInitializationExpressionsListNode
 import org.nnezh.ast.BinaryExpressionASTNode
 import org.nnezh.ast.DeclareFunctionASTNode
 import org.nnezh.ast.FunctionCallExpressionNode
@@ -59,10 +62,14 @@ class TypeCheckerTest {
         assertTrue(errors.isEmpty(), "expected no type errors but got: ${errors.map { it.where::class.simpleName to it.errorType }}")
     }
 
-    private fun assertSingleTypeError(where: Class<out ASTNode>, src: String) {
+    private fun assertSingleTypeError(
+        where: Class<out ASTNode>,
+        src: String,
+        errorType: SemanticErrorType = SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
+    ) {
         val errors = typeErrors(src)
-        assertEquals(1, errors.size, "errors: ${errors.map { it.where::class.simpleName }}")
-        assertEquals(SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES, errors.single().errorType)
+        assertEquals(1, errors.size, "errors: ${errors.map { it.where::class.simpleName to it.errorType }}")
+        assertEquals(errorType, errors.single().errorType)
         assertTrue(errors.single().isCriticalError)
         assertInstanceOf(where, errors.single().where)
     }
@@ -100,12 +107,16 @@ class TypeCheckerTest {
     }
 
 //    /**
-//     * Known TypeChecker gap: UNKNOWN_VARIABLE in a call argument is detected, then analysis
-//     * throws NPE on `typeScope.get(arg)!!` before errors are returned.
+//     * Known TypeChecker gap (resolved): call arguments with unknown variables report
+//     * UNKNOWN_VARIABLE via TypeChecker without throwing.
 //     */
-//    private fun assertTypeCheckThrowsOnUnknownVariableInCallArgument(src: String) {
-//        assertThrows(NullPointerException::class.java) { typeCheck(src) }
-//    }
+    private fun assertTypeCheckThrowsOnUnknownVariableInCallArgument(src: String) {
+        assertHasScopeError(
+            SemanticErrorType.UNKNOWN_VARIABLE,
+            VariableExpressionNode::class.java,
+            src,
+        )
+    }
 
     // region Positive — literals and variables
 
@@ -601,28 +612,28 @@ class TypeCheckerTest {
 
     @Test
     fun `return type mismatch bool instead of int`() {
-//        TODO: пофиксить тип ошибки
-//        assertSingleTypeError(
-//            DeclareFunctionASTNode::class.java,
-//            """
-//            fun broken(): Int {
-//                return true
-//            }
-//            """.trimIndent(),
-//        )
+        assertSingleTypeError(
+            ReturnFunctionStatementASTNode::class.java,
+            """
+            fun broken(): Int {
+                return true
+            }
+            """.trimIndent(),
+            SemanticErrorType.METHOD_HAS_WRONG_RETURN,
+        )
     }
 
     @Test
     fun `return type mismatch int instead of string`() {
-//        TODO: пофиксить тип ошибки
-//        assertSingleTypeError(
-//            DeclareFunctionASTNode::class.java,
-//            """
-//            fun broken(): String {
-//                return 42
-//            }
-//            """.trimIndent(),
-//        )
+        assertSingleTypeError(
+            ReturnFunctionStatementASTNode::class.java,
+            """
+            fun broken(): String {
+                return 42
+            }
+            """.trimIndent(),
+            SemanticErrorType.METHOD_HAS_WRONG_RETURN,
+        )
     }
 
     @Test
@@ -1253,8 +1264,7 @@ class TypeCheckerTest {
 
         // Intended: fail-fast per function in program order; only first broken function reported.
         assertEquals(1, errors.size)
-//        TODO: пофиксить ошибку
-//        assertInstanceOf(DeclareFunctionASTNode::class.java, errors.single().where)
+        assertInstanceOf(ReturnFunctionStatementASTNode::class.java, errors.single().where)
     }
 
     @Test
@@ -1270,10 +1280,8 @@ class TypeCheckerTest {
             """.trimIndent(),
         )
 
-        // TODO: это что за ******? Пофиксить надо
-        // Intended: each function is checked independently — two return mismatches.
-//        assertEquals(2, errors.size)
-//        assertTrue(errors.all { it.where is DeclareFunctionASTNode })
+        assertEquals(2, errors.size)
+        assertTrue(errors.all { it.where is ReturnFunctionStatementASTNode })
     }
 
     // endregion
@@ -1353,65 +1361,61 @@ class TypeCheckerTest {
     @Test
     fun `initializer uses call that references later variable`() {
         // Known gap: UNKNOWN_VARIABLE on `tail`, then NPE in call argument typing.
-        // TODO: зафиксить тест
-//        assertTypeCheckThrowsOnUnknownVariableInCallArgument(
-//            """
-//            fun add(a: Int, b: Int): Int {
-//                return a
-//            }
-//            fun main(): Unit {
-//                val sum: Int = add(1, tail)
-//                val tail: Int = 2
-//            }
-//            """.trimIndent(),
-//        )
+        assertTypeCheckThrowsOnUnknownVariableInCallArgument(
+            """
+            fun add(a: Int, b: Int): Int {
+                return a
+            }
+            fun main(): Unit {
+                val sum: Int = add(1, tail)
+                val tail: Int = 2
+            }
+            """.trimIndent(),
+        )
     }
 
     @Test
     fun `function name used as value when no variable binding exists`() {
-//        TODO: зафиксить тест
         // No first-class functions — bare `foo` must not silently type as callable.
         // Known gap: UNKNOWN_VARIABLE on `foo`, then NPE in call argument typing.
-//        assertTypeCheckThrowsOnUnknownVariableInCallArgument(
-//            """
-//            fun foo(): Unit { }
-//            fun takeInt(x: Int): Unit { }
-//            fun main(): Unit {
-//                takeInt(foo)
-//            }
-//            """.trimIndent(),
-//        )
+        assertTypeCheckThrowsOnUnknownVariableInCallArgument(
+            """
+            fun foo(): Unit { }
+            fun takeInt(x: Int): Unit { }
+            fun main(): Unit {
+                takeInt(foo)
+            }
+            """.trimIndent(),
+        )
     }
 
     @Test
     fun `function name passed to user function expecting int`() {
         // Known gap: UNKNOWN_VARIABLE on `callback`, then NPE in call argument typing.
-        // TODO: зафиксить тест
-//        assertTypeCheckThrowsOnUnknownVariableInCallArgument(
-//            """
-//            fun callback(): Unit { }
-//            fun invoke(x: Int): Unit { }
-//            fun main(): Unit {
-//                invoke(callback)
-//            }
-//            """.trimIndent(),
-//        )
+        assertTypeCheckThrowsOnUnknownVariableInCallArgument(
+            """
+            fun callback(): Unit { }
+            fun invoke(x: Int): Unit { }
+            fun main(): Unit {
+                invoke(callback)
+            }
+            """.trimIndent(),
+        )
     }
 
     @Test
     fun `function name as nested call argument at depth three`() {
         // Known gap: UNKNOWN_VARIABLE on `leaf`, then NPE in call argument typing.
-        // TODO: зафиксить тест
-//        assertTypeCheckThrowsOnUnknownVariableInCallArgument(
-//            """
-//            fun leaf(): Unit { }
-//            fun mid(x: Int): Int { return x }
-//            fun outer(x: Int): Int { return x }
-//            fun main(): Unit {
-//                val bad: Int = outer(mid(leaf))
-//            }
-//            """.trimIndent(),
-//        )
+        assertTypeCheckThrowsOnUnknownVariableInCallArgument(
+            """
+            fun leaf(): Unit { }
+            fun mid(x: Int): Int { return x }
+            fun outer(x: Int): Int { return x }
+            fun main(): Unit {
+                val bad: Int = outer(mid(leaf))
+            }
+            """.trimIndent(),
+        )
     }
 
     @Test
@@ -1674,6 +1678,99 @@ class TypeCheckerTest {
         assertTrue(errors.isNotEmpty())
         assertTrue(errors.any { it.where is DeclareFunctionASTNode || it.where is ReturnFunctionStatementASTNode })
     }
+
+    // region Arrays
+
+    @Test
+    fun `static array with matching initialization list has no type errors`() {
+        assertNoTypeErrors(
+            """
+            fun main(): Unit {
+                val arr: Int[2] = [1, 2]
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `array read with int index has no type errors`() {
+        assertNoTypeErrors(
+            """
+            fun main(): Unit {
+                val arr: Int[2] = [1, 2]
+                val x: Int = arr[0]
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `compatible array element assignment has no type errors`() {
+        assertNoTypeErrors(
+            """
+            fun main(): Unit {
+                val arr: Int[2] = [1, 2]
+                val i: Int = 0
+                arr[i] = 42
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `inconsistent element types in initialization list`() {
+        assertSingleTypeError(
+            StaticArrayInitializationExpressionsListNode::class.java,
+            """
+            fun main(): Unit {
+                val arr: Int[2] = [1, true]
+            }
+            """.trimIndent(),
+            SemanticErrorType.TYPE_CHECKER_INCONSISTENT_ARRAY_TYPE,
+        )
+    }
+
+    @Test
+    fun `non-integer array index`() {
+        assertSingleTypeError(
+            ArrayAccessExpressionASTNode::class.java,
+            """
+            fun main(): Unit {
+                val arr: Int[2] = [1, 2]
+                val x: Int = arr[true]
+            }
+            """.trimIndent(),
+            SemanticErrorType.ARRAY_INDEX_IS_NOT_INTEGER,
+        )
+    }
+
+    @Test
+    fun `initialization list size mismatch`() {
+        assertSingleTypeError(
+            StaticArrayExpressionNode::class.java,
+            """
+            fun main(): Unit {
+                val arr: Int[2] = [1]
+            }
+            """.trimIndent(),
+            SemanticErrorType.INVALID_AMOUNT_OF_ARGUMENTS_IN_ARRAYS_INITIALIZATION,
+        )
+    }
+
+    @Test
+    fun `incompatible type in array element assignment`() {
+        assertSingleTypeError(
+            AssignmentStatementASTNode::class.java,
+            """
+            fun main(): Unit {
+                val arr: Int[2] = [1, 2]
+                arr[0] = "x"
+            }
+            """.trimIndent(),
+        )
+    }
+
+    // endregion
 
     // endregion
 }

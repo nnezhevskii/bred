@@ -15,6 +15,8 @@ import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.nnezh.ast.AssignmentStatementASTNode
+import org.nnezh.ast.assignStmt
+import org.nnezh.ast.lvalueName
 import org.nnezh.ast.BlockASTNode
 import org.nnezh.ast.CallFunctionStatementASTNode
 import org.nnezh.ast.EmptyNode
@@ -142,7 +144,7 @@ class StatementParserTest {
                 MutableVariableInitializationASTNode("j", Type.IntType, IntLiteralExpressionNode(0L)),
             ),
             assignStub = TaggingStubParser(
-                AssignmentStatementASTNode("x", IntLiteralExpressionNode(0L)),
+                assignStmt("x", IntLiteralExpressionNode(0L)),
             ),
             callStub = TaggingStubParser(
                 CallFunctionStatementASTNode(VariableExpressionNode(id)),
@@ -299,7 +301,7 @@ class StatementParserTest {
         val result = parseFromSource("x = 1")
             .getOrElse { error("unexpected parse error: $it") }
         assertInstanceOf(AssignmentStatementASTNode::class.java, result)
-        assertEquals("x", (result as AssignmentStatementASTNode).name)
+        assertEquals("x", (result as AssignmentStatementASTNode).lvalueName())
     }
 
     @Test

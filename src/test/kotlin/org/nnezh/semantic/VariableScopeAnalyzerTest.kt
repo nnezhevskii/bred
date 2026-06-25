@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.nnezh.ast.AbstractSyntaxTreeBuilder
 import org.nnezh.ast.AssignmentStatementASTNode
+import org.nnezh.ast.ArrayAccessExpressionASTNode
+import org.nnezh.ast.lvalueName
 import org.nnezh.ast.FunctionArgumentASTNode
 import org.nnezh.ast.ProgramASTNode
 import org.nnezh.ast.VariableExpressionNode
@@ -58,7 +60,7 @@ class VariableScopeAnalyzerTest {
         assertEquals(SemanticErrorType.UNKNOWN_VARIABLE, errors.single().variableScope.errorType)
         assertTrue(errors.single().isCriticalError)
         val where = assertInstanceOf(AssignmentStatementASTNode::class.java, errors.single().variableScope.where)
-        assertEquals("x", where.name)
+        assertEquals("x", where.lvalueName())
     }
 
     @Test
@@ -403,4 +405,68 @@ class VariableScopeAnalyzerTest {
         val where = assertInstanceOf(VariableExpressionNode::class.java, errors.single().variableScope.where)
         assertEquals("i", where.token.lexeme)
     }
+
+    // region Arrays
+
+    @Test
+    fun `unknown array in read is critical`() {
+        val errors = analyze(
+            """
+            fun main(): Unit {
+                return arr[0]
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals(1, errors.size)
+        assertEquals(SemanticErrorType.UNKNOWN_VARIABLE, errors.single().variableScope.errorType)
+        val where = assertInstanceOf(ArrayAccessExpressionASTNode::class.java, errors.single().variableScope.where)
+        assertEquals("arr", where.array)
+    }
+
+    @Test
+    fun `unknown array in assignment is critical`() {
+        val errors = analyze(
+            """
+            fun main(): Unit {
+                arr[0] = 1
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals(1, errors.size)
+        assertEquals(SemanticErrorType.UNKNOWN_VARIABLE, errors.single().variableScope.errorType)
+        assertInstanceOf(AssignmentStatementASTNode::class.java, errors.single().variableScope.where)
+    }
+
+    @Test
+    fun `known static array allows element assignment`() {
+        val errors = analyze(
+            """
+            fun main(): Unit {
+                val arr: Int[2]
+                arr[0] = 1
+            }
+            """.trimIndent(),
+        )
+
+        assertTrue(errors.isEmpty())
+    }
+
+    @Test
+    fun `array index may reference outer variable`() {
+        val errors = analyze(
+            """
+            fun main(): Unit {
+                val arr: Int[2]
+                val i: Int = 0
+                arr[i] = 1
+            }
+            """.trimIndent(),
+        )
+
+        assertTrue(errors.isEmpty())
+    }
+
+    // endregion
 }
