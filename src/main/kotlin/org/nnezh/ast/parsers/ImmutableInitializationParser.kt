@@ -13,6 +13,7 @@ import org.nnezh.org.nnezh.ast.AstErrorFactory.buildError
 import org.nnezh.org.nnezh.ast.TokensContext
 import org.nnezh.org.nnezh.ast.match
 import org.nnezh.org.nnezh.ast.parseType
+import org.nnezh.org.nnezh.base.Type
 
 // TODO: merge ImmutableInitializationParser and MutableInitializationParser
 class ImmutableInitializationParser(
@@ -34,14 +35,14 @@ class ImmutableInitializationParser(
 
                 return StaticArrayExpressionNode(
                     variableName = valName.lexeme,
-                    variableType = parseType(type),
+                    variableType = Type.StaticArrayType(parseType(type)),
                     size = size.value.toInt(),
                     isMutable = true, // TOOO: не совсем правда
                     value)
             } else {
                 return StaticArrayExpressionNode(
                     variableName = valName.lexeme,
-                    variableType = parseType(type),
+                    variableType = Type.StaticArrayType(parseType(type)),
                     size = size.value.toInt(),
                     isMutable = true, // TOOO: не совсем правда
                     valExpression = null)

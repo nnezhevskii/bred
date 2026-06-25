@@ -352,7 +352,8 @@ class TypeChecker(
         if (typeScope.get(node.index) != Type.IntType) {
             errors.add(SemanticError.TypeSemanticError(node, true, errorType = SemanticErrorType.ARRAY_INDEX_IS_NOT_INTEGER))
         }
-        typeScope.put(node, typeScope.get(node.array)!!)
+        val arrayType = (typeScope.get(node.array)!! as Type.StaticArrayType).elementType
+        typeScope.put(node, arrayType)
         return errors
     }
 

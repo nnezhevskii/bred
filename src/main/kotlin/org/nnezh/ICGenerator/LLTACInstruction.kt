@@ -64,7 +64,7 @@ sealed interface LLTACElement {
             return LLTACInstruction(
                 opcode = LLTACOperation.LLTAC_LDX,
                 destination = Operand.Variable(name = destination, type = type),
-                arg1 = Operand.Variable(name = array, type = type),
+                arg1 = Operand.Variable(name = array, Type.StaticArrayType(type)),
                 arg2 = Operand.Variable(index, Type.IntType),
             )
         }

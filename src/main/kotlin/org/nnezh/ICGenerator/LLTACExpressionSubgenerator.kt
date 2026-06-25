@@ -17,6 +17,7 @@ import org.nnezh.org.nnezh.ICGenerator.LLTACElement.Companion.binOp
 import org.nnezh.org.nnezh.base.Type
 import org.nnezh.org.nnezh.semantic.analyzers.ASTNodeTypeTable
 import org.nnezh.org.nnezh.semantic.analyzers.FunctionRegistry
+import org.nnezh.org.nnezh.semantic.analyzers.TypeScope
 import kotlin.math.exp
 
 data class LLTACExpressionSubgeneratorResult(
@@ -195,17 +196,17 @@ class LLTACExpressionSubgenerator(
                 TODO() // I think we shouldn't go there
             }
             is ArrayAccessExpressionASTNode -> {
-                val instructionsList = mutableListOf<LLTACElement>(
+                val instructionsList = mutableListOf<LLTACElement>()
 
-                )
 
-                val indexName = nameEmitter.nextVar()
-                instructionsList.addAll(buildInstructionsForExpression(indexName, Type.IntType, expression.index).instructions)
+                val res = buildInstructionsForExpression(nameEmitter.nextVar(), Type.IntType, expression.index)
+                instructionsList.addAll(res.instructions)
 
                 val dest = nameEmitter.nextVar()
-                instructionsList.add(
-                    LLTACElement.load(expression.array, dest, indexName, type)
-                )
+                instructionsList.addAll(listOf(
+                    LLTACElement.assign(dest, type, 0),
+                    LLTACElement.load(expression.array, dest, res.finalVariable!!, type)
+                ))
 
                 return LLTACExpressionSubgeneratorResult(
                     instructions = instructionsList,

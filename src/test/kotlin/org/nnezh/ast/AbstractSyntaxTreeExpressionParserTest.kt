@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.nnezh.ast.ArrayAccessExpressionASTNode
 import org.nnezh.ast.BinaryExpressionASTNode
 import org.nnezh.ast.BooleanLiteralExpressionNode
 import org.nnezh.ast.DoubleLiteralExpressionNode
@@ -44,6 +45,7 @@ class AbstractSyntaxTreeExpressionParserTest {
             "${node.name.lexeme}(${node.arguments.joinToString(", ") { render(it) }})"
 
         is StaticArrayInitializationExpressionsListNode -> TODO()
+        is ArrayAccessExpressionASTNode -> TODO()
     }
 
     private fun rendered(src: String): String =

@@ -14,7 +14,7 @@ class LLTAGSnapshotTester {
 
     @Test
     fun testFiles() {
-        listOf("factorial", "for", "sortThree", "isEven", "complexShock", "isPositive").forEach {
+        listOf("factorial", "for", "sortThree", "isEven", "complexShock", "isPositive", "minValue").forEach {
             compare(it)
         }
 

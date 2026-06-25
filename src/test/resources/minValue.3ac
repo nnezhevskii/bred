@@ -1,0 +1,82 @@
+func random:
+  GET_PARAM minValue:Int
+  GET_PARAM maxValue:Int
+  ASSIGN var1:Int 42:Int
+  RET var1:Int
+func maxIndex:
+  GET_PARAM arr:Array
+  GET_PARAM size:Int
+  ASSIGN var4:Int 0:Int
+  LE var2:Boolean size:Int var4:Int
+  JMP_IF_NOT lbl1 var2:Boolean
+  ASSIGN var6:Int 1:Int
+  NEG var5:Int var6:Int
+  RET var5:Int
+lbl1:
+  ASSIGN max:Int 0:Int
+  ASSIGN i:Int 1:Int
+  ASSIGN $right_borderi:Int size:Int
+lbl2:
+  LE var7:Boolean i:Int $right_borderi:Int
+  JMP_IF_NOT lbl3 var7:Boolean
+  ASSIGN var13:Int 0:Int
+  LOAD var13:Int arr:Array i:Int
+  ASSIGN var16:Int 0:Int
+  LOAD var16:Int arr:Array max:Int
+  GT var10:Boolean var13:Int var16:Int
+  JMP_IF_NOT lbl4 var10:Boolean
+  ASSIGN max:Int i:Int
+lbl4:
+  ASSIGN var18:Int 1:Int
+  ADD i:Int i:Int var18:Int
+  JMP lbl2
+lbl3:
+  RET max:Int
+func main:
+  ALLOC arr:Int Int 100:Int
+  CALL size:Int readInt:Int 0:Int
+  ASSIGN var22:Int 100:Int
+  GE var20:Boolean size:Int var22:Int
+  JMP_IF_NOT lbl5 var20:Boolean
+  ASSIGN var23:String technical restrictions:String
+  PARAM var23:String
+  CALL  println:Unit 1:Int
+lbl5:
+  ASSIGN i:Int 0:Int
+  ASSIGN $right_borderi:Int size:Int
+lbl6:
+  LE var24:Boolean i:Int $right_borderi:Int
+  JMP_IF_NOT lbl7 var24:Boolean
+  ASSIGN var27:Int i:Int
+  ASSIGN var29:Int 0:Int
+  ASSIGN var30:Int 100:Int
+  PARAM var29:Int
+  PARAM var30:Int
+  CALL var28:Int random:Int 2:Int
+  STORE arr:Int var27:Int var28:Int
+  ASSIGN var32:Int 1:Int
+  ADD i:Int i:Int var32:Int
+  JMP lbl6
+lbl7:
+  PARAM arr:Array
+  PARAM size:Int
+  CALL maxInd:Int maxIndex:Int 2:Int
+  ASSIGN var38:Int 1:Int
+  NEG var37:Int var38:Int
+  EQ var35:Boolean maxInd:Int var37:Int
+  JMP_IF_NOT lbl8 var35:Boolean
+  ASSIGN var39:String array is empty:String
+  PARAM var39:String
+  CALL  println:Unit 1:Int
+  JMP lbl9
+lbl8:
+  ASSIGN var41:String min element is:String
+  ASSIGN var45:Int 0:Int
+  LOAD var45:Int arr:Array maxInd:Int
+  PARAM var45:Int
+  CALL var42:String intToString:String 1:Int
+  ADD var40:String var41:String var42:String
+  PARAM var40:String
+  CALL  println:Unit 1:Int
+lbl9:
+  RET Unit
