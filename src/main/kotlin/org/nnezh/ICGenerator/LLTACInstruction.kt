@@ -7,8 +7,8 @@ import org.nnezh.org.nnezh.base.Type
 
 sealed interface LLTACElement {
     companion object {
-        fun function(name: String): LLTACElement {
-            return LLTACFunc(name)
+        fun function(name: String, type: Type): LLTACElement {
+            return LLTACFunc(name, type)
         }
         fun label(name: String): LLTACElement {
             return LLTACLabel(name)
@@ -64,7 +64,7 @@ sealed interface LLTACElement {
             return LLTACInstruction(
                 opcode = LLTACOperation.LLTAC_LDX,
                 destination = Operand.Variable(name = destination, type = type),
-                arg1 = Operand.Variable(name = array, Type.StaticArrayType(type)),
+                arg1 = Operand.Variable(name = array, Type.StaticArrayType(type, 0)),
                 arg2 = Operand.Variable(index, Type.IntType),
             )
         }
@@ -188,7 +188,7 @@ data class LLTACRetInstruction(
 
 }
 
-data class LLTACFunc(val name: String): LLTACElement {
+data class LLTACFunc(val name: String, val type: Type): LLTACElement {
     override fun toString() = "func $name"
 }
 

@@ -37,14 +37,14 @@ class ImmutableInitializationParser(
 
                 return StaticArrayExpressionNode(
                     variableName = valName.lexeme,
-                    variableType = Type.StaticArrayType(parseType(type)),
+                    variableType = Type.StaticArrayType(parseType(type), size.value.toInt()),
                     size = size.value.toInt(),
                     isMutable = false,
                     value)
             } else {
                 return StaticArrayExpressionNode(
                     variableName = valName.lexeme,
-                    variableType = Type.StaticArrayType(parseType(type)),
+                    variableType = Type.StaticArrayType(parseType(type), size.value.toInt()),
                     size = size.value.toInt(),
                     isMutable = false,
                     valExpression = null)

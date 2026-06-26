@@ -48,7 +48,7 @@ class LLTACExpressionSubgenerator(
     )
     val unaryOperatorToTACCommand = mapOf<UnaryOperator, LLTACOperation>(
         UnaryOperator.Not to LLTACOperation.LLTAC_NOT,
-        UnaryOperator.Minus to LLTACOperation.LLTAC_MIN,
+        UnaryOperator.Minus to LLTACOperation.LLTAC_NEG,
     )
 
     fun buildInstructionsForExpression(

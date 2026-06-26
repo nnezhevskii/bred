@@ -1,0 +1,14 @@
+fun someUsefulMethod(a: Int, b: Boolean): Int {
+    var value: Int = 0
+    if (b) {
+        value = 1
+    } else {
+        value = 2
+    }
+
+    return value
+}
+
+fun main(arg: String[], size: Int): Int {
+    return 0
+}

@@ -1,6 +1,28 @@
-fun main() {
-    val arr: Int[1] = [1]
-    val size: Int = readInt()
-    arr[0] = size
+fun someUsefulMethod(a: Int, b: Boolean): Int {
+    var value: Int = 0
+    if (b) { // TODO: добавить это в тест, не срабатывало
+        value = 1
+    } else {
+        value = 2
+    }
 
+    return value
+}
+
+fun condition(size: Int): Boolean {
+    return true
+}
+
+fun condition(): Boolean {
+    println("rewr")
+    return false
+}
+
+fun main(arg: String[], size: Int): Int {
+    var a: Int = someUsefulMethod(size, condition(size))
+    while (condition(size)) {
+        a = someUsefulMethod(size, condition(size))
+    }
+
+    return 0
 }

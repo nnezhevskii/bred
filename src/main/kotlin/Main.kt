@@ -9,6 +9,7 @@ import org.nnezh.ast.ProgramASTNode
 import org.nnezh.org.nnezh.ICGenerator.LLTACGenerator
 import org.nnezh.org.nnezh.ICGenerator.PrettyPrinter
 import org.nnezh.org.nnezh.ast.AbstractSyntaxTreeExpressionParser
+import org.nnezh.org.nnezh.compiler.CTranspile
 import org.nnezh.org.nnezh.semantic.SemanticAnalyzer
 
 
@@ -34,8 +35,6 @@ fun main(args: Array<String>) {
 
         val semanticAnalyzer = SemanticAnalyzer()
         val res = semanticAnalyzer(ast as ProgramASTNode)
-
-        res.joinToString("\n").ifEmpty { "<NoErrors>" }
         if (res.any { it.isCriticalError }) {
             res.joinToString("\n")
         } else {
@@ -43,23 +42,29 @@ fun main(args: Array<String>) {
                 typeTable = semanticAnalyzer.typeTable,
                 functionRegistry = semanticAnalyzer.functionRegistry
             )
-            PrettyPrinter().format (tacGenerator.build(ast)).joinToString("\n")
+
+            val tacCode = tacGenerator.build(ast)
+
+            CTranspile().compile(tacCode).joinToString("\n")
+//            tacCode.joinToString("\n")
+
+//            PrettyPrinter().format (tacGenerator.build(ast)).joinToString("\n")
         }
 
+//        res.joinToString("\n").ifEmpty { "<NoErrors>" }
+//        if (res.any { it.isCriticalError }) {
+//            res.joinToString("\n")
+//        } else {
+
+//        }
+
     }
-    /*
-    TODO: был найден баг по тайпчекингу ретурна. Нужно дописать тесты
-    fun getQuarter(a: Double, b: Double): String {
-    if (a > 0) {
-        return "2"
-    } else {
-        return a - b
-    }
-}
-     */
 
     result.fold(
         ifLeft = { System.err.println(it) },
         ifRight = { println(it) }
     )
 }
+/**
+ * TODO: написать снэпшот тест на while
+ */

@@ -13,8 +13,12 @@ import org.nnezh.org.nnezh.ICGenerator.LLTACGenerator
 import org.nnezh.org.nnezh.ast.AbstractSyntaxTreeExpressionParser
 import org.nnezh.org.nnezh.semantic.SemanticAnalyzer
 
-class TACCompiler {
-    fun compile(src: String): List<LLTACElement> {
+interface TACCompiler {
+    fun compile(src: String): List<LLTACElement>
+}
+
+class TACCompilerImpl() : TACCompiler {
+    override fun compile(src: String): List<LLTACElement> {
         val tokens = Lexer(src).tokenize().getOrElse { error("unexpected lexer error: $it") }
         val ast = AbstractSyntaxTreeBuilder().build(tokens).getOrElse { error("unexpected parse error: $it") }
         val semanticAnalyzer = SemanticAnalyzer().also { analyzer ->
@@ -22,11 +26,14 @@ class TACCompiler {
             if (errors.any { it.isCriticalError }) {
                 error("semantic analysis failed: $errors")
             }
+
         }
+
         val tacGenerator = LLTACGenerator(
             typeTable = semanticAnalyzer.typeTable,
             functionRegistry = semanticAnalyzer.functionRegistry
         )
         return tacGenerator.build(ast)
+
     }
 }

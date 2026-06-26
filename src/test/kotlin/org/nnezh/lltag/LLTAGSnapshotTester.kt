@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test
 import org.nnezh.lexer.Lexer
 import org.nnezh.org.nnezh.ICGenerator.PrettyPrinter
 import org.nnezh.org.nnezh.compiler.TACCompiler
+import org.nnezh.org.nnezh.compiler.TACCompilerImpl
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -14,7 +15,7 @@ class LLTAGSnapshotTester {
 
     @Test
     fun testFiles() {
-        listOf("factorial", "for", "sortThree", "isEven", "complexShock", "isPositive", "minValue").forEach {
+        listOf("factorial", "for", "sortThree", "isEven", "complexShock", "isPositive", "minValue", "random_case_failed_for_no_reason").forEach {
             compare(it)
         }
 
@@ -24,7 +25,7 @@ class LLTAGSnapshotTester {
         val tacCodePath = Paths.get("src/test/resources/$testName.3ac")
         val sourceCode: Path = Paths.get("src/test/resources/$testName.bred")
         val src = Files.readString(sourceCode)
-        val actualCommands = TACCompiler().compile(src)
+        val actualCommands = TACCompilerImpl().compile(src)
             .let { PrettyPrinter().format(it) }
             .map { it.replace(" ", "") }
         val expectedCommands = Files

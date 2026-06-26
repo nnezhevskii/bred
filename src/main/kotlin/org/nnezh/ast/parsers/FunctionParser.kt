@@ -53,7 +53,7 @@ class FunctionParser(
                     if (context.top() is Token.Punctuation.LBracket) {
                         context.consumeToken()
                         match<Token.Punctuation.RBracket>(context.consumeToken()) { token -> ASTError("Expected ] but got ${token.lexeme} in ${token.position}") }
-                        arguments.add(FunctionArgumentASTNode(argName.lexeme, Type.StaticArrayType(parseType(argType))))
+                        arguments.add(FunctionArgumentASTNode(argName.lexeme, Type.StaticArrayType(parseType(argType), 0)))
                     } else {
                         arguments.add(FunctionArgumentASTNode(argName.lexeme, parseType(argType)))
                     }

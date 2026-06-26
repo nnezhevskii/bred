@@ -66,7 +66,7 @@ enum class LLTACOperation {
         override fun toString() = "NOT"
     },
 
-    LLTAC_MIN {
+    LLTAC_NEG {
         override fun toString() = "NEG"
     },
 

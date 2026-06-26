@@ -28,9 +28,24 @@ sealed interface Type {
         override fun toString(): String = name
     }
 
-    data class StaticArrayType(val elementType: Type): Type {
+    data class StaticArrayType(val elementType: Type, val count: Int): Type {
         override val name = "Array"
         override fun toString(): String = name
+
+        override fun equals(other: Any?): Boolean {
+            return if (other is StaticArrayType) {
+                elementType == other.elementType
+            } else {
+                false
+            }
+        }
+
+        override fun hashCode(): Int {
+            var result = count
+            result = 31 * result + elementType.hashCode()
+            result = 31 * result + name.hashCode()
+            return result
+        }
     }
 
     companion object {

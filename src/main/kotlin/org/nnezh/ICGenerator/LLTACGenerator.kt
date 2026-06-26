@@ -48,7 +48,7 @@ class LLTACGenerator(
 
 
     fun visit(node: ASTNode): List<LLTACElement> {
-          val instructions = mutableListOf<LLTACElement>()
+        val instructions = mutableListOf<LLTACElement>()
         when (node) {
             is ProgramASTNode -> {
                 // TODO: global variables
@@ -57,8 +57,18 @@ class LLTACGenerator(
                     instructions.addAll(visit(it))
                 }
             }
+
             is DeclareFunctionASTNode -> {
-                instructions.add(LLTACElement.function(node.name))
+                if (node.name != "main") {
+                    val funcNameMangling = node.name + "_" +
+                            (node.args.arguments
+                                .map { arg -> arg.type })
+                                .joinToString (separator = "_")
+                    instructions.add(LLTACElement.function(funcNameMangling, node.resultType))
+                } else {
+                    instructions.add(LLTACElement.function(node.name, node.resultType))
+                }
+
                 instructions.addAll(node.args.arguments.map { LLTACElement.getParam(it.name, it.type) })
                 instructions.addAll(visit(node.block))
             }
@@ -68,6 +78,7 @@ class LLTACGenerator(
                     instructions.addAll(visit(it))
                 }
             }
+
             is ExpressionASTNode -> {
                 TODO()
             }
@@ -79,14 +90,22 @@ class LLTACGenerator(
 
                         val indexName = nameEmitter.nextVar()
 
-                        val index = expressionLLTACGenerator.buildInstructionsForExpression(indexName, Type.IntType, node.lValue.index)
+                        val index = expressionLLTACGenerator.buildInstructionsForExpression(
+                            indexName,
+                            Type.IntType,
+                            node.lValue.index
+                        )
                         instructions.addAll(index.instructions)
                         if (indexName != index.finalVariable!!) {
                             instructions.add(LLTACElement.assignVariable(indexName, Type.IntType, index.finalVariable))
                         }
 
                         val rightValueName = nameEmitter.nextVar()
-                        val rightValue = expressionLLTACGenerator.buildInstructionsForExpression(rightValueName, typeTable.get(node.rValue)!!, node.rValue)
+                        val rightValue = expressionLLTACGenerator.buildInstructionsForExpression(
+                            rightValueName,
+                            typeTable.get(node.rValue)!!,
+                            node.rValue
+                        )
                         instructions.addAll(rightValue.instructions)
 
                         instructions.add(
@@ -99,6 +118,7 @@ class LLTACGenerator(
                         )
 
                     }
+
                     is VariableExpressionNode -> {
                         val varName: String = node.lValue.token.lexeme
                         val varType = typeTable.get(node.lValue)!!
@@ -106,16 +126,18 @@ class LLTACGenerator(
                         val res = expressionLLTACGenerator.buildInstructionsForExpression(varName, varType, node.rValue)
                         instructions.addAll(res.instructions)
                         if (varName != res.finalVariable) {
-                            res.finalVariable?.let{
+                            res.finalVariable?.let {
                                 instructions.add(LLTACElement.assignVariable(varName, varType, it))
                             }
                         }
                     }
+
                     else -> {
                         TODO()
                     }
                 }
             }
+
             is CallFunctionStatementASTNode -> {
                 val res = expressionLLTACGenerator.buildInstructionsForExpression(
                     null,
@@ -124,18 +146,20 @@ class LLTACGenerator(
                 ).instructions
                 instructions.addAll(res)
             }
+
             is ForStatementASTNode -> {
                 instructions.addAll(visit(node.desugaredContent))
             }
+
             is IfStatementASTNode -> {
                 val condVal = nameEmitter.nextVar()
 
-                instructions.addAll(expressionLLTACGenerator
+                val res = expressionLLTACGenerator
                     .buildInstructionsForExpression(condVal, Type.BoolType, node.condition)
-                    .instructions)
+                instructions.addAll(res.instructions)
 
                 val ifNotLabel = LLTACElement.label(nameEmitter.nextLbl()) as LLTACLabel
-                instructions.add(LLTACElement.jumpIfNot(ifNotLabel, condVal))
+                instructions.add(LLTACElement.jumpIfNot(ifNotLabel, res.finalVariable!!))
                 val then = visit(node.thenBlock)
                 instructions.addAll(then)
 
@@ -155,6 +179,7 @@ class LLTACGenerator(
 
 
             }
+
             is ReturnFunctionStatementASTNode -> {
 
                 node.expression.fold(
@@ -170,45 +195,80 @@ class LLTACGenerator(
                     }
                 )
             }
+
             is VariableInitializationASTNode -> {
                 if (node.valExpression is LiteralExpressionNode) {
                     val instruction: LLTACElement = when (node.valExpression as LiteralExpressionNode) {
                         is BooleanLiteralExpressionNode -> {
-                            LLTACElement.assign(node.variableName, node.variableType, (node.valExpression as BooleanLiteralExpressionNode).value)
+                            LLTACElement.assign(
+                                node.variableName,
+                                node.variableType,
+                                (node.valExpression as BooleanLiteralExpressionNode).value
+                            )
                         }
 
                         is DoubleLiteralExpressionNode -> {
-                            LLTACElement.assign(node.variableName, node.variableType, (node.valExpression as DoubleLiteralExpressionNode).value)
+                            LLTACElement.assign(
+                                node.variableName,
+                                node.variableType,
+                                (node.valExpression as DoubleLiteralExpressionNode).value
+                            )
                         }
 
                         is IntLiteralExpressionNode -> {
-                            LLTACElement.assign(node.variableName, node.variableType, (node.valExpression as IntLiteralExpressionNode).value)
+                            LLTACElement.assign(
+                                node.variableName,
+                                node.variableType,
+                                (node.valExpression as IntLiteralExpressionNode).value
+                            )
                         }
 
                         is StringLiteralExpressionNode -> {
-                            LLTACElement.assign(node.variableName, node.variableType, (node.valExpression as StringLiteralExpressionNode).value)
+                            LLTACElement.assign(
+                                node.variableName,
+                                node.variableType,
+                                (node.valExpression as StringLiteralExpressionNode).value
+                            )
                         }
                     }
                     instructions.add(instruction)
                 } else if (node is StaticArrayExpressionNode) {
-                    instructions.add(LLTACElement.alloc(node.variableName, (node.variableType as Type.StaticArrayType).elementType, node.size))
+                    instructions.add(
+                        LLTACElement.alloc(
+                            node.variableName,
+                            (node.variableType as Type.StaticArrayType).elementType,
+                            node.size
+                        )
+                    )
                     (node.valExpression)?.values?.forEachIndexed { index, value ->
                         val tmpVariable = nameEmitter.nextVar()
 
-                        val indexName =nameEmitter.nextVar()
+                        val indexName = nameEmitter.nextVar()
 
-                        val res = expressionLLTACGenerator.buildInstructionsForExpression(tmpVariable, node.variableType, value)
+                        val res = expressionLLTACGenerator.buildInstructionsForExpression(
+                            tmpVariable,
+                            node.variableType,
+                            value
+                        )
                         val indexV = LLTACElement.assign(indexName, Type.IntType, index.toLong())
                         instructions.add(indexV)
                         instructions.addAll(res.instructions)
-                        instructions.add(LLTACElement.store(node.variableName, indexName, res.finalVariable!!, node.variableType))
+                        instructions.add(
+                            LLTACElement.store(
+                                node.variableName,
+                                indexName,
+                                res.finalVariable!!,
+                                node.variableType
+                            )
+                        )
                     }
                 } else {
                     if (node.valExpression != null) {
                         val res = expressionLLTACGenerator.buildInstructionsForExpression(
                             node.variableName,
                             node.variableType,
-                            node.valExpression!!)
+                            node.valExpression!!
+                        )
                         instructions.addAll(res.instructions)
                         if (node.variableName != res.finalVariable) {
                             instructions.add(
@@ -220,21 +280,20 @@ class LLTACGenerator(
                 }
 
             }
+
             is WhileStatementASTNode -> {
                 val beginOfWhile = LLTACElement.label(nameEmitter.nextLbl()) as LLTACLabel
+                val endOfWhile = LLTACElement.label(nameEmitter.nextLbl()) as LLTACLabel
                 instructions.add(beginOfWhile)
-                val condVal = nameEmitter.nextVar()
-                instructions.addAll(expressionLLTACGenerator
-                    .buildInstructionsForExpression(condVal, Type.BoolType, node.condition)
-                    .instructions
-                )
-                val ifNotLabel = LLTACElement.label(nameEmitter.nextLbl()) as LLTACLabel
-                instructions.add(LLTACElement.jumpIfNot(ifNotLabel, condVal))
 
+                val res = expressionLLTACGenerator
+                    .buildInstructionsForExpression(nameEmitter.nextVar(), Type.BoolType, node.condition)
+                instructions.addAll(res.instructions)
+
+                instructions.add(LLTACElement.jumpIfNot(endOfWhile, res.finalVariable!!))
                 instructions.addAll(visit(node.bodyBlock))
                 instructions.add(LLTACElement.jump(beginOfWhile))
-                instructions.add(ifNotLabel)
-
+                instructions.add(endOfWhile)
             }
 
             is EmptyNode -> {}

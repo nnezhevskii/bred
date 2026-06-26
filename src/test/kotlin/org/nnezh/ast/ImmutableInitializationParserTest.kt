@@ -232,7 +232,7 @@ class ImmutableInitializationParserTest {
 
         val array = assertInstanceOf(StaticArrayExpressionNode::class.java, result)
         assertEquals("arr", array.variableName)
-        assertEquals(Type.StaticArrayType(Type.IntType), array.variableType)
+        assertEquals(Type.StaticArrayType(Type.IntType, array.size), array.variableType)
         assertEquals(10, array.size)
         assertEquals(null, array.valExpression)
     }
@@ -255,7 +255,7 @@ class ImmutableInitializationParserTest {
             .getOrElse { error("unexpected parse error: $it") }
 
         val array = assertInstanceOf(StaticArrayExpressionNode::class.java, result)
-        assertEquals(Type.StaticArrayType(Type.DoubleType), array.variableType)
+        assertEquals(Type.StaticArrayType(Type.DoubleType, 2), array.variableType)
         val init = assertInstanceOf(StaticArrayInitializationExpressionsListNode::class.java, array.valExpression)
         assertEquals(2, init.values.size)
     }

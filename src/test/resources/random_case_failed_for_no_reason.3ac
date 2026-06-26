@@ -1,0 +1,16 @@
+func someUsefulMethod:
+  GET_PARAM a:Int
+  GET_PARAM b:Boolean
+  ASSIGN value:Int 0:Int
+  JMP_IF_NOT lbl1 b:Boolean
+  ASSIGN value:Int 1:Int
+  JMP lbl2
+lbl1:
+  ASSIGN value:Int 2:Int
+lbl2:
+  RET value:Int
+func main:
+  GET_PARAM arg:Array
+  GET_PARAM size:Int
+  ASSIGN var3:Int 0:Int
+  RET var3:Int
