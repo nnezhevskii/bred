@@ -1,0 +1,70 @@
+func firstNegative_Array_Int:
+  GET_PARAM arr:Array
+  GET_PARAM size:Int
+  ASSIGN var3:Int 0:Int
+  LT var1:Boolean size:Int var3:Int
+  JMP_IF_NOT lbl1 var1:Boolean
+  ASSIGN var5:Int 2:Int
+  NEG var4:Int var5:Int
+  RET var4:Int
+lbl1:
+  ASSIGN var8:Int 0:Int
+  EQ var6:Boolean size:Int var8:Int
+  JMP_IF_NOT lbl2 var6:Boolean
+  ASSIGN var10:Int 1:Int
+  NEG var9:Int var10:Int
+  RET var9:Int
+lbl2:
+  ASSIGN i:Int 0:Int
+  ASSIGN $right_borderi:Int size:Int
+lbl3:
+  LE var11:Boolean i:Int $right_borderi:Int
+  JMP_IF_NOT lbl4 var11:Boolean
+  ASSIGN var17:Int 0:Int
+  LOAD var17:Int arr:Array i:Int
+  ASSIGN var18:Int 0:Int
+  LT var14:Boolean var17:Int var18:Int
+  JMP_IF_NOT lbl5 var14:Boolean
+  RET i:Int
+lbl5:
+  ASSIGN var21:Int 1:Int
+  ADD i:Int i:Int var21:Int
+  JMP lbl3
+lbl4:
+  ASSIGN var23:Int 1:Int
+  NEG var22:Int var23:Int
+  RET var22:Int
+func main:
+  ALLOC data:Int Int 3:Int
+  ASSIGN var24:Int 0:Int
+  ASSIGN var25:Int 1:Int
+  STORE data:Int var24:Int var25:Int
+  ASSIGN var26:Int 1:Int
+  ASSIGN var28:Int 5:Int
+  NEG var27:Int var28:Int
+  STORE data:Int var26:Int var27:Int
+  ASSIGN var29:Int 2:Int
+  ASSIGN var30:Int 3:Int
+  STORE data:Int var29:Int var30:Int
+  ASSIGN var32:Int 2:Int
+  PARAM data:Array
+  PARAM var32:Int
+  CALL idx:Int firstNegative_Array_Int:Int 2:Int
+  ASSIGN var35:Int 0:Int
+  LT var33:Boolean idx:Int var35:Int
+  JMP_IF_NOT lbl6 var33:Boolean
+  ASSIGN var36:String none:String
+  PARAM var36:String
+  CALL  println:Unit 1:Int
+  JMP lbl7
+lbl6:
+  ASSIGN msg:String :String
+  ASSIGN var39:Int 1024:Int
+  PARAM idx:Int
+  PARAM msg:String
+  PARAM var39:Int
+  CALL  intToString:Unit 3:Int
+  PARAM msg:String
+  CALL  println:Unit 1:Int
+lbl7:
+  RET Unit

@@ -10,9 +10,10 @@
 #include <sys/time.h>
 #endif
 
+// Размер буфера по дефолту, раз уж ты выбрал 1024
 #define STR_BUF_SIZE 1024
 
-// 1. readString(dest, max_size)
+// 1. readString(dest, max_size) -> заполняет твой буфер на стеке
 void readString(char* dest, int max_size) {
     if (fgets(dest, max_size, stdin) == NULL) {
         dest[0] = '\0';
@@ -35,7 +36,7 @@ int stringToInt(const char* str) {
     return atoi(str);
 }
 
-// 4. intToString(Int, dest, max_size)
+// 4. intToString(Int, dest, max_size) -> пишем прямо в стек-буфер
 void intToString(int val, char* dest, int max_size) {
 #if defined(_MSC_VER)
     // MSVC требует безопасный sprintf_s
@@ -180,4 +181,41 @@ int currentTimeMillis() {
     gettimeofday(&tv, NULL);
     return (int)(tv.tv_sec * 1000 + tv.tv_usec / 1000);
 #endif
+}
+int max_Int_Int(int a,int b) {
+bool var1;
+var1=a>b;
+if (!var1)goto lbl1;
+return a;
+lbl1:
+return b;
+}
+int main(int size, char** arg) {
+int x, y, var12, var11, var18, var16, var19, var15, var21, var22, var20, var14, z;
+bool var6;
+char var9[1024], var10[1024];
+x = readInt();
+y = readInt();
+var6=x>y;
+if (!var6)goto lbl2;
+strncpy(var9, "first value is bigger", sizeof(var9));
+println(var9);
+goto lbl3;
+lbl2:
+strncpy(var10, "second value is bigger", sizeof(var10));
+println(var10);
+lbl3:
+var12 = 2;
+var11=var12*x;
+var18 = 5;
+var16=y*var18;
+var19 = 2;
+var15=var16/var19;
+var21 = 3;
+var22 = 1;
+var20 = max_Int_Int(var21,var22);
+var14=var15*var20;
+z=var11+var14;
+readInt();
+return z;
 }

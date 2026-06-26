@@ -4,7 +4,6 @@ import arrow.core.getOrElse
 import org.junit.jupiter.api.Assertions.assertDoesNotThrow
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.nnezh.ast.AbstractSyntaxTreeBuilder
@@ -83,6 +82,14 @@ class TypeCheckerTest {
         assertTrue(errors.all { it.errorType == SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES })
     }
 
+    private fun assertTypeCheckThrowsOnUnknownVariableInCallArgument(src: String) {
+        assertHasScopeError(
+            SemanticErrorType.UNKNOWN_VARIABLE,
+            VariableExpressionNode::class.java,
+            src,
+        )
+    }
+
     /** TypeChecker must never throw on pathological input — only report diagnostics. */
     private fun assertTypeCheckSurvives(src: String): List<SemanticError> {
         var result: List<SemanticError> = emptyList()
@@ -103,18 +110,6 @@ class TypeCheckerTest {
         assertTrue(
             errors.any { it.errorType == errorType && where.isInstance(it.where) },
             "expected $errorType at ${where.simpleName}, got: ${errors.map { it.errorType to it.where::class.simpleName }}",
-        )
-    }
-
-//    /**
-//     * Known TypeChecker gap (resolved): call arguments with unknown variables report
-//     * UNKNOWN_VARIABLE via TypeChecker without throwing.
-//     */
-    private fun assertTypeCheckThrowsOnUnknownVariableInCallArgument(src: String) {
-        assertHasScopeError(
-            SemanticErrorType.UNKNOWN_VARIABLE,
-            VariableExpressionNode::class.java,
-            src,
         )
     }
 
@@ -1776,6 +1771,332 @@ class TypeCheckerTest {
             fun main(): Unit {
                 val arr: Int[2] = [1, 2]
                 arr[0] = "x"
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `static array declared without initializer has no type errors`() {
+        assertNoTypeErrors(
+            """
+            fun main(): Unit {
+                val arr: Int[10]
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `too many elements in initialization list`() {
+        assertSingleTypeError(
+            StaticArrayExpressionNode::class.java,
+            """
+            fun main(): Unit {
+                val arr: Int[2] = [1, 2, 3]
+            }
+            """.trimIndent(),
+            SemanticErrorType.INVALID_AMOUNT_OF_ARGUMENTS_IN_ARRAYS_INITIALIZATION,
+        )
+    }
+
+    // region Arrays — desired behavior (tests fail until TypeChecker is fixed)
+
+    @Test
+    fun `empty initialization list matches zero-sized array`() {
+        assertNoTypeErrors(
+            """
+            fun main(): Unit {
+                val arr: Int[0] = []
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `empty initialization list with non-zero array size`() {
+        assertSingleTypeError(
+            StaticArrayExpressionNode::class.java,
+            """
+            fun main(): Unit {
+                val arr: Int[2] = []
+            }
+            """.trimIndent(),
+            SemanticErrorType.INVALID_AMOUNT_OF_ARGUMENTS_IN_ARRAYS_INITIALIZATION,
+        )
+    }
+
+    @Test
+    fun `scalar variable read with array syntax is a type error`() {
+        assertSingleTypeError(
+            ArrayAccessExpressionASTNode::class.java,
+            """
+            fun main(): Unit {
+                val x: Int = 0
+                val y: Int = x[0]
+            }
+            """.trimIndent(),
+            SemanticErrorType.ARRAY_IS_EXPECTED_BUT_GOT_SCALAR,
+        )
+    }
+
+    // endregion
+
+    @Test
+    fun `initialization list element type incompatible with declared element type`() {
+        assertSingleTypeError(
+            StaticArrayExpressionNode::class.java,
+            """
+            fun main(): Unit {
+                val arr: Int[2] = [1.0, 2.0]
+            }
+            """.trimIndent(),
+            SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
+        )
+    }
+
+    @Test
+    fun `mixed numeric types in initialization list`() {
+        assertSingleTypeError(
+            StaticArrayInitializationExpressionsListNode::class.java,
+            """
+            fun main(): Unit {
+                val arr: Int[2] = [1, 2.0]
+            }
+            """.trimIndent(),
+            SemanticErrorType.TYPE_CHECKER_INCONSISTENT_ARRAY_TYPE,
+        )
+    }
+
+    @Test
+    fun `double literal array index`() {
+        assertSingleTypeError(
+            ArrayAccessExpressionASTNode::class.java,
+            """
+            fun main(): Unit {
+                val arr: Int[2] = [1, 2]
+                val x: Int = arr[1.0]
+            }
+            """.trimIndent(),
+            SemanticErrorType.ARRAY_INDEX_IS_NOT_INTEGER,
+        )
+    }
+
+    @Test
+    fun `string literal array index`() {
+        assertSingleTypeError(
+            ArrayAccessExpressionASTNode::class.java,
+            """
+            fun main(): Unit {
+                val arr: Int[2] = [1, 2]
+                val x: Int = arr["0"]
+            }
+            """.trimIndent(),
+            SemanticErrorType.ARRAY_INDEX_IS_NOT_INTEGER,
+        )
+    }
+
+    @Test
+    fun `scalar variable used as array in assignment`() {
+        assertSingleTypeError(
+            ArrayAccessExpressionASTNode::class.java,
+            """
+            fun main(): Unit {
+                val x: Int = 0
+                x[0] = 1
+            }
+            """.trimIndent(),
+            SemanticErrorType.ARRAY_IS_EXPECTED_BUT_GOT_SCALAR,
+        )
+    }
+
+    @Test
+    fun `array elements used in binary expression`() {
+        assertNoTypeErrors(
+            """
+            fun main(): Unit {
+                val arr: Int[2] = [1, 2]
+                val sum: Int = arr[0] + arr[1]
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `assignment from one array element to another`() {
+        assertNoTypeErrors(
+            """
+            fun main(): Unit {
+                val arr: Int[2] = [1, 2]
+                arr[0] = arr[1]
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `array index expression with arithmetic`() {
+        assertNoTypeErrors(
+            """
+            fun main(): Unit {
+                val arr: Int[3] = [10, 20, 30]
+                val i: Int = 0
+                val x: Int = arr[i + 1]
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `negative literal array index`() {
+        assertNoTypeErrors(
+            """
+            fun main(): Unit {
+                val arr: Int[2] = [1, 2]
+                val x: Int = arr[-1]
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `double array with matching initialization`() {
+        assertNoTypeErrors(
+            """
+            fun main(): Unit {
+                val arr: Double[2] = [1.0, 2.0]
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `boolean array with matching initialization`() {
+        assertNoTypeErrors(
+            """
+            fun main(): Unit {
+                val arr: Boolean[2] = [true, false]
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `local array passed to function expecting array parameter`() {
+        assertNoTypeErrors(
+            """
+            fun take(arr: Int[], size: Int): Unit { }
+            fun main(): Unit {
+                val arr: Int[5]
+                take(arr, 5)
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `passing scalar where array parameter expected`() {
+        assertSingleTypeError(
+            FunctionCallExpressionNode::class.java,
+            """
+            fun take(arr: Int[], size: Int): Unit { }
+            fun main(): Unit {
+                take(1, 0)
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `passing array with wrong element type to function`() {
+        assertSingleTypeError(
+            FunctionCallExpressionNode::class.java,
+            """
+            fun take(arr: Int[], size: Int): Unit { }
+            fun main(): Unit {
+                val arr: Double[2] = [1.0, 2.0]
+                take(arr, 2)
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `array element passed as function argument`() {
+        assertNoTypeErrors(
+            """
+            fun echo(x: Int): Unit { }
+            fun main(): Unit {
+                val arr: Int[2] = [1, 2]
+                echo(arr[0])
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `function returning array element`() {
+        assertNoTypeErrors(
+            """
+            fun first(arr: Int[]): Int {
+                return arr[0]
+            }
+            fun main(): Unit {
+                val arr: Int[2] = [1, 2]
+                val x: Int = first(arr)
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `global static array element assignment`() {
+        assertNoTypeErrors(
+            """
+            val buf: Int[10]
+            fun main(): Unit {
+                buf[0] = 42
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `array parameter used in function body`() {
+        assertNoTypeErrors(
+            """
+            fun writeFirst(arr: Int[], value: Int): Unit {
+                arr[0] = value
+            }
+            fun main(): Unit {
+                val arr: Int[2]
+                writeFirst(arr, 7)
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `array read in nested block`() {
+        assertNoTypeErrors(
+            """
+            fun main(): Unit {
+                val arr: Int[2] = [1, 2]
+                if (true) {
+                    val x: Int = arr[1]
+                }
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `array compared for equality`() {
+        assertNoTypeErrors(
+            """
+            fun main(): Unit {
+                val arr: Int[2] = [1, 2]
+                val same: Boolean = arr[0] == arr[1]
             }
             """.trimIndent(),
         )

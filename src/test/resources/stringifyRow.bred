@@ -1,0 +1,33 @@
+fun appendInt(buf: String, value: Int, out: String): Unit {
+    var tmp: String = ""
+    intToString(value, tmp, 1024)
+    stringConcat(buf, tmp, out, 1024)
+}
+
+fun formatRow(arr: Int[], size: Int): Unit {
+    if (size < 0) {
+        println("bad size")
+        return
+    }
+    var line: String = ""
+    appendInt(line, arr[0], line)
+    if (size >= 1) {
+        var step1: String = ""
+        stringConcat(line, "|", step1, 1024)
+        appendInt(step1, arr[1], line)
+    }
+    if (size >= 2) {
+        var step2: String = ""
+        stringConcat(line, "|", step2, 1024)
+        appendInt(step2, arr[2], line)
+    }
+    println(line)
+}
+
+fun main(): Unit {
+    val row: Int[3]
+    row[0] = 1
+    row[1] = 2
+    row[2] = 3
+    formatRow(row, 2)
+}

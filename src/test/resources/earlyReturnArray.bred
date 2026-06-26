@@ -1,0 +1,29 @@
+fun firstNegative(arr: Int[], size: Int): Int {
+    if (size < 0) {
+        return -2
+    }
+    if (size == 0) {
+        return -1
+    }
+    for (i in 0 to size) {
+        if (arr[i] < 0) {
+            return i
+        }
+    }
+    return -1
+}
+
+fun main(): Unit {
+    val data: Int[3]
+    data[0] = 1
+    data[1] = -5
+    data[2] = 3
+    var idx: Int = firstNegative(data, 2)
+    if (idx < 0) {
+        println("none")
+    } else {
+        var msg: String = ""
+        intToString(idx, msg, 1024)
+        println(msg)
+    }
+}

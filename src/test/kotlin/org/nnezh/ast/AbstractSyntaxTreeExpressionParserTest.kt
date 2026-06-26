@@ -248,6 +248,26 @@ class AbstractSyntaxTreeExpressionParserTest {
         assertTrue(parse("arr[0](1)").isLeft())
     }
 
+    @Test
+    fun `array access with nested arithmetic index`() {
+        assertEquals("arr[(+ i (* 2 1))]", rendered("arr[i + 2 * 1]"))
+    }
+
+    @Test
+    fun `array access with unary minus applies to access result`() {
+        assertEquals("(- arr[i])", rendered("-arr[i]"))
+    }
+
+    @Test
+    fun `initialization list with single element`() {
+        assertEquals("[42]", rendered("[42]"))
+    }
+
+    @Test
+    fun `array access binds tighter than addition`() {
+        assertEquals("(+ arr[0] 1)", rendered("arr[0] + 1"))
+    }
+
     // endregion
 
     // endregion

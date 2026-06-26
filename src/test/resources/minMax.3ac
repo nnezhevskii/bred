@@ -1,4 +1,4 @@
-func findMaxIndex:
+func findMaxIndex_Array_Int:
   GET_PARAM arr:Array
   GET_PARAM size:Int
   ASSIGN var3:Int 0:Int
@@ -32,7 +32,7 @@ lbl4:
   JMP lbl2
 lbl3:
   RET maxIdx:Int
-func findMinIndex:
+func findMinIndex_Array_Int:
   GET_PARAM arr:Array
   GET_PARAM size:Int
   ASSIGN var23:Int 0:Int
@@ -66,7 +66,7 @@ lbl8:
   JMP lbl6
 lbl7:
   RET minIdx:Int
-func computeSum:
+func computeSum_Array_Int:
   GET_PARAM arr:Array
   GET_PARAM size:Int
   ASSIGN var43:Int 0:Int
@@ -123,13 +123,13 @@ lbl14:
 lbl15:
   PARAM arr:Array
   PARAM size:Int
-  CALL maxIdx:Int findMaxIndex:Int 2:Int
+  CALL maxIdx:Int findMaxIndex_Array_Int:Int 2:Int
   PARAM arr:Array
   PARAM size:Int
-  CALL minIdx:Int findMinIndex:Int 2:Int
+  CALL minIdx:Int findMinIndex_Array_Int:Int 2:Int
   PARAM arr:Array
   PARAM size:Int
-  CALL total:Int computeSum:Int 2:Int
+  CALL total:Int computeSum_Array_Int:Int 2:Int
   ASSIGN var83:Int 1:Int
   NEG var82:Int var83:Int
   EQ var80:Boolean maxIdx:Int var82:Int
@@ -146,52 +146,124 @@ lbl16:
   LOAD var88:Int arr:Array minIdx:Int
   ASSIGN minVal:Int var88:Int
   SUB rangeVal:Int maxVal:Int minVal:Int
-  ASSIGN var94:String max at index :String
+  ASSIGN idxStr:String :String
+  ASSIGN var93:Int 1024:Int
   PARAM maxIdx:Int
-  CALL var95:String intToString:String 1:Int
-  ADD var93:String var94:String var95:String
-  ASSIGN var97:String  value :String
-  ADD var92:String var93:String var97:String
+  PARAM idxStr:String
+  PARAM var93:Int
+  CALL  intToString:Unit 3:Int
+  ASSIGN part1:String :String
+  ASSIGN var94:String max at index :String
+  ASSIGN var97:Int 1024:Int
+  PARAM var94:String
+  PARAM idxStr:String
+  PARAM part1:String
+  PARAM var97:Int
+  CALL  stringConcat:Unit 4:Int
+  ASSIGN part2:String :String
+  ASSIGN var99:String  value :String
+  ASSIGN var101:Int 1024:Int
+  PARAM part1:String
+  PARAM var99:String
+  PARAM part2:String
+  PARAM var101:Int
+  CALL  stringConcat:Unit 4:Int
+  ASSIGN valStr:String :String
+  ASSIGN var104:Int 1024:Int
   PARAM maxVal:Int
-  CALL var98:String intToString:String 1:Int
-  ADD var91:String var92:String var98:String
-  PARAM var91:String
+  PARAM valStr:String
+  PARAM var104:Int
+  CALL  intToString:Unit 3:Int
+  ASSIGN msg1:String :String
+  ASSIGN var108:Int 1024:Int
+  PARAM part2:String
+  PARAM valStr:String
+  PARAM msg1:String
+  PARAM var108:Int
+  CALL  stringConcat:Unit 4:Int
+  PARAM msg1:String
   CALL  println:Unit 1:Int
-  ASSIGN var103:String min at index :String
+  ASSIGN minIdxStr:String :String
+  ASSIGN var112:Int 1024:Int
   PARAM minIdx:Int
-  CALL var104:String intToString:String 1:Int
-  ADD var102:String var103:String var104:String
-  ASSIGN var106:String  value :String
-  ADD var101:String var102:String var106:String
-  PARAM minVal:Int
-  CALL var107:String intToString:String 1:Int
-  ADD var100:String var101:String var107:String
-  PARAM var100:String
-  CALL  println:Unit 1:Int
-  ASSIGN var110:String sum is :String
-  PARAM total:Int
-  CALL var111:String intToString:String 1:Int
-  ADD var109:String var110:String var111:String
-  PARAM var109:String
-  CALL  println:Unit 1:Int
-  ASSIGN var114:String range is :String
-  PARAM rangeVal:Int
-  CALL var115:String intToString:String 1:Int
-  ADD var113:String var114:String var115:String
+  PARAM minIdxStr:String
+  PARAM var112:Int
+  CALL  intToString:Unit 3:Int
+  ASSIGN minPart1:String :String
+  ASSIGN var113:String min at index :String
+  ASSIGN var116:Int 1024:Int
   PARAM var113:String
+  PARAM minIdxStr:String
+  PARAM minPart1:String
+  PARAM var116:Int
+  CALL  stringConcat:Unit 4:Int
+  ASSIGN minPart2:String :String
+  ASSIGN var118:String  value :String
+  ASSIGN var120:Int 1024:Int
+  PARAM minPart1:String
+  PARAM var118:String
+  PARAM minPart2:String
+  PARAM var120:Int
+  CALL  stringConcat:Unit 4:Int
+  ASSIGN minValStr:String :String
+  ASSIGN var123:Int 1024:Int
+  PARAM minVal:Int
+  PARAM minValStr:String
+  PARAM var123:Int
+  CALL  intToString:Unit 3:Int
+  ASSIGN msg2:String :String
+  ASSIGN var127:Int 1024:Int
+  PARAM minPart2:String
+  PARAM minValStr:String
+  PARAM msg2:String
+  PARAM var127:Int
+  CALL  stringConcat:Unit 4:Int
+  PARAM msg2:String
   CALL  println:Unit 1:Int
-  ASSIGN var119:Int 0:Int
-  EQ var117:Boolean rangeVal:Int var119:Int
-  JMP_IF_NOT lbl18 var117:Boolean
-  ASSIGN var120:String all elements are equal:String
-  PARAM var120:String
+  ASSIGN totalStr:String :String
+  ASSIGN var131:Int 1024:Int
+  PARAM total:Int
+  PARAM totalStr:String
+  PARAM var131:Int
+  CALL  intToString:Unit 3:Int
+  ASSIGN msg3:String :String
+  ASSIGN var132:String sum is :String
+  ASSIGN var135:Int 1024:Int
+  PARAM var132:String
+  PARAM totalStr:String
+  PARAM msg3:String
+  PARAM var135:Int
+  CALL  stringConcat:Unit 4:Int
+  PARAM msg3:String
+  CALL  println:Unit 1:Int
+  ASSIGN rangeStr:String :String
+  ASSIGN var139:Int 1024:Int
+  PARAM rangeVal:Int
+  PARAM rangeStr:String
+  PARAM var139:Int
+  CALL  intToString:Unit 3:Int
+  ASSIGN msg4:String :String
+  ASSIGN var140:String range is :String
+  ASSIGN var143:Int 1024:Int
+  PARAM var140:String
+  PARAM rangeStr:String
+  PARAM msg4:String
+  PARAM var143:Int
+  CALL  stringConcat:Unit 4:Int
+  PARAM msg4:String
+  CALL  println:Unit 1:Int
+  ASSIGN var147:Int 0:Int
+  EQ var145:Boolean rangeVal:Int var147:Int
+  JMP_IF_NOT lbl18 var145:Boolean
+  ASSIGN var148:String all elements are equal:String
+  PARAM var148:String
   CALL  println:Unit 1:Int
 lbl18:
-  ASSIGN var123:Int 1:Int
-  EQ var121:Boolean size:Int var123:Int
-  JMP_IF_NOT lbl19 var121:Boolean
-  ASSIGN var124:String single element case:String
-  PARAM var124:String
+  ASSIGN var151:Int 1:Int
+  EQ var149:Boolean size:Int var151:Int
+  JMP_IF_NOT lbl19 var149:Boolean
+  ASSIGN var152:String single element case:String
+  PARAM var152:String
   CALL  println:Unit 1:Int
 lbl19:
 lbl17:

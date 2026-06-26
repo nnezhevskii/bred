@@ -1,0 +1,32 @@
+fun findPairSum(arr: Int[], size: Int, target: Int): Int {
+    if (size < 1) {
+        return -1
+    }
+    for (i in 0 to size) {
+        for (j in i + 1 to size) {
+            var sum: Int = arr[i] + arr[j]
+            if (sum == target) {
+                return i
+            }
+        }
+    }
+    return -1
+}
+
+fun main(): Unit {
+    val data: Int[6]
+    data[0] = 2
+    data[1] = 7
+    data[2] = 11
+    data[3] = 15
+    data[4] = 4
+    data[5] = 9
+    var idx: Int = findPairSum(data, 5, 18)
+    if (idx == -1) {
+        println("not found")
+    } else {
+        var msg: String = ""
+        intToString(idx, msg, 1024)
+        println(msg)
+    }
+}

@@ -327,7 +327,12 @@ class TypeChecker(
             errors.add(SemanticError.TypeSemanticError(node, true, errorType = SemanticErrorType.TYPE_CHECKER_INCONSISTENT_ARRAY_TYPE))
             return errors
         }
-        typeScope.put(node, arrayTypes.first())
+        if (arrayTypes.isEmpty()) {
+
+        } else {
+            typeScope.put(node, arrayTypes.first())
+        }
+
 
         return errors
     }
@@ -343,6 +348,7 @@ class TypeChecker(
         }
         val arrayVarType = typeScope.get(node.array)
         if (arrayVarType !is Type.StaticArrayType) {
+            errors.add(SemanticError.TypeSemanticError(node, true, errorType = SemanticErrorType.ARRAY_IS_EXPECTED_BUT_GOT_SCALAR))
             return errors
         }
         typeScope.put(node, arrayVarType.elementType)

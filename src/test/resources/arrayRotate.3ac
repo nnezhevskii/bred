@@ -1,0 +1,85 @@
+func rotateLeft_Array_Int:
+  GET_PARAM arr:Array
+  GET_PARAM size:Int
+  ASSIGN var3:Int 0:Int
+  LE var1:Boolean size:Int var3:Int
+  JMP_IF_NOT lbl1 var1:Boolean
+  RET Unit
+lbl1:
+  ASSIGN var4:Int 0:Int
+  ASSIGN var5:Int 0:Int
+  LOAD var5:Int arr:Array var4:Int
+  ASSIGN first:Int var5:Int
+  ASSIGN i:Int 0:Int
+  ASSIGN var7:Int 1:Int
+  SUB $right_borderi:Int size:Int var7:Int
+lbl2:
+  LE var8:Boolean i:Int $right_borderi:Int
+  JMP_IF_NOT lbl3 var8:Boolean
+  ASSIGN var12:Int 1:Int
+  ADD next:Int i:Int var12:Int
+  ASSIGN var13:Int i:Int
+  ASSIGN var16:Int 0:Int
+  LOAD var16:Int arr:Array next:Int
+  STORE arr:Int var13:Int var16:Int
+  ASSIGN var18:Int 1:Int
+  ADD i:Int i:Int var18:Int
+  JMP lbl2
+lbl3:
+  ASSIGN var19:Int size:Int
+  STORE arr:Int var19:Int first:Int
+  RET Unit
+func main:
+  ALLOC buf:Int Int 4:Int
+  ASSIGN var21:Int 0:Int
+  ASSIGN var22:Int 10:Int
+  STORE buf:Int var21:Int var22:Int
+  ASSIGN var23:Int 1:Int
+  ASSIGN var24:Int 20:Int
+  STORE buf:Int var23:Int var24:Int
+  ASSIGN var25:Int 2:Int
+  ASSIGN var26:Int 30:Int
+  STORE buf:Int var25:Int var26:Int
+  ASSIGN var27:Int 3:Int
+  ASSIGN var28:Int 40:Int
+  STORE buf:Int var27:Int var28:Int
+  ASSIGN var30:Int 3:Int
+  PARAM buf:Array
+  PARAM var30:Int
+  CALL  rotateLeft_Array_Int:Unit 2:Int
+  ASSIGN a:String :String
+  ASSIGN var32:Int 0:Int
+  ASSIGN var33:Int 0:Int
+  LOAD var33:Int buf:Array var32:Int
+  ASSIGN var35:Int 1024:Int
+  PARAM var33:Int
+  PARAM a:String
+  PARAM var35:Int
+  CALL  intToString:Unit 3:Int
+  ASSIGN b:String :String
+  ASSIGN var37:Int 3:Int
+  ASSIGN var38:Int 0:Int
+  LOAD var38:Int buf:Array var37:Int
+  ASSIGN var40:Int 1024:Int
+  PARAM var38:Int
+  PARAM b:String
+  PARAM var40:Int
+  CALL  intToString:Unit 3:Int
+  ASSIGN mid:String :String
+  ASSIGN var42:String -:String
+  ASSIGN var44:Int 1024:Int
+  PARAM a:String
+  PARAM var42:String
+  PARAM mid:String
+  PARAM var44:Int
+  CALL  stringConcat:Unit 4:Int
+  ASSIGN line:String :String
+  ASSIGN var48:Int 1024:Int
+  PARAM mid:String
+  PARAM b:String
+  PARAM line:String
+  PARAM var48:Int
+  CALL  stringConcat:Unit 4:Int
+  PARAM line:String
+  CALL  println:Unit 1:Int
+  RET Unit

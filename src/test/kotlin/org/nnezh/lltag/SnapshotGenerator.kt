@@ -15,6 +15,14 @@ fun main() {
         "isPositive",
         "minValue",
         "random_case_failed_for_no_reason",
+        "minMax",
+        "arrayBubble",
+        "nestedArraySearch",
+        "zeroTripFor",
+        "stringifyRow",
+        "nestedControl",
+        "arrayRotate",
+        "earlyReturnArray",
     ).forEach { testName ->
         val sourcePath = Paths.get("src/test/resources/$testName.bred")
         val outputPath = Paths.get("src/test/resources/$testName.3ac")

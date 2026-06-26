@@ -502,5 +502,109 @@ class FunctionAnalyzerTest {
         assertInstanceOf(ProgramASTNode::class.java, errors.single().functionSemantic.where)
     }
 
+    // region Arrays
+
+    @Test
+    fun `function with array parameter registers without errors`() {
+        val errors = analyze(
+            """
+            fun sumFirst(arr: Int[], n: Int): Int {
+                return arr[0]
+            }
+            fun main(): Unit {
+                val data: Int[3]
+                sumFirst(data, 3)
+            }
+            """.trimIndent(),
+        )
+
+        assertTrue(errors.isEmpty())
+    }
+
+    @Test
+    fun `call with array variable matches arity`() {
+        val errors = analyze(
+            """
+            fun fill(arr: Int[], value: Int): Unit { }
+            fun main(): Unit {
+                val buf: Int[10]
+                fill(buf, 0)
+            }
+            """.trimIndent(),
+        )
+
+        assertTrue(errors.isEmpty())
+    }
+
+    @Test
+    fun `call with too few arguments including array parameter`() {
+        val errors = analyze(
+            """
+            fun pair(arr: Int[], size: Int): Unit { }
+            fun main(): Unit {
+                val buf: Int[5]
+                pair(buf)
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals(1, errors.size)
+        assertEquals(SemanticErrorType.FUNCTION_EXISTS_BUT_WRONG_ARGUMENTS_AMOUNT, errors.single().functionSemantic.errorType)
+        assertInstanceOf(FunctionCallExpressionNode::class.java, errors.single().functionSemantic.where)
+    }
+
+    @Test
+    fun `nested call passing array through helper`() {
+        val errors = analyze(
+            """
+            fun id(arr: Int[]): Int {
+                return 0
+            }
+            fun wrap(arr: Int[]): Int {
+                return id(arr)
+            }
+            fun main(): Unit {
+                val data: Int[2]
+                wrap(data)
+            }
+            """.trimIndent(),
+        )
+
+        assertTrue(errors.isEmpty())
+    }
+
+    @Test
+    fun `unknown function with array argument still reports not found`() {
+        val errors = analyze(
+            """
+            fun main(): Unit {
+                val data: Int[2]
+                missing(data)
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals(1, errors.size)
+        assertEquals(SemanticErrorType.FUNCTION_NOT_FOUND, errors.single().functionSemantic.errorType)
+        assertInstanceOf(FunctionCallExpressionNode::class.java, errors.single().functionSemantic.where)
+    }
+
+    @Test
+    fun `call with array element expression has correct arity`() {
+        val errors = analyze(
+            """
+            fun setFirst(arr: Int[], value: Int): Unit { }
+            fun main(): Unit {
+                val data: Int[2] = [1, 2]
+                setFirst(data, data[0])
+            }
+            """.trimIndent(),
+        )
+
+        assertTrue(errors.isEmpty())
+    }
+
+    // endregion
+
     // endregion
 }

@@ -468,5 +468,148 @@ class VariableScopeAnalyzerTest {
         assertTrue(errors.isEmpty())
     }
 
+    @Test
+    fun `unknown variable used as array index`() {
+        val errors = analyze(
+            """
+            fun main(): Unit {
+                val arr: Int[2]
+                arr[unknown] = 1
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals(1, errors.size)
+        assertEquals(SemanticErrorType.UNKNOWN_VARIABLE, errors.single().variableScope.errorType)
+        assertInstanceOf(VariableExpressionNode::class.java, errors.single().variableScope.where)
+    }
+
+    @Test
+    fun `array parameter accessible in function body`() {
+        val errors = analyze(
+            """
+            fun touch(arr: Int[]): Unit {
+                arr[0] = 1
+            }
+            fun main(): Unit {
+                val data: Int[2]
+                touch(data)
+            }
+            """.trimIndent(),
+        )
+
+        assertTrue(errors.isEmpty())
+    }
+
+    @Test
+    fun `global array accessible from function`() {
+        val errors = analyze(
+            """
+            val storage: Int[4]
+            fun main(): Unit {
+                storage[0] = 1
+            }
+            """.trimIndent(),
+        )
+
+        assertTrue(errors.isEmpty())
+    }
+
+    @Test
+    fun `element assignment to val-bound array is allowed`() {
+        val errors = analyze(
+            """
+            fun main(): Unit {
+                val arr: Int[2] = [1, 2]
+                arr[0] = 3
+            }
+            """.trimIndent(),
+        )
+
+        assertTrue(errors.isEmpty())
+    }
+
+    @Test
+    fun `array redeclaration in same scope is critical`() {
+        val errors = analyze(
+            """
+            fun main(): Unit {
+                val arr: Int[2]
+                val arr: Int[3]
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals(1, errors.size)
+        assertEquals(SemanticErrorType.VARIABLE_REDECLARATION, errors.single().variableScope.errorType)
+        assertInstanceOf(VariableInitializationASTNode::class.java, errors.single().variableScope.where)
+    }
+
+    @Test
+    fun `array index expression may use parameters`() {
+        val errors = analyze(
+            """
+            fun pick(arr: Int[], index: Int): Unit {
+                arr[index] = 0
+            }
+            fun main(): Unit {
+                val data: Int[3]
+                pick(data, 1)
+            }
+            """.trimIndent(),
+        )
+
+        assertTrue(errors.isEmpty())
+    }
+
+    @Test
+    fun `nested array read uses outer array binding`() {
+        val errors = analyze(
+            """
+            fun main(): Unit {
+                val arr: Int[2] = [1, 2]
+                if (true) {
+                    val x: Int = arr[0]
+                }
+            }
+            """.trimIndent(),
+        )
+
+        assertTrue(errors.isEmpty())
+    }
+
+    @Test
+    fun `unknown index variable in assignment`() {
+        val errors = analyze(
+            """
+            fun main(): Unit {
+                val arr: Int[2]
+                arr[missing] = 1
+            }
+            """.trimIndent(),
+        )
+
+        val scopeErrors = errors.filterIsInstance<SemanticError.VariableScopeSemanticError>()
+        assertEquals(1, scopeErrors.size)
+        assertEquals(SemanticErrorType.UNKNOWN_VARIABLE, scopeErrors.single().errorType)
+        assertInstanceOf(VariableExpressionNode::class.java, scopeErrors.single().where)
+    }
+
+    @Test
+    fun `array element read with unknown index variable`() {
+        val errors = analyze(
+            """
+            fun main(): Unit {
+                val arr: Int[2] = [1, 2]
+                return arr[idx]
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals(1, errors.size)
+        assertEquals(SemanticErrorType.UNKNOWN_VARIABLE, errors.single().variableScope.errorType)
+        assertInstanceOf(VariableExpressionNode::class.java, errors.single().variableScope.where)
+    }
+
     // endregion
 }

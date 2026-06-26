@@ -1,0 +1,33 @@
+fun classify(n: Int, limit: Int): Int {
+    var score: Int = 0
+    var i: Int = 0
+    while (i < limit) {
+        var inner: Int = limit
+        while (inner > 0) {
+            if (n > inner) {
+                if (i == 0) {
+                    score = score + 10
+                } else {
+                    score = score + 1
+                }
+            } else {
+                if (inner == 1) {
+                    score = score - 1
+                }
+            }
+            inner = inner - 1
+        }
+        if (score > 100) {
+            return score
+        }
+        i = i + 1
+    }
+    return score
+}
+
+fun main(): Unit {
+    var result: Int = classify(7, 3)
+    var out: String = ""
+    intToString(result, out, 1024)
+    println(out)
+}

@@ -1,0 +1,74 @@
+func sumRange_Array_Int_Int:
+  GET_PARAM arr:Array
+  GET_PARAM start:Int
+  GET_PARAM end:Int
+  ASSIGN total:Int 0:Int
+  ASSIGN i:Int start:Int
+  ASSIGN $right_borderi:Int end:Int
+lbl1:
+  LE var1:Boolean i:Int $right_borderi:Int
+  JMP_IF_NOT lbl2 var1:Boolean
+  ASSIGN var7:Int 0:Int
+  LOAD var7:Int arr:Array i:Int
+  ADD total:Int total:Int var7:Int
+  ASSIGN var9:Int 1:Int
+  ADD i:Int i:Int var9:Int
+  JMP lbl1
+lbl2:
+  RET total:Int
+func main:
+  ALLOC arr:Int Int 4:Int
+  ASSIGN var11:Int 0:Int
+  ASSIGN var12:Int 10:Int
+  STORE arr:Int var11:Int var12:Int
+  ASSIGN var13:Int 1:Int
+  ASSIGN var14:Int 20:Int
+  STORE arr:Int var13:Int var14:Int
+  ASSIGN var15:Int 2:Int
+  ASSIGN var16:Int 30:Int
+  STORE arr:Int var15:Int var16:Int
+  ASSIGN var17:Int 3:Int
+  ASSIGN var18:Int 40:Int
+  STORE arr:Int var17:Int var18:Int
+  ASSIGN var20:Int 5:Int
+  ASSIGN var21:Int 1:Int
+  PARAM arr:Array
+  PARAM var20:Int
+  PARAM var21:Int
+  CALL zeroTrip:Int sumRange_Array_Int_Int:Int 3:Int
+  ASSIGN var23:Int 2:Int
+  ASSIGN var24:Int 2:Int
+  PARAM arr:Array
+  PARAM var23:Int
+  PARAM var24:Int
+  CALL single:Int sumRange_Array_Int_Int:Int 3:Int
+  ASSIGN zStr:String :String
+  ASSIGN var27:Int 1024:Int
+  PARAM zeroTrip:Int
+  PARAM zStr:String
+  PARAM var27:Int
+  CALL  intToString:Unit 3:Int
+  ASSIGN sStr:String :String
+  ASSIGN var30:Int 1024:Int
+  PARAM single:Int
+  PARAM sStr:String
+  PARAM var30:Int
+  CALL  intToString:Unit 3:Int
+  ASSIGN part:String :String
+  ASSIGN var32:String ::String
+  ASSIGN var34:Int 1024:Int
+  PARAM zStr:String
+  PARAM var32:String
+  PARAM part:String
+  PARAM var34:Int
+  CALL  stringConcat:Unit 4:Int
+  ASSIGN line:String :String
+  ASSIGN var38:Int 1024:Int
+  PARAM part:String
+  PARAM sStr:String
+  PARAM line:String
+  PARAM var38:Int
+  CALL  stringConcat:Unit 4:Int
+  PARAM line:String
+  CALL  println:Unit 1:Int
+  RET Unit

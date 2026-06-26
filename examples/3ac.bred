@@ -1,24 +1,4 @@
-fun max(a: Int, b: Int): Int {
-    if (a > b) {
-        return a
-    }
-    return b
-}
-
-val PI: Double = 3.1417
-
-fun main(): Int {
-    val x: Int = readInt()
-    val y: Int = readInt()
-
-    if (x > y) {
-        println("first value is bigger")
-    } else {
-        println("second value is bigger")
-    }
-
-    val z: Int = 2 * x + (y * 5) / 2 * max (3, 1)
-
-    readInt()
-    return z
-}
+            fun main(): Unit {
+                val x: Int = 0
+                val y: Int = x[0]
+            }

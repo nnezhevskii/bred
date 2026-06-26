@@ -1,0 +1,103 @@
+func swapIfGreater_Array_Int_Int:
+  GET_PARAM arr:Array
+  GET_PARAM i:Int
+  GET_PARAM j:Int
+  ASSIGN var4:Int 0:Int
+  LOAD var4:Int arr:Array i:Int
+  ASSIGN var7:Int 0:Int
+  LOAD var7:Int arr:Array j:Int
+  GT var1:Boolean var4:Int var7:Int
+  JMP_IF_NOT lbl1 var1:Boolean
+  ASSIGN var9:Int 0:Int
+  LOAD var9:Int arr:Array i:Int
+  ASSIGN tmp:Int var9:Int
+  ASSIGN var10:Int i:Int
+  ASSIGN var13:Int 0:Int
+  LOAD var13:Int arr:Array j:Int
+  STORE arr:Int var10:Int var13:Int
+  ASSIGN var14:Int j:Int
+  STORE arr:Int var14:Int tmp:Int
+lbl1:
+  RET Unit
+func bubblePass_Array_Int:
+  GET_PARAM arr:Array
+  GET_PARAM size:Int
+  ASSIGN var18:Int 1:Int
+  LE var16:Boolean size:Int var18:Int
+  JMP_IF_NOT lbl2 var16:Boolean
+  RET Unit
+lbl2:
+  ASSIGN i:Int 0:Int
+  ASSIGN var20:Int 1:Int
+  SUB $right_borderi:Int size:Int var20:Int
+lbl3:
+  LE var21:Boolean i:Int $right_borderi:Int
+  JMP_IF_NOT lbl4 var21:Boolean
+  ASSIGN var25:Int 1:Int
+  ADD next:Int i:Int var25:Int
+  PARAM arr:Array
+  PARAM i:Int
+  PARAM next:Int
+  CALL  swapIfGreater_Array_Int_Int:Unit 3:Int
+  ASSIGN var30:Int 1:Int
+  ADD i:Int i:Int var30:Int
+  JMP lbl3
+lbl4:
+  RET Unit
+func main:
+  ALLOC arr:Int Int 5:Int
+  ASSIGN var31:Int 0:Int
+  ASSIGN var32:Int 3:Int
+  STORE arr:Int var31:Int var32:Int
+  ASSIGN var33:Int 1:Int
+  ASSIGN var34:Int 1:Int
+  STORE arr:Int var33:Int var34:Int
+  ASSIGN var35:Int 2:Int
+  ASSIGN var36:Int 4:Int
+  STORE arr:Int var35:Int var36:Int
+  ASSIGN var37:Int 3:Int
+  ASSIGN var38:Int 2:Int
+  STORE arr:Int var37:Int var38:Int
+  ASSIGN var39:Int 4:Int
+  ASSIGN var40:Int 0:Int
+  STORE arr:Int var39:Int var40:Int
+  ASSIGN var42:Int 4:Int
+  PARAM arr:Array
+  PARAM var42:Int
+  CALL  bubblePass_Array_Int:Unit 2:Int
+  ASSIGN head:String :String
+  ASSIGN var44:Int 0:Int
+  ASSIGN var45:Int 0:Int
+  LOAD var45:Int arr:Array var44:Int
+  ASSIGN var47:Int 1024:Int
+  PARAM var45:Int
+  PARAM head:String
+  PARAM var47:Int
+  CALL  intToString:Unit 3:Int
+  ASSIGN tail:String :String
+  ASSIGN var49:Int 4:Int
+  ASSIGN var50:Int 0:Int
+  LOAD var50:Int arr:Array var49:Int
+  ASSIGN var52:Int 1024:Int
+  PARAM var50:Int
+  PARAM tail:String
+  PARAM var52:Int
+  CALL  intToString:Unit 3:Int
+  ASSIGN part:String :String
+  ASSIGN var54:String ,:String
+  ASSIGN var56:Int 1024:Int
+  PARAM head:String
+  PARAM var54:String
+  PARAM part:String
+  PARAM var56:Int
+  CALL  stringConcat:Unit 4:Int
+  ASSIGN line:String :String
+  ASSIGN var60:Int 1024:Int
+  PARAM part:String
+  PARAM tail:String
+  PARAM line:String
+  PARAM var60:Int
+  CALL  stringConcat:Unit 4:Int
+  PARAM line:String
+  CALL  println:Unit 1:Int
+  RET Unit

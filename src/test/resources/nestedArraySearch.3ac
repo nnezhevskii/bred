@@ -1,0 +1,87 @@
+func findPairSum_Array_Int_Int:
+  GET_PARAM arr:Array
+  GET_PARAM size:Int
+  GET_PARAM target:Int
+  ASSIGN var3:Int 1:Int
+  LT var1:Boolean size:Int var3:Int
+  JMP_IF_NOT lbl1 var1:Boolean
+  ASSIGN var5:Int 1:Int
+  NEG var4:Int var5:Int
+  RET var4:Int
+lbl1:
+  ASSIGN i:Int 0:Int
+  ASSIGN $right_borderi:Int size:Int
+lbl2:
+  LE var6:Boolean i:Int $right_borderi:Int
+  JMP_IF_NOT lbl3 var6:Boolean
+  ASSIGN var10:Int 1:Int
+  ADD j:Int i:Int var10:Int
+  ASSIGN $right_borderj:Int size:Int
+lbl4:
+  LE var11:Boolean j:Int $right_borderj:Int
+  JMP_IF_NOT lbl5 var11:Boolean
+  ASSIGN var16:Int 0:Int
+  LOAD var16:Int arr:Array i:Int
+  ASSIGN var19:Int 0:Int
+  LOAD var19:Int arr:Array j:Int
+  ADD sum:Int var16:Int var19:Int
+  EQ var20:Boolean sum:Int target:Int
+  JMP_IF_NOT lbl6 var20:Boolean
+  RET i:Int
+lbl6:
+  ASSIGN var25:Int 1:Int
+  ADD j:Int j:Int var25:Int
+  JMP lbl4
+lbl5:
+  ASSIGN var27:Int 1:Int
+  ADD i:Int i:Int var27:Int
+  JMP lbl2
+lbl3:
+  ASSIGN var29:Int 1:Int
+  NEG var28:Int var29:Int
+  RET var28:Int
+func main:
+  ALLOC data:Int Int 6:Int
+  ASSIGN var30:Int 0:Int
+  ASSIGN var31:Int 2:Int
+  STORE data:Int var30:Int var31:Int
+  ASSIGN var32:Int 1:Int
+  ASSIGN var33:Int 7:Int
+  STORE data:Int var32:Int var33:Int
+  ASSIGN var34:Int 2:Int
+  ASSIGN var35:Int 11:Int
+  STORE data:Int var34:Int var35:Int
+  ASSIGN var36:Int 3:Int
+  ASSIGN var37:Int 15:Int
+  STORE data:Int var36:Int var37:Int
+  ASSIGN var38:Int 4:Int
+  ASSIGN var39:Int 4:Int
+  STORE data:Int var38:Int var39:Int
+  ASSIGN var40:Int 5:Int
+  ASSIGN var41:Int 9:Int
+  STORE data:Int var40:Int var41:Int
+  ASSIGN var43:Int 5:Int
+  ASSIGN var44:Int 18:Int
+  PARAM data:Array
+  PARAM var43:Int
+  PARAM var44:Int
+  CALL idx:Int findPairSum_Array_Int_Int:Int 3:Int
+  ASSIGN var48:Int 1:Int
+  NEG var47:Int var48:Int
+  EQ var45:Boolean idx:Int var47:Int
+  JMP_IF_NOT lbl7 var45:Boolean
+  ASSIGN var49:String not found:String
+  PARAM var49:String
+  CALL  println:Unit 1:Int
+  JMP lbl8
+lbl7:
+  ASSIGN msg:String :String
+  ASSIGN var52:Int 1024:Int
+  PARAM idx:Int
+  PARAM msg:String
+  PARAM var52:Int
+  CALL  intToString:Unit 3:Int
+  PARAM msg:String
+  CALL  println:Unit 1:Int
+lbl8:
+  RET Unit

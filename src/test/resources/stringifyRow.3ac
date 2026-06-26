@@ -1,0 +1,93 @@
+func appendInt_String_Int_String:
+  GET_PARAM buf:String
+  GET_PARAM value:Int
+  GET_PARAM out:String
+  ASSIGN tmp:String :String
+  ASSIGN var3:Int 1024:Int
+  PARAM value:Int
+  PARAM tmp:String
+  PARAM var3:Int
+  CALL  intToString:Unit 3:Int
+  ASSIGN var7:Int 1024:Int
+  PARAM buf:String
+  PARAM tmp:String
+  PARAM out:String
+  PARAM var7:Int
+  CALL  stringConcat:Unit 4:Int
+  RET Unit
+func formatRow_Array_Int:
+  GET_PARAM arr:Array
+  GET_PARAM size:Int
+  ASSIGN var10:Int 0:Int
+  LT var8:Boolean size:Int var10:Int
+  JMP_IF_NOT lbl1 var8:Boolean
+  ASSIGN var11:String bad size:String
+  PARAM var11:String
+  CALL  println:Unit 1:Int
+  RET Unit
+lbl1:
+  ASSIGN line:String :String
+  ASSIGN var14:Int 0:Int
+  ASSIGN var15:Int 0:Int
+  LOAD var15:Int arr:Array var14:Int
+  PARAM line:String
+  PARAM var15:Int
+  PARAM line:String
+  CALL  appendInt_String_Int_String:Unit 3:Int
+  ASSIGN var19:Int 1:Int
+  GE var17:Boolean size:Int var19:Int
+  JMP_IF_NOT lbl2 var17:Boolean
+  ASSIGN step1:String :String
+  ASSIGN var21:String |:String
+  ASSIGN var23:Int 1024:Int
+  PARAM line:String
+  PARAM var21:String
+  PARAM step1:String
+  PARAM var23:Int
+  CALL  stringConcat:Unit 4:Int
+  ASSIGN var26:Int 1:Int
+  ASSIGN var27:Int 0:Int
+  LOAD var27:Int arr:Array var26:Int
+  PARAM step1:String
+  PARAM var27:Int
+  PARAM line:String
+  CALL  appendInt_String_Int_String:Unit 3:Int
+lbl2:
+  ASSIGN var31:Int 2:Int
+  GE var29:Boolean size:Int var31:Int
+  JMP_IF_NOT lbl3 var29:Boolean
+  ASSIGN step2:String :String
+  ASSIGN var33:String |:String
+  ASSIGN var35:Int 1024:Int
+  PARAM line:String
+  PARAM var33:String
+  PARAM step2:String
+  PARAM var35:Int
+  CALL  stringConcat:Unit 4:Int
+  ASSIGN var38:Int 2:Int
+  ASSIGN var39:Int 0:Int
+  LOAD var39:Int arr:Array var38:Int
+  PARAM step2:String
+  PARAM var39:Int
+  PARAM line:String
+  CALL  appendInt_String_Int_String:Unit 3:Int
+lbl3:
+  PARAM line:String
+  CALL  println:Unit 1:Int
+  RET Unit
+func main:
+  ALLOC row:Int Int 3:Int
+  ASSIGN var42:Int 0:Int
+  ASSIGN var43:Int 1:Int
+  STORE row:Int var42:Int var43:Int
+  ASSIGN var44:Int 1:Int
+  ASSIGN var45:Int 2:Int
+  STORE row:Int var44:Int var45:Int
+  ASSIGN var46:Int 2:Int
+  ASSIGN var47:Int 3:Int
+  STORE row:Int var46:Int var47:Int
+  ASSIGN var49:Int 2:Int
+  PARAM row:Array
+  PARAM var49:Int
+  CALL  formatRow_Array_Int:Unit 2:Int
+  RET Unit

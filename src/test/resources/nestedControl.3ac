@@ -1,0 +1,63 @@
+func classify_Int_Int:
+  GET_PARAM n:Int
+  GET_PARAM limit:Int
+  ASSIGN score:Int 0:Int
+  ASSIGN i:Int 0:Int
+lbl1:
+  LT var1:Boolean i:Int limit:Int
+  JMP_IF_NOT lbl2 var1:Boolean
+  ASSIGN inner:Int limit:Int
+lbl3:
+  ASSIGN var6:Int 0:Int
+  GT var4:Boolean inner:Int var6:Int
+  JMP_IF_NOT lbl4 var4:Boolean
+  GT var7:Boolean n:Int inner:Int
+  JMP_IF_NOT lbl5 var7:Boolean
+  ASSIGN var12:Int 0:Int
+  EQ var10:Boolean i:Int var12:Int
+  JMP_IF_NOT lbl6 var10:Boolean
+  ASSIGN var14:Int 10:Int
+  ADD score:Int score:Int var14:Int
+  JMP lbl7
+lbl6:
+  ASSIGN var16:Int 1:Int
+  ADD score:Int score:Int var16:Int
+lbl7:
+  JMP lbl8
+lbl5:
+  ASSIGN var19:Int 1:Int
+  EQ var17:Boolean inner:Int var19:Int
+  JMP_IF_NOT lbl9 var17:Boolean
+  ASSIGN var21:Int 1:Int
+  SUB score:Int score:Int var21:Int
+lbl9:
+lbl8:
+  ASSIGN var23:Int 1:Int
+  SUB inner:Int inner:Int var23:Int
+  JMP lbl3
+lbl4:
+  ASSIGN var26:Int 100:Int
+  GT var24:Boolean score:Int var26:Int
+  JMP_IF_NOT lbl10 var24:Boolean
+  RET score:Int
+lbl10:
+  ASSIGN var29:Int 1:Int
+  ADD i:Int i:Int var29:Int
+  JMP lbl1
+lbl2:
+  RET score:Int
+func main:
+  ASSIGN var31:Int 7:Int
+  ASSIGN var32:Int 3:Int
+  PARAM var31:Int
+  PARAM var32:Int
+  CALL result:Int classify_Int_Int:Int 2:Int
+  ASSIGN out:String :String
+  ASSIGN var35:Int 1024:Int
+  PARAM result:Int
+  PARAM out:String
+  PARAM var35:Int
+  CALL  intToString:Unit 3:Int
+  PARAM out:String
+  CALL  println:Unit 1:Int
+  RET Unit
