@@ -1,4 +1,4 @@
-func factorial:
+func factorial_Int:
   GET_PARAM n:Int
   ASSIGN result:Int 1:Int
   ASSIGN i:Int 1:Int
@@ -13,12 +13,22 @@ lbl2:
   RET result:Int
 func main:
   CALL x:Int readInt:Int 0:Int
-  ASSIGN var10:String factorial: :String
+  ASSIGN factStr:String :String
   PARAM x:Int
-  CALL var12:Int factorial:Int 1:Int
+  CALL var9:Int factorial_Int:Int 1:Int
+  ASSIGN var12:Int 1024:Int
+  PARAM var9:Int
+  PARAM factStr:String
   PARAM var12:Int
-  CALL var11:String intToString:String 1:Int
-  ADD var9:String var10:String var11:String
-  PARAM var9:String
+  CALL  intToString:Unit 3:Int
+  ASSIGN msg:String :String
+  ASSIGN var13:String factorial: :String
+  ASSIGN var16:Int 1024:Int
+  PARAM var13:String
+  PARAM factStr:String
+  PARAM msg:String
+  PARAM var16:Int
+  CALL  stringConcat:Unit 4:Int
+  PARAM msg:String
   CALL  println:Unit 1:Int
   RET Unit

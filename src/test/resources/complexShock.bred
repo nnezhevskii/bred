@@ -37,5 +37,9 @@ fun complexShock(n: Int, limit: Int): Int {
 
 fun main(): Unit {
     var res: Int = complexShock(5, 2)
-    println("Result is: " + intToString(res))
+    var resStr: String = ""
+    intToString(res, resStr, 1024)
+    var msg: String = ""
+    stringConcat("Result is: ", resStr, msg, 1024)
+    println(msg)
 }

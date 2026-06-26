@@ -65,10 +65,41 @@ fun main() {
         val minVal: Int = arr[minIdx]
         val rangeVal: Int = maxVal - minVal
 
-        println("max at index " + intToString(maxIdx) + " value " + intToString(maxVal))
-        println("min at index " + intToString(minIdx) + " value " + intToString(minVal))
-        println("sum is " + intToString(total))
-        println("range is " + intToString(rangeVal))
+        var idxStr: String = ""
+        intToString(maxIdx, idxStr, 1024)
+        var part1: String = ""
+        stringConcat("max at index ", idxStr, part1, 1024)
+        var part2: String = ""
+        stringConcat(part1, " value ", part2, 1024)
+        var valStr: String = ""
+        intToString(maxVal, valStr, 1024)
+        var msg1: String = ""
+        stringConcat(part2, valStr, msg1, 1024)
+        println(msg1)
+
+        var minIdxStr: String = ""
+        intToString(minIdx, minIdxStr, 1024)
+        var minPart1: String = ""
+        stringConcat("min at index ", minIdxStr, minPart1, 1024)
+        var minPart2: String = ""
+        stringConcat(minPart1, " value ", minPart2, 1024)
+        var minValStr: String = ""
+        intToString(minVal, minValStr, 1024)
+        var msg2: String = ""
+        stringConcat(minPart2, minValStr, msg2, 1024)
+        println(msg2)
+
+        var totalStr: String = ""
+        intToString(total, totalStr, 1024)
+        var msg3: String = ""
+        stringConcat("sum is ", totalStr, msg3, 1024)
+        println(msg3)
+
+        var rangeStr: String = ""
+        intToString(rangeVal, rangeStr, 1024)
+        var msg4: String = ""
+        stringConcat("range is ", rangeStr, msg4, 1024)
+        println(msg4)
 
         if (rangeVal == 0) {
             println("all elements are equal")

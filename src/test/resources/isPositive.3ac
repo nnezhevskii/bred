@@ -1,4 +1,4 @@
-func isPositive:
+func isPositive_Int:
   GET_PARAM x:Int
   ASSIGN var3:Int 0:Int
   GT var1:Boolean x:Int var3:Int
@@ -23,7 +23,7 @@ func main:
   CALL x:Int readInt:Int 0:Int
   ASSIGN var11:String number: :String
   PARAM x:Int
-  CALL var12:String isPositive:String 1:Int
+  CALL var12:String isPositive_Int:String 1:Int
   ADD var10:String var11:String var12:String
   PARAM var10:String
   CALL  println:Unit 1:Int

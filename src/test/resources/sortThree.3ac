@@ -1,4 +1,4 @@
-func sortThree:
+func sortThree_Int_Int_Int:
   GET_PARAM a:Int
   GET_PARAM b:Int
   GET_PARAM c:Int
@@ -24,27 +24,63 @@ lbl2:
   ASSIGN x:Int y:Int
   ASSIGN y:Int temp:Int
 lbl3:
+  ASSIGN sx:String :String
+  ASSIGN var12:Int 1024:Int
   PARAM x:Int
-  CALL var14:String intToString:String 1:Int
-  ASSIGN var16:String  :String
-  ADD var13:String var14:String var16:String
+  PARAM sx:String
+  PARAM var12:Int
+  CALL  intToString:Unit 3:Int
+  ASSIGN sy:String :String
+  ASSIGN var15:Int 1024:Int
   PARAM y:Int
-  CALL var17:String intToString:String 1:Int
-  ADD var12:String var13:String var17:String
-  ASSIGN var19:String  :String
-  ADD var11:String var12:String var19:String
+  PARAM sy:String
+  PARAM var15:Int
+  CALL  intToString:Unit 3:Int
+  ASSIGN sz:String :String
+  ASSIGN var18:Int 1024:Int
   PARAM z:Int
-  CALL var20:String intToString:String 1:Int
-  ADD var10:String var11:String var20:String
-  PARAM var10:String
+  PARAM sz:String
+  PARAM var18:Int
+  CALL  intToString:Unit 3:Int
+  ASSIGN part1:String :String
+  ASSIGN var20:String  :String
+  ASSIGN var22:Int 1024:Int
+  PARAM sx:String
+  PARAM var20:String
+  PARAM part1:String
+  PARAM var22:Int
+  CALL  stringConcat:Unit 4:Int
+  ASSIGN part2:String :String
+  ASSIGN var26:Int 1024:Int
+  PARAM part1:String
+  PARAM sy:String
+  PARAM part2:String
+  PARAM var26:Int
+  CALL  stringConcat:Unit 4:Int
+  ASSIGN part3:String :String
+  ASSIGN var28:String  :String
+  ASSIGN var30:Int 1024:Int
+  PARAM part2:String
+  PARAM var28:String
+  PARAM part3:String
+  PARAM var30:Int
+  CALL  stringConcat:Unit 4:Int
+  ASSIGN line:String :String
+  ASSIGN var34:Int 1024:Int
+  PARAM part3:String
+  PARAM sz:String
+  PARAM line:String
+  PARAM var34:Int
+  CALL  stringConcat:Unit 4:Int
+  PARAM line:String
   CALL  println:Unit 1:Int
   RET Unit
 func main:
-  ASSIGN var22:Int 3:Int
-  ASSIGN var23:Int 1:Int
-  ASSIGN var24:Int 2:Int
-  PARAM var22:Int
-  PARAM var23:Int
-  PARAM var24:Int
-  CALL  sortThree:Unit 3:Int
+  ASSIGN var36:Int 3:Int
+  ASSIGN var37:Int 1:Int
+  ASSIGN var38:Int 2:Int
+  PARAM var36:Int
+  PARAM var37:Int
+  PARAM var38:Int
+  CALL  sortThree_Int_Int_Int:Unit 3:Int
   RET Unit

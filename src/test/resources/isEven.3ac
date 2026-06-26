@@ -1,4 +1,4 @@
-func isEven:
+func isEven_Int:
   GET_PARAM n:Int
   ASSIGN var3:Int 0:Int
   EQ var1:Boolean n:Int var3:Int
@@ -11,7 +11,7 @@ lbl1:
   PARAM var6:Int
   CALL var5:Int isOdd:Int 1:Int
   RET var5:Int
-func isOdd:
+func isOdd_Int:
   GET_PARAM n:Int
   ASSIGN var11:Int 0:Int
   EQ var9:Boolean n:Int var11:Int
@@ -22,12 +22,12 @@ lbl2:
   ASSIGN var16:Int 1:Int
   SUB var14:Int n:Int var16:Int
   PARAM var14:Int
-  CALL var13:Int isEven:Int 1:Int
+  CALL var13:Int isEven_Int:Int 1:Int
   RET var13:Int
 func main:
   ASSIGN num:Int 5:Int
   PARAM num:Int
-  CALL var18:Int isEven:Int 1:Int
+  CALL var18:Int isEven_Int:Int 1:Int
   ASSIGN var20:Int 1:Int
   EQ var17:Boolean var18:Int var20:Int
   JMP_IF_NOT lbl3 var17:Boolean

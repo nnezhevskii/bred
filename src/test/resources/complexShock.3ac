@@ -1,4 +1,4 @@
-func complexShock:
+func complexShock_Int_Int:
   GET_PARAM n:Int
   GET_PARAM limit:Int
   ASSIGN i:Int 1:Int
@@ -41,11 +41,21 @@ func main:
   ASSIGN var28:Int 2:Int
   PARAM var27:Int
   PARAM var28:Int
-  CALL res:Int complexShock:Int 2:Int
-  ASSIGN var30:String Result is: :String
+  CALL res:Int complexShock_Int_Int:Int 2:Int
+  ASSIGN resStr:String :String
+  ASSIGN var31:Int 1024:Int
   PARAM res:Int
-  CALL var31:String intToString:String 1:Int
-  ADD var29:String var30:String var31:String
-  PARAM var29:String
+  PARAM resStr:String
+  PARAM var31:Int
+  CALL  intToString:Unit 3:Int
+  ASSIGN msg:String :String
+  ASSIGN var32:String Result is: :String
+  ASSIGN var35:Int 1024:Int
+  PARAM var32:String
+  PARAM resStr:String
+  PARAM msg:String
+  PARAM var35:Int
+  CALL  stringConcat:Unit 4:Int
+  PARAM msg:String
   CALL  println:Unit 1:Int
   RET Unit

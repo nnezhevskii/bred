@@ -21,7 +21,21 @@ fun sortThree(a: Int, b: Int, c: Int): Unit {
         y = temp
     }
 
-    println(intToString(x) + " " + intToString(y) + " " + intToString(z))
+    var sx: String = ""
+    intToString(x, sx, 1024)
+    var sy: String = ""
+    intToString(y, sy, 1024)
+    var sz: String = ""
+    intToString(z, sz, 1024)
+    var part1: String = ""
+    stringConcat(sx, " ", part1, 1024)
+    var part2: String = ""
+    stringConcat(part1, sy, part2, 1024)
+    var part3: String = ""
+    stringConcat(part2, " ", part3, 1024)
+    var line: String = ""
+    stringConcat(part3, sz, line, 1024)
+    println(line)
 }
 
 fun main(): Unit {

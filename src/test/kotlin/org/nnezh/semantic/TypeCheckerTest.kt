@@ -341,7 +341,8 @@ class TypeCheckerTest {
         assertNoTypeErrors(
             """
             fun main(): Unit {
-                val s: String = stringConcat("a", "b")
+                var buf: String = ""
+                stringConcat("a", "b", buf, 1024)
             }
             """.trimIndent(),
         )
@@ -681,7 +682,8 @@ class TypeCheckerTest {
             FunctionCallExpressionNode::class.java,
             """
             fun main(): Unit {
-                stringConcat("a", 1)
+                var buf: String = ""
+                stringConcat("a", 1, buf, 1024)
             }
             """.trimIndent(),
         )
@@ -855,7 +857,9 @@ class TypeCheckerTest {
             """
             fun main(): Unit {
                 val n: Int = 42
-                val len: Int = stringLength(intToString(n))
+                var tmp: String = ""
+                intToString(n, tmp, 1024)
+                val len: Int = stringLength(tmp)
             }
             """.trimIndent(),
         )
@@ -867,7 +871,8 @@ class TypeCheckerTest {
             """
             fun main(): Unit {
                 val text: String = "hello"
-                val part: String = substring(text, 0 + 1, 2 + 3)
+                var part: String = ""
+                substring(text, 0 + 1, 2 + 3, part, 1024)
             }
             """.trimIndent(),
         )
@@ -1028,7 +1033,8 @@ class TypeCheckerTest {
                 return x
             }
             fun main(): Unit {
-                val bad: Int = wrap(stringConcat("a", "b"))
+                var buf: String = ""
+                val bad: Int = wrap(stringConcat("a", "b", buf, 1024))
             }
             """.trimIndent(),
         )
@@ -1043,7 +1049,8 @@ class TypeCheckerTest {
                 return x
             }
             fun main(): Unit {
-                val bad: Int = wrap(intToString(5))
+                var buf: String = ""
+                val bad: Int = wrap(intToString(5, buf, 1024))
             }
             """.trimIndent(),
         )
@@ -1058,7 +1065,8 @@ class TypeCheckerTest {
             fun g(x: Int): Int { return f(x) }
             fun h(x: Int): Int { return g(x) }
             fun main(): Unit {
-                val bad: Int = h(booleanToString(true))
+                var buf: String = ""
+                val bad: Int = h(booleanToString(true, buf, 1024))
             }
             """.trimIndent(),
         )
@@ -1070,7 +1078,8 @@ class TypeCheckerTest {
             FunctionCallExpressionNode::class.java,
             """
             fun main(): Unit {
-                substring("text", "0", 2)
+                var buf: String = ""
+                substring("text", "0", 2, buf, 1024)
             }
             """.trimIndent(),
         )
@@ -1489,7 +1498,8 @@ class TypeCheckerTest {
             UnaryExpressionASTNode::class.java,
             """
             fun main(): Unit {
-                val x: Int = -stringConcat("a", "b")
+                var buf: String = ""
+                val x: Int = -stringConcat("a", "b", buf, 1024)
             }
             """.trimIndent(),
         )
@@ -1501,7 +1511,8 @@ class TypeCheckerTest {
             FunctionCallExpressionNode::class.java,
             """
             fun main(): Unit {
-                val s: String = substring("abc", 1 == 1, 2 == 2)
+                var buf: String = ""
+                val s: String = substring("abc", 1 == 1, 2 == 2, buf, 1024)
             }
             """.trimIndent(),
         )

@@ -25,3 +25,11 @@ kotlin {
 tasks.test {
     useJUnitPlatform()
 }
+
+tasks.register<JavaExec>("generateSnapshots") {
+    group = "verification"
+    description = "Regenerate .3ac snapshot files from .bred sources"
+    classpath = sourceSets["test"].runtimeClasspath
+    mainClass.set("org.nnezh.lltag.SnapshotGeneratorKt")
+    workingDir = projectDir
+}

@@ -3,5 +3,7 @@ fun main(): Unit {
     for (i in 1 to 5) {
         sum = sum + i
     }
-    println(intToString(sum))
+    var tmp: String = ""
+    intToString(sum, tmp, 1024)
+    println(tmp)
 }

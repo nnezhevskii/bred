@@ -1,9 +1,9 @@
-func random:
+func random_Int_Int:
   GET_PARAM minValue:Int
   GET_PARAM maxValue:Int
   ASSIGN var1:Int 42:Int
   RET var1:Int
-func maxIndex:
+func maxIndex_Array_Int:
   GET_PARAM arr:Array
   GET_PARAM size:Int
   ASSIGN var4:Int 0:Int
@@ -52,7 +52,7 @@ lbl6:
   ASSIGN var30:Int 100:Int
   PARAM var29:Int
   PARAM var30:Int
-  CALL var28:Int random:Int 2:Int
+  CALL var28:Int random_Int_Int:Int 2:Int
   STORE arr:Int var27:Int var28:Int
   ASSIGN var32:Int 1:Int
   ADD i:Int i:Int var32:Int
@@ -60,7 +60,7 @@ lbl6:
 lbl7:
   PARAM arr:Array
   PARAM size:Int
-  CALL maxInd:Int maxIndex:Int 2:Int
+  CALL maxInd:Int maxIndex_Array_Int:Int 2:Int
   ASSIGN var38:Int 1:Int
   NEG var37:Int var38:Int
   EQ var35:Boolean maxInd:Int var37:Int
@@ -70,13 +70,23 @@ lbl7:
   CALL  println:Unit 1:Int
   JMP lbl9
 lbl8:
-  ASSIGN var41:String min element is:String
-  ASSIGN var45:Int 0:Int
-  LOAD var45:Int arr:Array maxInd:Int
-  PARAM var45:Int
-  CALL var42:String intToString:String 1:Int
-  ADD var40:String var41:String var42:String
-  PARAM var40:String
+  ASSIGN elemStr:String :String
+  ASSIGN var42:Int 0:Int
+  LOAD var42:Int arr:Array maxInd:Int
+  ASSIGN var44:Int 1024:Int
+  PARAM var42:Int
+  PARAM elemStr:String
+  PARAM var44:Int
+  CALL  intToString:Unit 3:Int
+  ASSIGN msg:String :String
+  ASSIGN var45:String min element is:String
+  ASSIGN var48:Int 1024:Int
+  PARAM var45:String
+  PARAM elemStr:String
+  PARAM msg:String
+  PARAM var48:Int
+  CALL  stringConcat:Unit 4:Int
+  PARAM msg:String
   CALL  println:Unit 1:Int
 lbl9:
   RET Unit

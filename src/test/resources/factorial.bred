@@ -10,5 +10,9 @@ fun factorial(n: Int): Int {
 
 fun main(): Unit {
     var x: Int = readInt()
-    println("factorial: " + intToString(factorial(x)))
+    var factStr: String = ""
+    intToString(factorial(x), factStr, 1024)
+    var msg: String = ""
+    stringConcat("factorial: ", factStr, msg, 1024)
+    println(msg)
 }

@@ -10,8 +10,12 @@ lbl1:
   ADD i:Int i:Int var7:Int
   JMP lbl1
 lbl2:
+  ASSIGN tmp:String :String
+  ASSIGN var10:Int 1024:Int
   PARAM sum:Int
-  CALL var8:String intToString:String 1:Int
-  PARAM var8:String
+  PARAM tmp:String
+  PARAM var10:Int
+  CALL  intToString:Unit 3:Int
+  PARAM tmp:String
   CALL  println:Unit 1:Int
   RET Unit

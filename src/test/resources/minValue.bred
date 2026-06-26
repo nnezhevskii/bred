@@ -29,6 +29,10 @@ fun main() {
     if (maxInd == -1) {
         println("array is empty")
     } else {
-        println("min element is" + intToString(arr[maxInd]))
+        var elemStr: String = ""
+        intToString(arr[maxInd], elemStr, 1024)
+        var msg: String = ""
+        stringConcat("min element is", elemStr, msg, 1024)
+        println(msg)
     }
 }

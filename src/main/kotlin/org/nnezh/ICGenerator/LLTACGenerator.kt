@@ -30,6 +30,7 @@ import org.nnezh.ast.WhileStatementASTNode
 import org.nnezh.org.nnezh.base.Type
 import org.nnezh.org.nnezh.semantic.analyzers.ASTNodeTypeTable
 import org.nnezh.org.nnezh.semantic.analyzers.FunctionRegistry
+import org.nnezh.org.nnezh.semantic.generic.BuiltInMethods
 import java.util.Stack
 
 class LLTACGenerator(
@@ -37,8 +38,15 @@ class LLTACGenerator(
     private val typeTable: ASTNodeTypeTable,
     private val functionRegistry: FunctionRegistry
 ) {
-    private val expressionLLTACGenerator = LLTACExpressionSubgenerator(nameEmitter, typeTable, functionRegistry)
+    private val mangledFunctions: MutableMap<String, String> = hashMapOf()
+    private val expressionLLTACGenerator = LLTACExpressionSubgenerator(
+        nameEmitter,
+        typeTable,
+        functionRegistry,
+        { mangledFunctions })
 //    private val stack = Stack<LLTACExpressionSubgeneratorResult>()
+
+
 
     fun build(root: ASTNode): List<LLTACElement> {
         val instructions = mutableListOf<LLTACElement>()
@@ -59,13 +67,16 @@ class LLTACGenerator(
             }
 
             is DeclareFunctionASTNode -> {
-                if (node.name != "main") {
+                if (node.name != "main" || BuiltInMethods.functions.map { signature -> signature.name }.contains(node.name))  {
                     val funcNameMangling = node.name + "_" +
                             (node.args.arguments
                                 .map { arg -> arg.type })
                                 .joinToString (separator = "_")
+                    BuiltInMethods.functions.map { signature -> signature.name }
+                    mangledFunctions[node.name] = funcNameMangling
                     instructions.add(LLTACElement.function(funcNameMangling, node.resultType))
                 } else {
+                    mangledFunctions[node.name] = node.name
                     instructions.add(LLTACElement.function(node.name, node.resultType))
                 }
 

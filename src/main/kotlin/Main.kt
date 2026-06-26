@@ -11,7 +11,10 @@ import org.nnezh.org.nnezh.ICGenerator.PrettyPrinter
 import org.nnezh.org.nnezh.ast.AbstractSyntaxTreeExpressionParser
 import org.nnezh.org.nnezh.compiler.CTranspile
 import org.nnezh.org.nnezh.semantic.SemanticAnalyzer
-
+import java.io.File
+import java.nio.file.Files
+import java.nio.file.Path
+import java.util.concurrent.TimeUnit
 
 
 // TODO: VARIABLE_CHANGING_IMMUTABLE -Необходимо добавить тесты
@@ -45,7 +48,61 @@ fun main(args: Array<String>) {
 
             val tacCode = tacGenerator.build(ast)
 
-            CTranspile().compile(tacCode).joinToString("\n")
+            val main = CTranspile().compile(tacCode) //.joinToString("\n")
+            val runtime = File("runtime.c").readLines()
+            val final = runtime + main
+            Files.write(Path.of("main.c"), final)
+            val vcvarsPath = """C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat"""
+
+            val sourceFile = File("main.c")
+            val outputFile = File("main.exe")
+
+            if (!sourceFile.exists()) {
+                println("Пиздец, а где файл-то? main.c не найден в корне проекта!")
+                return
+            }
+
+            if (!File(vcvarsPath).exists()) {
+                println("Бля, батник MSVC по этому пути отсутствует: $vcvarsPath")
+                return
+            }
+
+            // Собираем команду для cmd.exe
+            // cl.exe берёт main.c и делает из него main.exe (/Fe)
+            // Оборачиваем ВСЮ строку после /c в экранированные кавычки "\""
+            val command = listOf(
+                "cmd.exe", "/c",
+                "\"\"$vcvarsPath\" && cl.exe /Od /Fe:\"${outputFile.name}\" \"${sourceFile.name}\"\""
+            )
+
+            val process = ProcessBuilder(command)
+                .directory(File(".")) // Рабочая папка — корень проекта
+                .redirectErrorStream(true)
+                .start()
+
+            // Выводим в консоль всё, что думает MSVC о твоём коде
+            process.inputStream.bufferedReader().use { reader ->
+                reader.forEachLine { line -> println("[MSVC]: $line") }
+            }
+
+            val finished = process.waitFor(5, TimeUnit.SECONDS)
+
+            if (finished && process.exitValue() == 0) {
+                println("\nDone.")
+            } else {
+                println("\nException: ${process.exitValue()}")
+            }
+
+//            val process = ProcessBuilder(command)
+//                .directory(sourceFile.parentFile) // Рабочая папка — там, где лежит исходник
+//                .redirectErrorStream(true)        // Сливаем ошибки и обычный вывод в один поток
+//                .start()
+
+            // 4. Читаем, что нам выплюнул компилятор (выхлоп cl.exe)
+//            process.inputStream.bufferedReader().use { reader ->
+//                reader.forEachLine { line -> println("[MSVC LOG]: $line") }
+//            }
+
 //            tacCode.joinToString("\n")
 
 //            PrettyPrinter().format (tacGenerator.build(ast)).joinToString("\n")

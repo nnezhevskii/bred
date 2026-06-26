@@ -1,4 +1,4 @@
-func someUsefulMethod:
+func someUsefulMethod_Int_Boolean:
   GET_PARAM a:Int
   GET_PARAM b:Boolean
   ASSIGN value:Int 0:Int

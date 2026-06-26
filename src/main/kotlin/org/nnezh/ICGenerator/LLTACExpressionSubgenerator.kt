@@ -28,7 +28,8 @@ data class LLTACExpressionSubgeneratorResult(
 class LLTACExpressionSubgenerator(
     private val nameEmitter: TACNameEmitter,
     private val typeTable: ASTNodeTypeTable,
-    private val functionTable: FunctionRegistry
+    private val functionTable: FunctionRegistry,
+    private val mangledFunctionsCallback : () -> Map<String, String>,
 ) {
 
     val binaryOperatorToTACCommand = mapOf<BinaryOperator, LLTACOperation>(
@@ -148,7 +149,7 @@ class LLTACExpressionSubgenerator(
 //                    expression.arguments.map { typeTable.get(it)!! }
 //                )!!
                 instructions.add(LLTACElement.call(
-                    funName = expression.name.lexeme,
+                    funName = mangledFunctionsCallback.invoke()[expression.name.lexeme] ?: expression.name.lexeme,
                     resVariable = resVar,
                     resType = resType!!,
                     amountOfArgs = arguments.count()))

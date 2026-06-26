@@ -1,28 +1,24 @@
-fun someUsefulMethod(a: Int, b: Boolean): Int {
-    var value: Int = 0
-    if (b) { // TODO: добавить это в тест, не срабатывало
-        value = 1
+fun max(a: Int, b: Int): Int {
+    if (a > b) {
+        return a
+    }
+    return b
+}
+
+val PI: Double = 3.1417
+
+fun main(): Int {
+    val x: Int = readInt()
+    val y: Int = readInt()
+
+    if (x > y) {
+        println("first value is bigger")
     } else {
-        value = 2
+        println("second value is bigger")
     }
 
-    return value
-}
+    val z: Int = 2 * x + (y * 5) / 2 * max (3, 1)
 
-fun condition(size: Int): Boolean {
-    return true
-}
-
-fun condition(): Boolean {
-    println("rewr")
-    return false
-}
-
-fun main(arg: String[], size: Int): Int {
-    var a: Int = someUsefulMethod(size, condition(size))
-    while (condition(size)) {
-        a = someUsefulMethod(size, condition(size))
-    }
-
-    return 0
+    readInt()
+    return z
 }

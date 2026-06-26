@@ -1,6 +1,7 @@
 package org.nnezh.org.nnezh.compiler
 
 import arrow.core.raise.context.ensure
+import org.nnezh.ast.BinaryOperator
 import org.nnezh.org.nnezh.ICGenerator.LLTACElement
 import org.nnezh.org.nnezh.ICGenerator.LLTACFunc
 import org.nnezh.org.nnezh.ICGenerator.LLTACInstruction
@@ -14,6 +15,12 @@ import org.nnezh.org.nnezh.base.Type
 import java.util.Collections.singletonList
 
 class CTranspile(private val tacCompiler: TACCompiler = TACCompilerImpl()) {
+
+    private val runtime = listOf<String>(
+        "#include <stdbool.h>",
+        "#include <string.h>",
+        "#include <stdio.h>"
+    )
 
     private val StringDefaultSize = 1024
     private var firstFunctionWasProceeded: Boolean = false
@@ -75,19 +82,12 @@ class CTranspile(private val tacCompiler: TACCompiler = TACCompilerImpl()) {
             LLTACOperation.LLTAC_PARAM -> { /* Do nothing */
             }
 
-            LLTACOperation.LLTAC_ADD -> TODO()
-            LLTACOperation.LLTAC_SUB -> TODO()
-            LLTACOperation.LLTAC_MUL -> TODO()
-            LLTACOperation.LLTAC_DIV -> TODO()
-            LLTACOperation.LLTAC_MOD -> TODO()
-            LLTACOperation.LLTAC_EQ -> TODO()
-            LLTACOperation.LLTAC_NEQ -> TODO()
-            LLTACOperation.LLTAC_LT -> TODO()
-            LLTACOperation.LLTAC_GT -> TODO()
-            LLTACOperation.LLTAC_LE -> TODO()
-            LLTACOperation.LLTAC_GE -> TODO()
-            LLTACOperation.LLTAC_AND -> TODO()
-            LLTACOperation.LLTAC_OR -> TODO()
+            LLTACOperation.LLTAC_ADD, LLTACOperation.LLTAC_SUB, LLTACOperation.LLTAC_MUL, LLTACOperation.LLTAC_DIV,
+            LLTACOperation.LLTAC_MOD, LLTACOperation.LLTAC_EQ, LLTACOperation.LLTAC_NEQ, LLTACOperation.LLTAC_LT,
+            LLTACOperation.LLTAC_GT, LLTACOperation.LLTAC_LE, LLTACOperation.LLTAC_GE, LLTACOperation.LLTAC_AND,
+            LLTACOperation.LLTAC_OR -> {
+                cCode.add(generateSimpleOperation(instruction))
+            }
             LLTACOperation.LLTAC_CALL -> {
                 val callingFunctionName = (instruction.arg1 as Operand.FunctionCall).name
                 val destination = instruction.destination as? LeftValue
@@ -108,9 +108,19 @@ class CTranspile(private val tacCompiler: TACCompiler = TACCompilerImpl()) {
                 cCode.add(finalLine)
             }
 
-            LLTACOperation.LLTAC_RET -> TODO()
-            LLTACOperation.LLTAC_NOT -> TODO()
-            LLTACOperation.LLTAC_NEG -> TODO()
+            LLTACOperation.LLTAC_RET -> {
+                TODO()
+            }
+            LLTACOperation.LLTAC_NOT -> {
+                val left = (instruction.destination as LeftValue).asLeftValue()
+                val arg1 = (instruction.arg1 as LeftValue).asLeftValue()
+                cCode.add("${left}=!{${arg1}}")
+            }
+            LLTACOperation.LLTAC_NEG -> {
+                val left = (instruction.destination as LeftValue).asLeftValue()
+                val arg1 = (instruction.arg1 as LeftValue).asLeftValue()
+                cCode.add("${left}=-{${arg1}}")
+            }
             LLTACOperation.LLTAC_JMP_IF_NOT -> {
                 val destination = instruction.destination as Operand.Label
                 val condition = (instruction.arg1 as LeftValue).asLeftValue()
@@ -143,15 +153,11 @@ class CTranspile(private val tacCompiler: TACCompiler = TACCompilerImpl()) {
             if (localTop == null || localTop is LLTACFunc) {
                 break
             }
-            if (localTop is LLTACInstruction &&
-                (localTop.opcode == LLTACOperation.LLTAC_ASSIGN ||
-                        localTop.opcode == LLTACOperation.LLTAC_CALL)
-            ) {
-                (localTop.destination as? Operand.Variable)?.let {
+            if (localTop is LLTACInstruction && localTop.destination is Operand.Variable) {
+                (localTop.destination).let {
                     variables.computeIfAbsent(it.type) { mutableSetOf() }
                     variables[it.type]!!.add(it.name)
                 }
-
             }
 
             pointer++
@@ -185,6 +191,32 @@ class CTranspile(private val tacCompiler: TACCompiler = TACCompilerImpl()) {
         return listOf(
             returnInstruction
         )
+    }
+
+    private fun generateSimpleOperation(instruction: LLTACInstruction): String {
+        val left = (instruction.destination as LeftValue).asLeftValue()
+        val arg1 = (instruction.arg1 as LeftValue).asLeftValue()
+        val arg2 = (instruction.arg2 as LeftValue).asLeftValue()
+
+        val command: String = when (instruction.opcode) {
+            LLTACOperation.LLTAC_ADD -> "+"
+            LLTACOperation.LLTAC_SUB -> "-"
+            LLTACOperation.LLTAC_MUL -> "*"
+            LLTACOperation.LLTAC_DIV -> "/"
+            LLTACOperation.LLTAC_MOD -> "%"
+            LLTACOperation.LLTAC_EQ -> "=="
+            LLTACOperation.LLTAC_NEQ -> "!="
+            LLTACOperation.LLTAC_LT -> "<"
+            LLTACOperation.LLTAC_GT -> ">"
+            LLTACOperation.LLTAC_LE -> "<="
+            LLTACOperation.LLTAC_GE -> ">="
+            LLTACOperation.LLTAC_AND -> "&&"
+            LLTACOperation.LLTAC_OR  -> "||"
+
+            else -> TODO()
+        }
+
+        return "${left}=${arg1}${command}${arg2};"
     }
 
     private fun isMainFunction(name: String): Boolean {
