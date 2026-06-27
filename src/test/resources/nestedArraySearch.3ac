@@ -41,7 +41,7 @@ lbl3:
   NEG var28:Int var29:Int
   RET var28:Int
 func main:
-  ALLOC data:Int Int 6:Int
+  ALLOC data:Array Int 6:Int
   ASSIGN var30:Int 0:Int
   ASSIGN var31:Int 2:Int
   STORE data:Int var30:Int var31:Int

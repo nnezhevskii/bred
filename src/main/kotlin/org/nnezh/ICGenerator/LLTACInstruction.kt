@@ -19,11 +19,11 @@ sealed interface LLTACElement {
                 destination = Operand.Variable(name = name, type = type),
             )
         }
-        fun alloc(dest: String, type: Type, size: Int): LLTACElement {
+        fun alloc(dest: String, type: Type.StaticArrayType, size: Int): LLTACElement {
             return LLTACInstruction(
                 opcode = LLTACOperation.LLTAC_ALLOC,
                 destination = Operand.Variable(dest, type),
-                arg1 = Operand.TypeConst(type),
+                arg1 = Operand.TypeConst(type.elementType),
                 arg2 = Operand.IntConst(size.toLong()),
             )
         }

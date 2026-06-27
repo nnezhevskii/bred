@@ -21,7 +21,7 @@ lbl2:
   ASSIGN var14:Int 0:Int
   RET var14:Int
 func main:
-  ALLOC data:Int Int 4:Int
+  ALLOC data:Array Int 4:Int
   ASSIGN var15:Int 0:Int
   ASSIGN var16:Int 3:Int
   STORE data:Int var15:Int var16:Int

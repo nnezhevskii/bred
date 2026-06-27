@@ -247,7 +247,7 @@ class LLTACGenerator(
                     instructions.add(
                         LLTACElement.alloc(
                             node.variableName,
-                            (node.variableType as Type.StaticArrayType).elementType,
+                            (node.variableType as Type.StaticArrayType),
                             node.size
                         )
                     )

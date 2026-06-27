@@ -1,7 +1,5 @@
 package org.nnezh.org.nnezh.compiler
 
-import arrow.core.raise.context.ensure
-import org.nnezh.ast.BinaryOperator
 import org.nnezh.org.nnezh.ICGenerator.LLTACElement
 import org.nnezh.org.nnezh.ICGenerator.LLTACFunc
 import org.nnezh.org.nnezh.ICGenerator.LLTACInstruction
@@ -57,7 +55,6 @@ class CTranspile(private val tacCompiler: TACCompiler = TACCompilerImpl()) {
     }
 
     private fun parseInstruction(context: Context): List<String> {
-//        val element = context.consume()
         val cCode = mutableListOf<String>()
 
         val instruction = (context.consume() as LLTACInstruction)
@@ -75,12 +72,10 @@ class CTranspile(private val tacCompiler: TACCompiler = TACCompilerImpl()) {
 
             }
 
-            LLTACOperation.LLTAC_GET_PARAM -> { /* DO Nothing */
-            }
+            LLTACOperation.LLTAC_GET_PARAM -> { /* DO Nothing */ }
 
-            LLTACOperation.LLTAC_ALLOC -> TODO()
-            LLTACOperation.LLTAC_PARAM -> { /* Do nothing */
-            }
+
+            LLTACOperation.LLTAC_PARAM -> { /* Do nothing */ }
 
             LLTACOperation.LLTAC_ADD, LLTACOperation.LLTAC_SUB, LLTACOperation.LLTAC_MUL, LLTACOperation.LLTAC_DIV,
             LLTACOperation.LLTAC_MOD, LLTACOperation.LLTAC_EQ, LLTACOperation.LLTAC_NEQ, LLTACOperation.LLTAC_LT,
@@ -108,9 +103,7 @@ class CTranspile(private val tacCompiler: TACCompiler = TACCompilerImpl()) {
                 cCode.add(finalLine)
             }
 
-            LLTACOperation.LLTAC_RET -> {
-                TODO()
-            }
+            LLTACOperation.LLTAC_RET -> { /* Do nothing */ }
             LLTACOperation.LLTAC_NOT -> {
                 val left = (instruction.destination as LeftValue).asLeftValue()
                 val arg1 = (instruction.arg1 as LeftValue).asLeftValue()
@@ -132,8 +125,22 @@ class CTranspile(private val tacCompiler: TACCompiler = TACCompilerImpl()) {
                 cCode.add("goto ${destination};")
             }
 
-            LLTACOperation.LLTAC_LDX -> TODO()
-            LLTACOperation.LLTAC_STX -> TODO()
+            // TODO: not support arrays of arrays for a while
+            LLTACOperation.LLTAC_ALLOC -> { /* Do nothing */ }
+
+            LLTACOperation.LLTAC_LDX -> {
+                val left = (instruction.destination as LeftValue).asLeftValue()
+                val index = (instruction.arg1 as RightValue).asRightValue()
+                val value = (instruction.arg2 as RightValue).asRightValue()
+                cCode.add("${left}=${index}[$value];")
+            }
+            LLTACOperation.LLTAC_STX -> {
+                val left = (instruction.destination as LeftValue).asLeftValue()
+                val index = (instruction.arg1 as RightValue).asRightValue()
+                val value = (instruction.arg2 as RightValue).asRightValue()
+                cCode.add("${left}[$index]=${value};")
+
+            }
         }
 
         return cCode
@@ -147,32 +154,46 @@ class CTranspile(private val tacCompiler: TACCompiler = TACCompilerImpl()) {
         cCode.addAll(parseFunc(context))
 
         var pointer = 0
-        val variables: MutableMap<Type, MutableSet<String>> = mutableMapOf()
+        val scalarVariables: MutableMap<Type, MutableSet<String>> = mutableMapOf()
+        val staticArrays: MutableMap<Type, MutableSet<Operand.Variable>> = mutableMapOf()
         while (true) {
             val localTop = context.top(pointer)
             if (localTop == null || localTop is LLTACFunc) {
                 break
             }
             if (localTop is LLTACInstruction && localTop.destination is Operand.Variable) {
-                (localTop.destination).let {
-                    variables.computeIfAbsent(it.type) { mutableSetOf() }
-                    variables[it.type]!!.add(it.name)
+                if (localTop.opcode == LLTACOperation.LLTAC_ALLOC) {
+                    (localTop.destination).let {
+                        staticArrays.computeIfAbsent((it.type as Type.StaticArrayType).elementType) { mutableSetOf() }
+                        staticArrays[it.type.elementType]!!.add(it)
+                    }
+                } else {
+                    if (localTop.opcode != LLTACOperation.LLTAC_STX) {
+                        (localTop.destination).let {
+                            scalarVariables.computeIfAbsent(it.type) { mutableSetOf() }
+                            scalarVariables[it.type]!!.add(it.name)
+                        }
+                    }
                 }
             }
 
             pointer++
         }
-        for (type in variables.keys) {
-            if (type is Type.StaticArrayType) {
+        for (type in staticArrays.keys) {
+                val names = staticArrays[type]!!.map { variable -> "${variable.name}[${(variable.type as Type.StaticArrayType).count}]" }
+                    .joinToString(", ")
+                cCode.add("${typeToStringInInitialization(type)} $names;")
+        }
 
+        for (type in scalarVariables.keys) {
+            if (type is Type.StaticArrayType) {
             } else if (type is Type.StringType) {
-                val names = variables[type]!!.joinToString(", ") { "${it}[${StringDefaultSize}]" }
+                val names = scalarVariables[type]!!.joinToString(", ") { "${it}[${StringDefaultSize}]" }
                 val res = "char $names;"
                 cCode.add(res)
             } else {
-                cCode.add("${typeToStringInInitialization(type)} ${variables[type]!!.joinToString(", ")};")
+                cCode.add("${typeToStringInInitialization(type)} ${scalarVariables[type]!!.joinToString(", ")};")
             }
-
         }
 
         firstFunctionWasProceeded = true
@@ -280,7 +301,8 @@ class CTranspile(private val tacCompiler: TACCompiler = TACCompilerImpl()) {
                 if (type.elementType == Type.StringType) {
                     "const char**"
                 } else {
-                    "const ${typeToStringInArguments(type.elementType)}*"
+                    "${typeToStringInArguments(type.elementType)}*"
+//                    "const ${typeToStringInArguments(type.elementType)}*"
                 }
             }
 

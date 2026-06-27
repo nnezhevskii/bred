@@ -186,29 +186,91 @@ int currentTimeMillis() {
 int getRandomInt(int min, int max) {
     return rand() % (max - min + 1) + min;
 }
-int main(int size, char** arg) {
-int start, sum, border, i, $right_borderi, var7, end, var8, var12;
+void swapIfGreater_Array_Int_Int(int* arr,int i,int j) {
+int var4, var7, var9, tmp, var10, var13, var14;
 bool var1;
-char buff[1024];
-start = currentTimeMillis();
-sum = 0;
-border = readInt();
-i = 1;
-$right_borderi = border;
+var4 = 0;
+var4=arr[i];
+var7 = 0;
+var7=arr[j];
+var1=var4>var7;
+if (!var1)goto lbl1;
+var9 = 0;
+var9=arr[i];
+tmp = var9;
+var10 = i;
+var13 = 0;
+var13=arr[j];
+arr[var10]=var13;
+var14 = j;
+arr[var14]=tmp;
 lbl1:
-var1=i<=$right_borderi;
-if (!var1)goto lbl2;
-sum=sum+i;
-var7 = 1;
-i=i+var7;
-goto lbl1;
+return;
+}
+void bubblePass_Array_Int(int* arr,int size) {
+int var18, i, var20, $right_borderi, var25, next, var30;
+bool var16, var21;
+var18 = 1;
+var16=size<=var18;
+if (!var16)goto lbl2;
+return;
 lbl2:
-end = currentTimeMillis();
-strncpy(buff, "", sizeof(buff));
-var8=end-start;
-var12 = 1024;
-intToString(var8,buff,var12);
-println(buff);
+i = 0;
+var20 = 1;
+$right_borderi=size-var20;
+lbl3:
+var21=i<=$right_borderi;
+if (!var21)goto lbl4;
+var25 = 1;
+next=i+var25;
+swapIfGreater_Array_Int_Int(arr,i,next);
+var30 = 1;
+i=i+var30;
+goto lbl3;
+lbl4:
+return;
+}
+int main(int size, char** arg) {
+int arr[5];
+int var31, var32, var33, var34, var35, var36, var37, var38, var39, var40, var42, var44, var45, var47, var49, var50, var52, var56, var60;
+char head[1024], tail[1024], part[1024], var54[1024], line[1024];
+var31 = 0;
+var32 = 3;
+arr[var31]=var32;
+var33 = 1;
+var34 = 1;
+arr[var33]=var34;
+var35 = 2;
+var36 = 4;
+arr[var35]=var36;
+var37 = 3;
+var38 = 2;
+arr[var37]=var38;
+var39 = 4;
+var40 = 0;
+arr[var39]=var40;
+var42 = 4;
+bubblePass_Array_Int(arr,var42);
+strncpy(head, "", sizeof(head));
+var44 = 0;
+var45 = 0;
+var45=arr[var44];
+var47 = 1024;
+intToString(var45,head,var47);
+strncpy(tail, "", sizeof(tail));
+var49 = 4;
+var50 = 0;
+var50=arr[var49];
+var52 = 1024;
+intToString(var50,tail,var52);
+strncpy(part, "", sizeof(part));
+strncpy(var54, ",", sizeof(var54));
+var56 = 1024;
+stringConcat(head,var54,part,var56);
+strncpy(line, "", sizeof(line));
+var60 = 1024;
+stringConcat(part,tail,line,var60);
+println(line);
 readInt();
 return;
 }

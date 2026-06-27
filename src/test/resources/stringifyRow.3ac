@@ -76,7 +76,7 @@ lbl3:
   CALL  println:Unit 1:Int
   RET Unit
 func main:
-  ALLOC row:Int Int 3:Int
+  ALLOC row:Array Int 3:Int
   ASSIGN var42:Int 0:Int
   ASSIGN var43:Int 1:Int
   STORE row:Int var42:Int var43:Int

@@ -45,7 +45,7 @@ lbl3:
 lbl4:
   RET Unit
 func main:
-  ALLOC arr:Int Int 5:Int
+  ALLOC arr:Array Int 5:Int
   ASSIGN var31:Int 0:Int
   ASSIGN var32:Int 3:Int
   STORE arr:Int var31:Int var32:Int

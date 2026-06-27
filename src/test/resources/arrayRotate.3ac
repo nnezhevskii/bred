@@ -30,7 +30,7 @@ lbl3:
   STORE arr:Int var19:Int first:Int
   RET Unit
 func main:
-  ALLOC buf:Int Int 4:Int
+  ALLOC buf:Array Int 4:Int
   ASSIGN var21:Int 0:Int
   ASSIGN var22:Int 10:Int
   STORE buf:Int var21:Int var22:Int

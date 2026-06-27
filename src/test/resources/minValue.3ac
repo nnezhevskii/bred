@@ -28,7 +28,7 @@ lbl4:
 lbl3:
   RET max:Int
 func main:
-  ALLOC arr:Int Int 100:Int
+  ALLOC arr:Array Int 100:Int
   CALL size:Int readInt:Int 0:Int
   ASSIGN var21:Int 100:Int
   GE var19:Boolean size:Int var21:Int

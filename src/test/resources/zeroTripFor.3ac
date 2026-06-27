@@ -17,7 +17,7 @@ lbl1:
 lbl2:
   RET total:Int
 func main:
-  ALLOC arr:Int Int 4:Int
+  ALLOC arr:Array Int 4:Int
   ASSIGN var11:Int 0:Int
   ASSIGN var12:Int 10:Int
   STORE arr:Int var11:Int var12:Int

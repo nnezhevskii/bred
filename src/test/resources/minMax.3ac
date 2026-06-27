@@ -90,7 +90,7 @@ lbl10:
 lbl11:
   RET sum:Int
 func main:
-  ALLOC arr:Int Int 50:Int
+  ALLOC arr:Array Int 50:Int
   CALL size:Int readInt:Int 0:Int
   ASSIGN var57:Int 0:Int
   LT var55:Boolean size:Int var57:Int
