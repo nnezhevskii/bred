@@ -318,5 +318,17 @@ class WhileParserTest {
         assertTrue(parseFromSource("while (x > 0)) { }").isLeft())
     }
 
+    @Test
+    fun `parses while with logical and condition`() {
+        val result = parseFromSource("while (keep && n > 0) { }")
+        assertTrue(result.isRight())
+    }
+
+    @Test
+    fun `parses while with negated condition`() {
+        val result = parseFromSource("while (!done) { }")
+        assertTrue(result.isRight())
+    }
+
     // endregion
 }

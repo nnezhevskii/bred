@@ -1,0 +1,16 @@
+fun countdown(start: Int): Int {
+    var n: Int = start
+    var sum: Int = 0
+    while (n > 0) {
+        sum = sum + n
+        n = n - 1
+    }
+    return sum
+}
+
+fun main(): Unit {
+    var result: Int = countdown(4)
+    var out: String = ""
+    intToString(result, out, 1024)
+    println(out)
+}

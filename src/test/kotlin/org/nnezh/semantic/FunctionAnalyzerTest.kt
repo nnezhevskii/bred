@@ -604,6 +604,79 @@ class FunctionAnalyzerTest {
         assertTrue(errors.isEmpty())
     }
 
+    // region While — edge cases
+
+    @Test
+    fun `valid call inside while body`() {
+        val errors = analyze(
+            """
+            fun helper(n: Int): Unit { }
+            fun main(): Unit {
+                var i: Int = 0
+                while (i < 2) {
+                    helper(i)
+                    i = i + 1
+                }
+            }
+            """.trimIndent(),
+        )
+
+        assertTrue(errors.isEmpty())
+    }
+
+    @Test
+    fun `unknown function inside while body is rejected`() {
+        val errors = analyze(
+            """
+            fun main(): Unit {
+                while (false) {
+                    missing(1)
+                }
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals(1, errors.size)
+        assertEquals(SemanticErrorType.FUNCTION_NOT_FOUND, errors.single().functionSemantic.errorType)
+        assertInstanceOf(FunctionCallExpressionNode::class.java, errors.single().functionSemantic.where)
+    }
+
+    @Test
+    fun `wrong arity call inside while body is rejected`() {
+        val errors = analyze(
+            """
+            fun pair(a: Int, b: Int): Unit { }
+            fun main(): Unit {
+                while (false) {
+                    pair(1)
+                }
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals(1, errors.size)
+        assertEquals(
+            SemanticErrorType.FUNCTION_EXISTS_BUT_WRONG_ARGUMENTS_AMOUNT,
+            errors.single().functionSemantic.errorType,
+        )
+    }
+
+    @Test
+    fun `return inside while in non-unit function is allowed`() {
+        val errors = analyze(
+            """
+            fun pick(n: Int): Int {
+                while (n > 0) {
+                    return n
+                }
+                return 0
+            }
+            """.trimIndent(),
+        )
+
+        assertTrue(errors.isEmpty())
+    }
+
     // endregion
 
     // endregion

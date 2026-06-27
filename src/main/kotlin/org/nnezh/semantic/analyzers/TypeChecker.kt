@@ -309,8 +309,14 @@ class TypeChecker(
 
     override fun analyzeWhileStatementASTNode(node: WhileStatementASTNode): List<SemanticError> {
         val errors = routeExpressionHandling(node.condition).toMutableList()
+        if (errors.any { it.isCriticalError }) {
+            return errors
+        }
         if (!typeValidator.check(typeScope.get(node.condition)!! , Type.BoolType)) {
             errors.add(SemanticError.TypeSemanticError(node, true, errorType = SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES))
+        }
+        if (errors.any { it.isCriticalError }) {
+            return errors
         }
         errors.addAll(analyzeBlockASTNode(node.bodyBlock))
 

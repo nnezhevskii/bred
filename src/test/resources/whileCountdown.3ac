@@ -1,0 +1,27 @@
+func countdown_Int:
+  GET_PARAM start:Int
+  ASSIGN n:Int start:Int
+  ASSIGN sum:Int 0:Int
+lbl1:
+  ASSIGN var3:Int 0:Int
+  GT var1:Boolean n:Int var3:Int
+  JMP_IF_NOT lbl2 var1:Boolean
+  ADD sum:Int sum:Int n:Int
+  ASSIGN var7:Int 1:Int
+  SUB n:Int n:Int var7:Int
+  JMP lbl1
+lbl2:
+  RET sum:Int
+func main:
+  ASSIGN var9:Int 4:Int
+  PARAM var9:Int
+  CALL result:Int countdown_Int:Int 1:Int
+  ASSIGN out:String :String
+  ASSIGN var12:Int 1024:Int
+  PARAM result:Int
+  PARAM out:String
+  PARAM var12:Int
+  CALL  intToString:Unit 3:Int
+  PARAM out:String
+  CALL  println:Unit 1:Int
+  RET Unit

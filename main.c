@@ -10,10 +10,9 @@
 #include <sys/time.h>
 #endif
 
-// Размер буфера по дефолту, раз уж ты выбрал 1024
 #define STR_BUF_SIZE 1024
 
-// 1. readString(dest, max_size) -> заполняет твой буфер на стеке
+// 1. readString(dest, max_size)
 void readString(char* dest, int max_size) {
     if (fgets(dest, max_size, stdin) == NULL) {
         dest[0] = '\0';
@@ -36,7 +35,7 @@ int stringToInt(const char* str) {
     return atoi(str);
 }
 
-// 4. intToString(Int, dest, max_size) -> пишем прямо в стек-буфер
+// 4. intToString(Int, dest, max_size)
 void intToString(int val, char* dest, int max_size) {
 #if defined(_MSC_VER)
     // MSVC требует безопасный sprintf_s
@@ -182,40 +181,34 @@ int currentTimeMillis() {
     return (int)(tv.tv_sec * 1000 + tv.tv_usec / 1000);
 #endif
 }
-int max_Int_Int(int a,int b) {
-bool var1;
-var1=a>b;
-if (!var1)goto lbl1;
-return a;
-lbl1:
-return b;
+
+// 18. random(min, max) -> Int
+int getRandomInt(int min, int max) {
+    return rand() % (max - min + 1) + min;
 }
 int main(int size, char** arg) {
-int x, y, var12, var11, var18, var16, var19, var15, var21, var22, var20, var14, z;
-bool var6;
-char var9[1024], var10[1024];
-x = readInt();
-y = readInt();
-var6=x>y;
-if (!var6)goto lbl2;
-strncpy(var9, "first value is bigger", sizeof(var9));
-println(var9);
-goto lbl3;
+int start, sum, border, i, $right_borderi, var7, end, var8, var12;
+bool var1;
+char buff[1024];
+start = currentTimeMillis();
+sum = 0;
+border = readInt();
+i = 1;
+$right_borderi = border;
+lbl1:
+var1=i<=$right_borderi;
+if (!var1)goto lbl2;
+sum=sum+i;
+var7 = 1;
+i=i+var7;
+goto lbl1;
 lbl2:
-strncpy(var10, "second value is bigger", sizeof(var10));
-println(var10);
-lbl3:
-var12 = 2;
-var11=var12*x;
-var18 = 5;
-var16=y*var18;
-var19 = 2;
-var15=var16/var19;
-var21 = 3;
-var22 = 1;
-var20 = max_Int_Int(var21,var22);
-var14=var15*var20;
-z=var11+var14;
+end = currentTimeMillis();
+strncpy(buff, "", sizeof(buff));
+var8=end-start;
+var12 = 1024;
+intToString(var8,buff,var12);
+println(buff);
 readInt();
-return z;
+return;
 }

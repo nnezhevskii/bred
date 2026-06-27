@@ -1,0 +1,29 @@
+fun neverRuns(): Int {
+    var marker: Int = 99
+    while (false) {
+        marker = 0
+    }
+    return marker
+}
+
+fun conditionFalseFromStart(bound: Int): Int {
+    var acc: Int = 0
+    while (bound > 100) {
+        acc = acc + 1
+    }
+    return acc
+}
+
+fun main(): Unit {
+    var a: Int = neverRuns()
+    var b: Int = conditionFalseFromStart(5)
+    var line: String = ""
+    intToString(a, line, 1024)
+    var suffix: String = ""
+    intToString(b, suffix, 1024)
+    var part: String = ""
+    stringConcat(line, ":", part, 1024)
+    var out: String = ""
+    stringConcat(part, suffix, out, 1024)
+    println(out)
+}

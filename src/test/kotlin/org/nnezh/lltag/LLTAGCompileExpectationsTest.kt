@@ -275,6 +275,86 @@ class LLTAGCompileExpectationsTest {
     )
   }
 
+  @Test
+  fun `while countdown loop compiles`() {
+    assertCompiles(
+      """
+      fun countdown(start: Int): Int {
+          var n: Int = start
+          var sum: Int = 0
+          while (n > 0) {
+              sum = sum + n
+              n = n - 1
+          }
+          return sum
+      }
+      fun main(): Unit {
+          var result: Int = countdown(3)
+      }
+      """.trimIndent(),
+    )
+  }
+
+  @Test
+  fun `while false zero-trip compiles`() {
+    assertCompiles(
+      """
+      fun main(): Unit {
+          var marker: Int = 7
+          while (false) {
+              marker = 0
+          }
+      }
+      """.trimIndent(),
+    )
+  }
+
+  @Test
+  fun `nested while with early return compiles`() {
+    assertCompiles(
+      """
+      fun scan(arr: Int[], size: Int): Int {
+          var i: Int = 0
+          while (i < size) {
+              if (arr[i] < 0) {
+                  return arr[i]
+              }
+              i = i + 1
+          }
+          return 0
+      }
+      fun main(): Unit {
+          val data: Int[2]
+          data[0] = 1
+          data[1] = 2
+          var hit: Int = scan(data, 2)
+      }
+      """.trimIndent(),
+    )
+  }
+
+  @Test
+  fun `while with int condition is a semantic rejection`() {
+    assertSemanticRejects(
+      """
+      fun main(): Unit {
+          while (1) { }
+      }
+      """.trimIndent(),
+    )
+  }
+
+  @Test
+  fun `while with unknown variable in condition is a semantic rejection`() {
+    assertSemanticRejects(
+      """
+      fun main(): Unit {
+          while (ghost > 0) { }
+      }
+      """.trimIndent(),
+    )
+  }
+
   // endregion
 
   // region Desired behavior — compiler defects (tests fail until fixed)

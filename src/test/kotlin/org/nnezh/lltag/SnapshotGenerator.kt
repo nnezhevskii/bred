@@ -6,7 +6,8 @@ import java.nio.file.Files
 import java.nio.file.Paths
 
 fun main() {
-    listOf(
+    val only = System.getenv("SNAPSHOT_ONLY")?.split(",")?.filter { it.isNotBlank() }
+    val programs = listOf(
         "factorial",
         "for",
         "sortThree",
@@ -23,7 +24,12 @@ fun main() {
         "nestedControl",
         "arrayRotate",
         "earlyReturnArray",
-    ).forEach { testName ->
+        "whileCountdown",
+        "whileZeroTrip",
+        "whileEarlyReturn",
+        "whileGuardedAccum",
+    )
+    (only ?: programs).forEach { testName ->
         val sourcePath = Paths.get("src/test/resources/$testName.bred")
         val outputPath = Paths.get("src/test/resources/$testName.3ac")
         val src = Files.readString(sourcePath)

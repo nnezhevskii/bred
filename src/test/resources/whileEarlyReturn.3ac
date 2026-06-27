@@ -1,0 +1,50 @@
+func findFirstNegative_Array_Int:
+  GET_PARAM arr:Array
+  GET_PARAM size:Int
+  ASSIGN i:Int 0:Int
+lbl1:
+  LT var1:Boolean i:Int size:Int
+  JMP_IF_NOT lbl2 var1:Boolean
+  ASSIGN var7:Int 0:Int
+  LOAD var7:Int arr:Array i:Int
+  ASSIGN var8:Int 0:Int
+  LT var4:Boolean var7:Int var8:Int
+  JMP_IF_NOT lbl3 var4:Boolean
+  ASSIGN var11:Int 0:Int
+  LOAD var11:Int arr:Array i:Int
+  RET var11:Int
+lbl3:
+  ASSIGN var13:Int 1:Int
+  ADD i:Int i:Int var13:Int
+  JMP lbl1
+lbl2:
+  ASSIGN var14:Int 0:Int
+  RET var14:Int
+func main:
+  ALLOC data:Int Int 4:Int
+  ASSIGN var15:Int 0:Int
+  ASSIGN var16:Int 3:Int
+  STORE data:Int var15:Int var16:Int
+  ASSIGN var17:Int 1:Int
+  ASSIGN var18:Int 7:Int
+  STORE data:Int var17:Int var18:Int
+  ASSIGN var19:Int 2:Int
+  ASSIGN var21:Int 5:Int
+  NEG var20:Int var21:Int
+  STORE data:Int var19:Int var20:Int
+  ASSIGN var22:Int 3:Int
+  ASSIGN var23:Int 1:Int
+  STORE data:Int var22:Int var23:Int
+  ASSIGN var25:Int 4:Int
+  PARAM data:Array
+  PARAM var25:Int
+  CALL hit:Int findFirstNegative_Array_Int:Int 2:Int
+  ASSIGN out:String :String
+  ASSIGN var28:Int 1024:Int
+  PARAM hit:Int
+  PARAM out:String
+  PARAM var28:Int
+  CALL  intToString:Unit 3:Int
+  PARAM out:String
+  CALL  println:Unit 1:Int
+  RET Unit

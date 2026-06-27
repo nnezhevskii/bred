@@ -13,9 +13,21 @@ import java.nio.file.Paths
 
 class LLTAGSnapshotTester {
 
+    private val whilePrograms = listOf(
+        "whileCountdown",
+        "whileZeroTrip",
+        "whileEarlyReturn",
+        "whileGuardedAccum",
+    )
+
+    @Test
+    fun testWhilePrograms() {
+        whilePrograms.forEach { compare(it) }
+    }
+
     @Test
     fun testFiles() {
-        listOf("factorial", "for", "sortThree", "isEven", "complexShock", "isPositive", "minValue", "random_case_failed_for_no_reason", "minMax", "arrayBubble", "nestedArraySearch", "zeroTripFor", "stringifyRow", "nestedControl", "arrayRotate", "earlyReturnArray").forEach {
+        listOf("factorial", "for", "sortThree", "isEven", "complexShock", "isPositive", "minValue", "random_case_failed_for_no_reason", "minMax", "arrayBubble", "nestedArraySearch", "zeroTripFor", "stringifyRow", "nestedControl", "arrayRotate", "earlyReturnArray", "whileCountdown", "whileZeroTrip", "whileEarlyReturn", "whileGuardedAccum").forEach {
             compare(it)
         }
 

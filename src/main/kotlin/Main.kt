@@ -72,7 +72,7 @@ fun main(args: Array<String>) {
             // Оборачиваем ВСЮ строку после /c в экранированные кавычки "\""
             val command = listOf(
                 "cmd.exe", "/c",
-                "\"\"$vcvarsPath\" && cl.exe /Od /Fe:\"${outputFile.name}\" \"${sourceFile.name}\"\""
+                "\"\"$vcvarsPath\" && cl.exe /O2 /Fe:\"${outputFile.name}\" \"${sourceFile.name}\"\""
             )
 
             val process = ProcessBuilder(command)
@@ -122,6 +122,3 @@ fun main(args: Array<String>) {
         ifRight = { println(it) }
     )
 }
-/**
- * TODO: написать снэпшот тест на while
- */

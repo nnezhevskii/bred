@@ -11,7 +11,8 @@ gradle.properties.local
 
 ### Kotlin ###
 .kotlin/
-
+*.obj
+*.exe
 ### IntelliJ IDEA ###
 .idea/
 .idea/modules.xml

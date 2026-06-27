@@ -386,6 +386,114 @@ class VariableScopeAnalyzerTest {
         assertEquals("a", where.token.lexeme)
     }
 
+    // region While — edge cases
+
+    @Test
+    fun `outer variable is visible in while condition and body`() {
+        val errors = analyze(
+            """
+            fun main(): Unit {
+                var n: Int = 2
+                while (n > 0) {
+                    n = n - 1
+                }
+            }
+            """.trimIndent(),
+        )
+
+        assertTrue(errors.isEmpty())
+    }
+
+    @Test
+    fun `unknown variable in while condition is rejected`() {
+        val errors = analyze(
+            """
+            fun main(): Unit {
+                while (missing > 0) { }
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals(1, errors.size)
+        assertEquals(SemanticErrorType.UNKNOWN_VARIABLE, errors.single().variableScope.errorType)
+        val where = assertInstanceOf(VariableExpressionNode::class.java, errors.single().variableScope.where)
+        assertEquals("missing", where.token.lexeme)
+    }
+
+    @Test
+    fun `unknown variable in while body is rejected`() {
+        val errors = analyze(
+            """
+            fun main(): Unit {
+                while (false) {
+                    return ghost
+                }
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals(1, errors.size)
+        assertEquals(SemanticErrorType.UNKNOWN_VARIABLE, errors.single().variableScope.errorType)
+        val where = assertInstanceOf(VariableExpressionNode::class.java, errors.single().variableScope.where)
+        assertEquals("ghost", where.token.lexeme)
+    }
+
+    @Test
+    fun `nested while inner body may use outer loop variable`() {
+        val errors = analyze(
+            """
+            fun main(): Unit {
+                var i: Int = 0
+                while (i < 2) {
+                    var j: Int = 0
+                    while (j < i) {
+                        j = j + 1
+                    }
+                    i = i + 1
+                }
+            }
+            """.trimIndent(),
+        )
+
+        assertTrue(errors.isEmpty())
+    }
+
+    @Test
+    fun `outer mutable variable remains visible after while`() {
+        val errors = analyze(
+            """
+            fun main(): Unit {
+                var x: Int = 1
+                while (false) {
+                    x = 2
+                }
+                return x
+            }
+            """.trimIndent(),
+        )
+
+        assertTrue(errors.isEmpty())
+    }
+
+    @Test
+    fun `assignment to val from while body is rejected`() {
+        val errors = analyze(
+            """
+            fun main(): Unit {
+                val locked: Int = 0
+                while (false) {
+                    locked = 1
+                }
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals(1, errors.size)
+        assertEquals(SemanticErrorType.VARIABLE_CHANGING_IMMUTABLE, errors.single().variableScope.errorType)
+    }
+
+    // endregion
+
     @Test
     fun `for counter variable is not visible after loop`() {
         val errors = analyze(

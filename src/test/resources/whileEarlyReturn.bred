@@ -1,0 +1,22 @@
+fun findFirstNegative(arr: Int[], size: Int): Int {
+    var i: Int = 0
+    while (i < size) {
+        if (arr[i] < 0) {
+            return arr[i]
+        }
+        i = i + 1
+    }
+    return 0
+}
+
+fun main(): Unit {
+    val data: Int[4]
+    data[0] = 3
+    data[1] = 7
+    data[2] = -5
+    data[3] = 1
+    var hit: Int = findFirstNegative(data, 4)
+    var out: String = ""
+    intToString(hit, out, 1024)
+    println(out)
+}

@@ -181,3 +181,8 @@ int currentTimeMillis() {
     return (int)(tv.tv_sec * 1000 + tv.tv_usec / 1000);
 #endif
 }
+
+// 18. random(min, max) -> Int
+int getRandomInt(int min, int max) {
+    return rand() % (max - min + 1) + min;
+}

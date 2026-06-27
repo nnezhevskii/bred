@@ -1,0 +1,23 @@
+fun boundedSum(limit: Int, cap: Int): Int {
+    var i: Int = 0
+    var total: Int = 0
+    while (i < limit && total < cap) {
+        total = total + i
+        i = i + 1
+    }
+    return total
+}
+
+fun main(): Unit {
+    var small: Int = boundedSum(10, 50)
+    var clipped: Int = boundedSum(100, 15)
+    var aStr: String = ""
+    intToString(small, aStr, 1024)
+    var bStr: String = ""
+    intToString(clipped, bStr, 1024)
+    var part: String = ""
+    stringConcat(aStr, ",", part, 1024)
+    var line: String = ""
+    stringConcat(part, bStr, line, 1024)
+    println(line)
+}

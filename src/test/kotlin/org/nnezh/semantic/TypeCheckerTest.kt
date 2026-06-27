@@ -604,6 +604,188 @@ class TypeCheckerTest {
 
     // endregion
 
+    // region While — edge cases
+
+    @Test
+    fun `while false never executes body`() {
+        assertNoTypeErrors(
+            """
+            fun main(): Unit {
+                var marker: Int = 1
+                while (false) {
+                    marker = 0
+                }
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `while true with empty body`() {
+        assertNoTypeErrors(
+            """
+            fun main(): Unit {
+                while (true) { }
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `while with double condition is rejected`() {
+        assertSingleTypeError(
+            WhileStatementASTNode::class.java,
+            """
+            fun main(): Unit {
+                var x: Double = 1.0
+                while (x) { }
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `while with string condition is rejected`() {
+        assertSingleTypeError(
+            WhileStatementASTNode::class.java,
+            """
+            fun main(): Unit {
+                while ("yes") { }
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `while with unit-producing call in condition is rejected`() {
+        assertSingleTypeError(
+            WhileStatementASTNode::class.java,
+            """
+            fun main(): Unit {
+                while (println("loop")) { }
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `while with logical and and or in condition`() {
+        assertNoTypeErrors(
+            """
+            fun main(): Unit {
+                var keep: Boolean = true
+                var n: Int = 3
+                while (keep && n > 0) {
+                    n = n - 1
+                }
+                while (keep || n == 0) {
+                    keep = false
+                }
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `while with negated boolean condition`() {
+        assertNoTypeErrors(
+            """
+            fun main(): Unit {
+                var done: Boolean = false
+                var steps: Int = 0
+                while (!done) {
+                    steps = steps + 1
+                    done = steps == 2
+                }
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `nested while loops with shared counter`() {
+        assertNoTypeErrors(
+            """
+            fun main(): Unit {
+                var i: Int = 0
+                var total: Int = 0
+                while (i < 2) {
+                    var j: Int = 0
+                    while (j < 2) {
+                        total = total + 1
+                        j = j + 1
+                    }
+                    i = i + 1
+                }
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `while condition may read array element`() {
+        assertNoTypeErrors(
+            """
+            fun main(): Unit {
+                val flags: Int[2] = [1, 0]
+                var i: Int = 0
+                while (flags[i] == 1) {
+                    i = i + 1
+                }
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `while body may assign to outer mutable variable`() {
+        assertNoTypeErrors(
+            """
+            fun main(): Unit {
+                var acc: Int = 0
+                var n: Int = 2
+                while (n > 0) {
+                    acc = acc + n
+                    n = n - 1
+                }
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `while with non-boolean condition does not type-check body`() {
+        val errors = typeErrors(
+            """
+            fun main(): Unit {
+                while (42) {
+                    var x: Int = "bad"
+                }
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals(1, errors.size, "errors: ${errors.map { it.where::class.simpleName to it.errorType }}")
+        assertInstanceOf(WhileStatementASTNode::class.java, errors.single().where)
+    }
+
+    @Test
+    fun `while body type error is reported when condition is boolean`() {
+        assertSingleTypeError(
+            AssignmentStatementASTNode::class.java,
+            """
+            fun main(): Unit {
+                var n: Int = 1
+                while (n > 0) {
+                    n = "bad"
+                }
+            }
+            """.trimIndent(),
+        )
+    }
+
+    // endregion
+
     // region Negative — functions and calls
 
     @Test
