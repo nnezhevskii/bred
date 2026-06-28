@@ -1,6 +1,6 @@
 package org.nnezh.org.nnezh.semantic.generic
 
-import org.nnezh.ast.ASTNode
+import org.nnezh.bred.ast.ASTNode
 
 enum class SemanticErrorType {
     VARIABLE_OVERSHADOW, VARIABLE_REDECLARATION, UNKNOWN_VARIABLE, VARIABLE_CHANGING_IMMUTABLE, UNEXPECTED_LVALUE,

@@ -1,14 +1,12 @@
 package org.nnezh
 
-import arrow.core.raise.context.bind
 import org.nnezh.lexer.Lexer
 import org.nnezh.lexer.readSource
 import arrow.core.raise.either
-import org.nnezh.ast.AbstractSyntaxTreeBuilder
-import org.nnezh.ast.ProgramASTNode
+//import org.nnezh.ast.AbstractSyntaxTreeBuilder
+import org.nnezh.bred.ast.ProgramASTNode
 import org.nnezh.org.nnezh.ICGenerator.LLTACGenerator
-import org.nnezh.org.nnezh.ICGenerator.PrettyPrinter
-import org.nnezh.org.nnezh.ast.AbstractSyntaxTreeExpressionParser
+//import org.nnezh.org.nnezh.ast.AbstractSyntaxTreeExpressionParser
 import org.nnezh.org.nnezh.compiler.CTranspile
 import org.nnezh.org.nnezh.semantic.SemanticAnalyzer
 import java.io.File
@@ -34,7 +32,7 @@ fun main(args: Array<String>) {
         }
         stringBuilder.toString()
 
-        val ast = AbstractSyntaxTreeBuilder(AbstractSyntaxTreeExpressionParser()).build(tokens).bind()
+//        val ast = AbstractSyntaxTreeBuilder(AbstractSyntaxTreeExpressionParser()).build(tokens).bind()
 
         val semanticAnalyzer = SemanticAnalyzer()
         val res = semanticAnalyzer(ast as ProgramASTNode)

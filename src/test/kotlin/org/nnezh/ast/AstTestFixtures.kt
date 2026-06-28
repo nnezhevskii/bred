@@ -1,5 +1,9 @@
 package org.nnezh.ast
 
+import org.nnezh.bred.ast.ArrayAccessExpressionASTNode
+import org.nnezh.bred.ast.AssignmentStatementASTNode
+import org.nnezh.bred.ast.ExpressionASTNode
+import org.nnezh.bred.ast.StaticArrayInitializationExpressionsListNode
 import org.nnezh.lexer.Position
 import org.nnezh.lexer.Token
 

@@ -11,6 +11,8 @@ repositories {
 }
 
 dependencies {
+    implementation(project(":common"))
+    implementation(project(":lexer"))
     implementation("io.arrow-kt:arrow-core:2.2.2.1")
 
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")

@@ -5,8 +5,8 @@
 package org.nnezh.org.nnezh.ast
 
 import arrow.core.raise.Raise
-import org.nnezh.ast.BlockASTNode
-import org.nnezh.ast.ExpressionASTNode
+import org.nnezh.bred.ast.BlockASTNode
+import org.nnezh.bred.ast.ExpressionASTNode
 import org.nnezh.lexer.Position
 import org.nnezh.lexer.Token
 import org.nnezh.org.nnezh.ast.AstErrorFactory.buildError

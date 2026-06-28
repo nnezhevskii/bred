@@ -1,16 +1,11 @@
 package org.nnezh.org.nnezh.compiler
 
-import arrow.core.Either
 import arrow.core.getOrElse
-import arrow.core.raise.either
-import arrow.core.right
 import org.nnezh.ast.AbstractSyntaxTreeBuilder
-import org.nnezh.ast.ProgramASTNode
+import org.nnezh.bred.ast.ProgramASTNode
 import org.nnezh.lexer.Lexer
-import org.nnezh.lexer.readSource
 import org.nnezh.org.nnezh.ICGenerator.LLTACElement
 import org.nnezh.org.nnezh.ICGenerator.LLTACGenerator
-import org.nnezh.org.nnezh.ast.AbstractSyntaxTreeExpressionParser
 import org.nnezh.org.nnezh.semantic.SemanticAnalyzer
 
 interface TACCompiler {

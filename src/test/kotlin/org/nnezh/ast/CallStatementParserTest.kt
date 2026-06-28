@@ -12,11 +12,12 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import org.nnezh.ast.CallFunctionStatementASTNode
-import org.nnezh.ast.ExpressionASTNode
-import org.nnezh.ast.FunctionCallExpressionNode
+import org.nnezh.bred.ast.CallFunctionStatementASTNode
+import org.nnezh.bred.ast.ExpressionASTNode
+import org.nnezh.bred.ast.FunctionCallExpressionNode
 import org.nnezh.ast.IntLiteralExpressionNode
 import org.nnezh.ast.VariableExpressionNode
+import org.nnezh.bred.ast.BinaryExpressionASTNode
 import org.nnezh.lexer.Lexer
 import org.nnezh.lexer.Position
 import org.nnezh.lexer.Token
@@ -154,8 +155,8 @@ class CallStatementParserTest {
         val call = result.expression as FunctionCallExpressionNode
         assertEquals("f", call.name.lexeme)
         assertEquals(2, call.arguments.size)
-        assertInstanceOf(org.nnezh.ast.BinaryExpressionASTNode::class.java, call.arguments[0])
-        assertInstanceOf(org.nnezh.ast.BinaryExpressionASTNode::class.java, call.arguments[1])
+        assertInstanceOf(BinaryExpressionASTNode::class.java, call.arguments[0])
+        assertInstanceOf(BinaryExpressionASTNode::class.java, call.arguments[1])
     }
 
     // endregion

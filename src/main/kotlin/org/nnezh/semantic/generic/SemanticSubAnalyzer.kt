@@ -1,30 +1,30 @@
 package org.nnezh.org.nnezh.semantic.generic
 
-import org.nnezh.ast.ASTNode
-import org.nnezh.ast.ArrayAccessExpressionASTNode
-import org.nnezh.ast.AssignmentStatementASTNode
-import org.nnezh.ast.BinaryExpressionASTNode
-import org.nnezh.ast.BlockASTNode
+import org.nnezh.bred.ast.ASTNode
+import org.nnezh.bred.ast.ArrayAccessExpressionASTNode
+import org.nnezh.bred.ast.AssignmentStatementASTNode
+import org.nnezh.bred.ast.BinaryExpressionASTNode
+import org.nnezh.bred.ast.BlockASTNode
 import org.nnezh.ast.BooleanLiteralExpressionNode
-import org.nnezh.ast.CallFunctionStatementASTNode
-import org.nnezh.ast.DeclareFunctionASTNode
+import org.nnezh.bred.ast.CallFunctionStatementASTNode
+import org.nnezh.bred.ast.DeclareFunctionASTNode
 import org.nnezh.ast.DoubleLiteralExpressionNode
-import org.nnezh.ast.EmptyNode
-import org.nnezh.ast.ExpressionASTNode
-import org.nnezh.ast.ForStatementASTNode
-import org.nnezh.ast.FunctionArgumentASTNode
-import org.nnezh.ast.FunctionCallExpressionNode
-import org.nnezh.ast.IfStatementASTNode
+import org.nnezh.bred.ast.EmptyNode
+import org.nnezh.bred.ast.ExpressionASTNode
+import org.nnezh.bred.ast.ForStatementASTNode
+import org.nnezh.bred.ast.FunctionArgumentASTNode
+import org.nnezh.bred.ast.FunctionCallExpressionNode
+import org.nnezh.bred.ast.IfStatementASTNode
 import org.nnezh.ast.IntLiteralExpressionNode
-import org.nnezh.ast.ProgramASTNode
-import org.nnezh.ast.ReturnFunctionStatementASTNode
-import org.nnezh.ast.StatementASTNode
-import org.nnezh.ast.StaticArrayInitializationExpressionsListNode
+import org.nnezh.bred.ast.ProgramASTNode
+import org.nnezh.bred.ast.ReturnFunctionStatementASTNode
+import org.nnezh.bred.ast.StatementASTNode
+import org.nnezh.bred.ast.StaticArrayInitializationExpressionsListNode
 import org.nnezh.ast.StringLiteralExpressionNode
-import org.nnezh.ast.UnaryExpressionASTNode
+import org.nnezh.bred.ast.UnaryExpressionASTNode
 import org.nnezh.ast.VariableExpressionNode
-import org.nnezh.ast.VariableInitializationASTNode
-import org.nnezh.ast.WhileStatementASTNode
+import org.nnezh.bred.ast.VariableInitializationASTNode
+import org.nnezh.bred.ast.WhileStatementASTNode
 
 abstract class SemanticSubAnalyzer {
     operator fun invoke(root: ASTNode): List<SemanticError> {

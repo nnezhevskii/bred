@@ -11,16 +11,16 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import org.nnezh.ast.ArrayAccessExpressionASTNode
-import org.nnezh.ast.BinaryExpressionASTNode
+import org.nnezh.bred.ast.ArrayAccessExpressionASTNode
+import org.nnezh.bred.ast.BinaryExpressionASTNode
 import org.nnezh.ast.BooleanLiteralExpressionNode
 import org.nnezh.ast.DoubleLiteralExpressionNode
-import org.nnezh.ast.ExpressionASTNode
-import org.nnezh.ast.FunctionCallExpressionNode
+import org.nnezh.bred.ast.ExpressionASTNode
+import org.nnezh.bred.ast.FunctionCallExpressionNode
 import org.nnezh.ast.IntLiteralExpressionNode
-import org.nnezh.ast.StaticArrayInitializationExpressionsListNode
+import org.nnezh.bred.ast.StaticArrayInitializationExpressionsListNode
 import org.nnezh.ast.StringLiteralExpressionNode
-import org.nnezh.ast.UnaryExpressionASTNode
+import org.nnezh.bred.ast.UnaryExpressionASTNode
 import org.nnezh.ast.VariableExpressionNode
 import org.nnezh.lexer.Lexer
 

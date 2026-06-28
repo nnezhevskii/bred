@@ -1,6 +1,6 @@
 package org.nnezh.org.nnezh.semantic
 
-import org.nnezh.ast.ProgramASTNode
+import org.nnezh.bred.ast.ProgramASTNode
 import org.nnezh.org.nnezh.semantic.analyzers.ASTNodeTypeTable
 import org.nnezh.org.nnezh.semantic.analyzers.FunctionRegistry
 import org.nnezh.org.nnezh.semantic.analyzers.FunctionSubAnalyzer

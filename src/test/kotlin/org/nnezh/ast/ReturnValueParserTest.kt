@@ -12,9 +12,9 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import org.nnezh.ast.ExpressionASTNode
+import org.nnezh.bred.ast.ExpressionASTNode
 import org.nnezh.ast.IntLiteralExpressionNode
-import org.nnezh.ast.ReturnFunctionStatementASTNode
+import org.nnezh.bred.ast.ReturnFunctionStatementASTNode
 import org.nnezh.ast.VariableExpressionNode
 import org.nnezh.lexer.Lexer
 import org.nnezh.lexer.Position

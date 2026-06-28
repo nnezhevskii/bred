@@ -1,6 +1,6 @@
 package org.nnezh.org.nnezh.semantic.generic
 
-import org.nnezh.ast.DeclareFunctionASTNode
+import org.nnezh.bred.ast.DeclareFunctionASTNode
 import org.nnezh.org.nnezh.base.Type
 
 class FunctionSignature(

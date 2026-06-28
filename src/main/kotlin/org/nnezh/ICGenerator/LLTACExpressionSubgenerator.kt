@@ -1,24 +1,22 @@
 package org.nnezh.org.nnezh.ICGenerator
 
-import org.nnezh.ast.ArrayAccessExpressionASTNode
-import org.nnezh.ast.BinaryExpressionASTNode
+import org.nnezh.bred.ast.ArrayAccessExpressionASTNode
+import org.nnezh.bred.ast.BinaryExpressionASTNode
 import org.nnezh.ast.BinaryOperator
 import org.nnezh.ast.BooleanLiteralExpressionNode
 import org.nnezh.ast.DoubleLiteralExpressionNode
-import org.nnezh.ast.ExpressionASTNode
-import org.nnezh.ast.FunctionCallExpressionNode
+import org.nnezh.bred.ast.ExpressionASTNode
+import org.nnezh.bred.ast.FunctionCallExpressionNode
 import org.nnezh.ast.IntLiteralExpressionNode
-import org.nnezh.ast.StaticArrayInitializationExpressionsListNode
+import org.nnezh.bred.ast.StaticArrayInitializationExpressionsListNode
 import org.nnezh.ast.StringLiteralExpressionNode
-import org.nnezh.ast.UnaryExpressionASTNode
-import org.nnezh.ast.UnaryOperator
+import org.nnezh.bred.ast.UnaryExpressionASTNode
+import org.nnezh.bred.ast.UnaryOperator
 import org.nnezh.ast.VariableExpressionNode
 import org.nnezh.org.nnezh.ICGenerator.LLTACElement.Companion.binOp
 import org.nnezh.org.nnezh.base.Type
 import org.nnezh.org.nnezh.semantic.analyzers.ASTNodeTypeTable
 import org.nnezh.org.nnezh.semantic.analyzers.FunctionRegistry
-import org.nnezh.org.nnezh.semantic.analyzers.TypeScope
-import kotlin.math.exp
 
 data class LLTACExpressionSubgeneratorResult(
     val instructions: List<LLTACElement>,

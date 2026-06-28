@@ -12,14 +12,15 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import org.nnezh.ast.AssignmentStatementASTNode
-import org.nnezh.ast.ArrayAccessExpressionASTNode
-import org.nnezh.ast.ExpressionASTNode
+import org.nnezh.bred.ast.AssignmentStatementASTNode
+import org.nnezh.bred.ast.ArrayAccessExpressionASTNode
+import org.nnezh.bred.ast.ExpressionASTNode
 import org.nnezh.ast.IntLiteralExpressionNode
 import org.nnezh.ast.VariableExpressionNode
 import org.nnezh.ast.lvalueName
 import org.nnezh.ast.arrayAccessLValue
 import org.nnezh.ast.varExpr
+import org.nnezh.bred.ast.BinaryExpressionASTNode
 import org.nnezh.lexer.Lexer
 import org.nnezh.lexer.Position
 import org.nnezh.lexer.Token
@@ -131,7 +132,7 @@ class AssignParserTest {
         val result = parseFromSource("x = a + b * 2").getOrElse { error("unexpected parse error: $it") }
 
         assertEquals("x", result.lvalueName())
-        assertInstanceOf(org.nnezh.ast.BinaryExpressionASTNode::class.java, result.rValue)
+        assertInstanceOf(BinaryExpressionASTNode::class.java, result.rValue)
     }
 
     @Test

@@ -6,8 +6,8 @@ import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.nnezh.ast.AbstractSyntaxTreeBuilder
-import org.nnezh.ast.FunctionCallExpressionNode
-import org.nnezh.ast.ProgramASTNode
+import org.nnezh.bred.ast.FunctionCallExpressionNode
+import org.nnezh.bred.ast.ProgramASTNode
 import org.nnezh.lexer.Lexer
 import org.nnezh.org.nnezh.semantic.analyzers.FunctionSubAnalyzer
 import org.nnezh.org.nnezh.semantic.generic.SemanticError

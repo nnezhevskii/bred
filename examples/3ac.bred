@@ -16,5 +16,5 @@ fun main(): Unit {
     val a: Int = 0
     prettyPrint(a) // << ok
 
-    prettyPrint("Hello World") << not ok
+    prettyPrint("Hello World")
 }

@@ -14,12 +14,12 @@ import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.nnezh.ast.assignStmt
-import org.nnezh.ast.BlockASTNode
-import org.nnezh.ast.DeclareFunctionASTNode
-import org.nnezh.ast.FunctionArgumentASTNode
+import org.nnezh.bred.ast.BlockASTNode
+import org.nnezh.bred.ast.DeclareFunctionASTNode
+import org.nnezh.bred.ast.FunctionArgumentASTNode
 import org.nnezh.ast.IntLiteralExpressionNode
-import org.nnezh.ast.ReturnFunctionStatementASTNode
-import org.nnezh.ast.StatementASTNode
+import org.nnezh.bred.ast.ReturnFunctionStatementASTNode
+import org.nnezh.bred.ast.StatementASTNode
 import org.nnezh.lexer.Lexer
 import org.nnezh.lexer.Position
 import org.nnezh.lexer.Token

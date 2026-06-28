@@ -47,6 +47,7 @@ Not blocking parser completeness; implement when the language actually needs the
 | G-25 | `else if` test | Tied to G-05 — assert failure until implemented |
 | G-16 | Package split | `org.nnezh.org.nnezh.ast` vs `org.nnezh.ast` — refactor when convenient (separate PR) |
 | G-42 | `minMax.bred` snapshot | Fixture in `src/test/resources/` but not in `LLTAGSnapshotTester` | Register in snapshot suite when array IR is stable |
+| G-43 | Typeclass syntax documentation | Lexer/parser support `typeclass`, `instance`, and generic function declarations in the parser module | Formally document grammar, restrictions, examples, and invalid forms in `docs/grammar.md` |
 
 ---
 
@@ -64,4 +65,4 @@ Not blocking parser completeness; implement when the language actually needs the
 |------|-----|
 | **Next pipeline** | G-31, G-09, G-03, G-32, G-33 |
 | **When language grows** | G-05, G-12, G-13 |
-| **Optional** | G-14, G-16, G-25, G-34, G-35, G-42 |
+| **Optional** | G-14, G-16, G-25, G-34, G-35, G-42, G-43 |
