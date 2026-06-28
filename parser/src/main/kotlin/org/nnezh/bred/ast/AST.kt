@@ -1,7 +1,7 @@
 package org.nnezh.bred.ast
 
 data class ProgramRoot(
-    val functions: List<FunctionDeclAstNode>,
+    val functions: MutableList<FunctionDeclAstNode>,
     val globalVariables: List<DeclareGlobalVariableASTNode>,
     val types: List<DeclareTypeASTNode>,
     val typeClasses: List<TypeClassDeclAstNode> = emptyList(),

@@ -3,6 +3,9 @@ package org.nnezh.bred
 import arrow.core.raise.either
 import org.nnezh.bred.ast.AbstractSyntaxTreeBuilder
 import org.nnezh.bred.ast.AstPrettyPrinter
+import org.nnezh.bred.ast.ProgramRoot
+import org.nnezh.bred.codegenerator.TemplateInstantiator
+import org.nnezh.bred.context.ProgramContextCollector
 import org.nnezh.lexer.Lexer
 import org.nnezh.lexer.readSource
 
@@ -20,8 +23,12 @@ fun main(args: Array<String>) {
             stringBuilder.append("  ${token.position}\t${token::class.simpleName}\t${token.lexeme}\n")
         }
         val ast = AbstractSyntaxTreeBuilder().build(tokens).bind()
+
+        val globalContext = ProgramContextCollector().collect(ast as ProgramRoot)
+        val instantiatedAst = TemplateInstantiator(globalContext).instantiate(ast).bind()
+
         stringBuilder.append("\nAST:\n")
-        stringBuilder.append(AstPrettyPrinter().render(ast))
+        stringBuilder.append(AstPrettyPrinter().render(instantiatedAst))
         stringBuilder.toString()
     }
 

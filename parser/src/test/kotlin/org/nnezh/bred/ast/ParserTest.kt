@@ -6,9 +6,13 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertNotSame
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.nnezh.bred.codegenerator.TemplateInstantiator
+import org.nnezh.bred.context.ProgramContextCollector
+import org.nnezh.bred.context.ProgramGlobalContext
 import org.nnezh.lexer.Lexer
 
 class ParserTest {
@@ -365,5 +369,199 @@ class ParserTest {
     @Test
     fun `indirect call statement is rejected`() {
         assertTrue(parseFails("fun main(): Unit { (f)() }"))
+    }
+
+    @Test
+    fun `subtree clone replaces template type without changing original tree`() {
+        val root = parse(
+            """
+            fun makeBox<A: Printable>(a: A): Box<A> {
+                val local: A = a
+                return wrap(local)
+            }
+            """.trimIndent()
+        )
+        val originalFunction = root.functions.single()
+
+        val clone = cloneSubtreeReplacingType(root, "A", "Int", ProgramGlobalContext())
+        val clonedFunction = clone.functions.single()
+        val clonedLocal = assertInstanceOf(
+            ScalarVariableInitializationASTNode::class.java,
+            clonedFunction.body.statements.first(),
+        )
+
+        assertNotSame(root, clone)
+        assertNotSame(originalFunction, clonedFunction)
+        assertEquals(TypeSign("Box", listOf(TypeSign("Int"))), clonedFunction.result)
+        assertEquals(listOf(FunctionArgument("a", TypeSign("Int"))), clonedFunction.arguments)
+        assertEquals(TypeSign("Int"), clonedLocal.type)
+        assertTrue(clonedFunction.genericParams.isEmpty())
+
+        assertEquals(TypeSign("Box", listOf(TypeSign("A"))), originalFunction.result)
+        assertEquals(listOf(FunctionArgument("a", TypeSign("A"))), originalFunction.arguments)
+        assertEquals(listOf(GenericParam("A", listOf("Printable"))), originalFunction.genericParams)
+    }
+
+    @Test
+    fun `program clone owns its mutable function list`() {
+        val root = parse("fun id<A>(a: A): A { return a }")
+        val clone = root.deepCloneReplacingType("A", "String", ProgramGlobalContext())
+
+        clone.functions.clear()
+
+        assertEquals(1, root.functions.size)
+        assertTrue(clone.functions.isEmpty())
+    }
+
+    @Test
+    fun `template instantiator mangles instance and template functions`() {
+        val root = parse(
+            """
+            typeclass Printable<A> {
+                fun toPrettyPrinter(a: A): String
+            }
+
+            instance Printable<Int> {
+                fun toPrettyPrinter(value: Int): String {
+                    return intToString(value)
+                }
+            }
+
+            fun prettyPrint<A: Printable>(a: A) {
+                println(toPrettyPrinter(a))
+            }
+
+            fun main(): Unit {
+                val a: Int = 1
+                prettyPrint(a)
+            }
+            """.trimIndent()
+        )
+        val instantiated = TemplateInstantiator(ProgramContextCollector().collect(root))
+            .instantiate(root)
+            .getOrElse { error("unexpected instantiation error: $it") }
+
+        assertTrue(instantiated.instances.isEmpty())
+        assertTrue(instantiated.typeClasses.isEmpty())
+        assertNotNull(instantiated.functions.singleOrNull { it.name == "toPrettyPrinter_Int_String" })
+        val prettyPrint = instantiated.functions.single { it.name == "prettyPrint_Int_Unit" }
+        val printlnStatement = assertInstanceOf(CallFunctionStatementAstNode::class.java, prettyPrint.body.statements.first())
+        val printlnCall = assertInstanceOf(FunctionCallExpressionASTNode::class.java, printlnStatement.expression)
+        val rewrittenCall = assertInstanceOf(FunctionCallExpressionASTNode::class.java, printlnCall.arguments.single())
+
+        assertEquals("println", printlnCall.name)
+        assertEquals("toPrettyPrinter_Int_String", rewrittenCall.name)
+        assertNull(instantiated.functions.singleOrNull { it.name == "prettyPrint" })
+        assertEquals(1, root.instances.size)
+        assertNotNull(root.functions.singleOrNull { it.name == "prettyPrint" })
+    }
+
+    @Test
+    fun `template instantiator mangles unit instance method calls`() {
+        val root = parse(
+            """
+            typeclass Print<S> {
+                fun print(s: S): Unit
+            }
+
+            instance Print<String> {
+                fun print(s: String) {
+                    println(s)
+                }
+            }
+
+            fun printValue<S: Print>(s: S) {
+                print(s)
+            }
+
+            fun main(): Unit {
+                val s: String = "hello"
+                printValue(s)
+            }
+            """.trimIndent()
+        )
+        val instantiated = TemplateInstantiator(ProgramContextCollector().collect(root))
+            .instantiate(root)
+            .getOrElse { error("unexpected instantiation error: $it") }
+        val printValue = instantiated.functions.single { it.name == "printValue_String_Unit" }
+        val printStatement = assertInstanceOf(CallFunctionStatementAstNode::class.java, printValue.body.statements.first())
+        val printCall = assertInstanceOf(FunctionCallExpressionASTNode::class.java, printStatement.expression)
+
+        assertNotNull(instantiated.functions.singleOrNull { it.name == "print_String_Unit" })
+        assertEquals("print_String_Unit", printCall.name)
+        assertTrue(instantiated.instances.isEmpty())
+        assertTrue(instantiated.typeClasses.isEmpty())
+    }
+
+    @Test
+    fun `template instantiator returns error when constrained instance is missing`() {
+        val root = parse(
+            """
+            typeclass Printable<A> {
+                fun toPrettyPrinter(a: A): String
+            }
+
+            fun prettyPrint<A: Printable>(a: A) {
+                println(toPrettyPrinter(a))
+            }
+
+            fun main(): Unit {
+                val s: String = "hello"
+                prettyPrint(s)
+            }
+            """.trimIndent()
+        )
+
+        assertTrue(TemplateInstantiator(ProgramContextCollector().collect(root)).instantiate(root).isLeft())
+    }
+
+    @Test
+    fun `template instantiator returns error when instance method is missing`() {
+        val root = parse(
+            """
+            typeclass Printable<A> {
+                fun toPrettyPrinter(a: A): String
+            }
+
+            instance Printable<Int> {
+                fun another(value: Int): String {
+                    return intToString(value)
+                }
+            }
+
+            fun prettyPrint<A: Printable>(a: A) {
+                println(toPrettyPrinter(a))
+            }
+
+            fun main(): Unit {
+                val a: Int = 1
+                prettyPrint(a)
+            }
+            """.trimIndent()
+        )
+
+        assertTrue(TemplateInstantiator(ProgramContextCollector().collect(root)).instantiate(root).isLeft())
+    }
+
+    @Test
+    fun `template instantiator returns error on mangled name collision`() {
+        val root = parse(
+            """
+            fun prettyPrint<A>(a: A) {
+                println(a)
+            }
+
+            fun prettyPrint_Int_Unit(a: String): Unit {
+                println(a)
+            }
+
+            fun main(): Unit {
+                val a: Int = 1
+                prettyPrint(a)
+            }
+            """.trimIndent()
+        )
+
+        assertTrue(TemplateInstantiator(ProgramContextCollector().collect(root)).instantiate(root).isLeft())
     }
 }

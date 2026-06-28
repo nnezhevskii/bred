@@ -3,18 +3,26 @@ typeclass Printable<A> {
 }
 
 instance Printable<Int> {
-    fun toPrettyPrinter(a: Int): String {
-        return intToString(a)
+    fun toPrettyPrinter(value: Int): String {
+        return intToString(value)
     }
 }
 
-fun prettyPrint<A: Printable>(a: A) {
-    println(toPrettyPrinter(a))
+instance Printable<String> {
+    fun toPrettyPrinter(value: String): String {
+        return value + "whoo"
+    }
 }
+
+
+fun prettyPrint<A: Printable>(a: A) {
+    val str = toPrettyPrinter(a)
+    println(str)
+}
+
 
 fun main(): Unit {
     val a: Int = 0
     prettyPrint(a) // << ok
-
     prettyPrint("Hello World")
 }
