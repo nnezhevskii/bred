@@ -9,7 +9,7 @@ object EmptyNode : ASTNode
 sealed interface ExpressionASTNode : ASTNode
 
 sealed interface LiteralExpressionASTNode : ExpressionASTNode
-data class IntLiteralExpressionASTNode(val value: Long) : LiteralExpressionASTNode
+data class IntLiteralExpressionASTNode(val value: Int) : LiteralExpressionASTNode
 data class DoubleLiteralExpressionASTNode(val value: Double) : LiteralExpressionASTNode
 data class BooleanLiteralExpressionASTNode(val value: Boolean) : LiteralExpressionASTNode
 data class StringLiteralExpressionASTNode(val value: String) : LiteralExpressionASTNode

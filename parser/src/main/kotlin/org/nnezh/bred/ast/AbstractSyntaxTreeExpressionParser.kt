@@ -101,7 +101,7 @@ class AbstractSyntaxTreeExpressionParser : Parser<ExpressionASTNode> {
         when (val token = context.top()) {
             is Token.Literal.IntLiteral -> {
                 context.consumeToken()
-                IntLiteralExpressionASTNode(token.value)
+                IntLiteralExpressionASTNode(token.value.toInt())
             }
 
             is Token.Literal.DoubleLiteral -> {

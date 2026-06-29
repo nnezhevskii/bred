@@ -1,28 +1,56 @@
-typeclass Printable<A> {
-    fun toPrettyPrinter(a: A): String
+typeclass Comparable<A> {
+    fun compareLess(a: A, b: A): Boolean
+    fun compareGreater(a: A, b: A): Boolean
 }
 
-instance Printable<Int> {
-    fun toPrettyPrinter(value: Int): String {
-        return intToString(value)
+instance Comparable<Int> {
+        fun compareLess(a: Int, b: Int): Boolean {
+            return a < b
+        }
+        fun compareGreater(a: Int, b: Int): Boolean {
+            return a > b
+        }
+}
+
+fun isEven(n: Int): Int {
+    if (n == 0) {
+        return 1 // true
+    }
+    return isOdd(n - 1)
+}
+
+fun isOdd(n: Int): Int {
+    if (n == 0) {
+        return 0 // false
+    }
+    return isEven(n - 1)
+}
+
+fun handle<A: Comparable>(a: A, b: A) {
+    if (compareLess(a, b)) {
+        println("lesser")
+    } else {
+        if (compareGreater(a, b)) {
+            println("greater")
+        } else {
+            println("equals")
+        }
     }
 }
 
-instance Printable<String> {
-    fun toPrettyPrinter(value: String): String {
-        return value + "whoo"
+fun main(): Unit {
+    var num: Int = 5
+    if (isEven(num) == 1) {
+        println("Even")
+    } else {
+        println("Odd")
     }
 }
-
-
-fun prettyPrint<A: Printable>(a: A) {
-    val str = toPrettyPrinter(a)
-    println(str)
-}
-
 
 fun main(): Unit {
     val a: Int = 0
-    prettyPrint(a) // << ok
-    prettyPrint("Hello World")
+    while (true) {
+        a = "Hello"
+    }
+    handle(3, 4)
 }

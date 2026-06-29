@@ -5,3 +5,4 @@ rootProject.name = "bred"
 include("common")
 include("lexer")
 include("parser")
+include("analyzer")

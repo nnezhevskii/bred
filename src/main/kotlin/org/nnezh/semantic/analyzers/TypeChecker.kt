@@ -58,48 +58,6 @@ data class TypeScope(
     fun get(variable: String): Type? = variablesType[variable] ?: parentScope?.get(variable)
 }
 
-class TypeValidator {
-    fun check(typeA: Type, typeB: Type): Boolean {
-        return typeA == typeB
-    }
-
-    fun checkUnaryOperation(operation: UnaryOperator, type: Type): Boolean {
-        return when (operation) {
-            UnaryOperator.Minus -> type == Type.IntType || type == Type.DoubleType
-            UnaryOperator.Not -> type == Type.BoolType
-        }
-    }
-
-    fun produceUnaryType(operation: UnaryOperator, operandType: Type): Type? {
-        return when (operation) {
-            UnaryOperator.Minus -> when (operandType) {
-                Type.IntType, Type.DoubleType -> operandType
-                else -> null
-            }
-            UnaryOperator.Not -> if (operandType == Type.BoolType) Type.BoolType else null
-        }
-    }
-
-    fun produceBinaryType(operation: BinaryOperator, typeA: Type, typeB: Type): Type? {
-
-        return when (operation) {
-            BinaryOperator.Eq, BinaryOperator.Neq -> { if (typeA == typeB) Type.BoolType else null }
-            BinaryOperator.Plus -> { if (typeA in setOf(Type.IntType, Type.DoubleType, Type.StringType) && typeA == typeB) typeA else null }
-            BinaryOperator.Minus, BinaryOperator.Star, BinaryOperator.Slash -> {
-                if (typeA in setOf(Type.IntType, Type.DoubleType) && typeA == typeB) typeA else null
-            }
-            BinaryOperator.Percent -> { if (typeA == typeB && typeA == Type.IntType) Type.IntType else null }
-
-            BinaryOperator.And, BinaryOperator.Or -> if (typeA == typeB && typeA == Type.BoolType) Type.BoolType else null
-
-            BinaryOperator.Lt, BinaryOperator.Gt, BinaryOperator.Le, BinaryOperator.Ge -> {
-                if (typeA in setOf(Type.IntType, Type.DoubleType) && typeB in setOf(Type.IntType, Type.DoubleType) ||
-                    (typeA == Type.StringType && typeB == typeA)) Type.BoolType else null
-            }
-        }
-    }
-}
-
 class TypeChecker(
     private val functionRegistry: FunctionRegistry,
     private val typeValidator: TypeValidator,

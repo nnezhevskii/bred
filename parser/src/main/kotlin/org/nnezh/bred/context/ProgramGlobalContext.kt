@@ -5,13 +5,13 @@ import org.nnezh.bred.ast.FunctionArgument
 import org.nnezh.bred.ast.TypeSign
 
 data class ProgramGlobalContext(
-    val types: MutableMap<String, TypeMeta> = mutableMapOf(),
+    val types: MutableMap<String, TypeSign> = mutableMapOf(),
     val functions: MutableMap<String, FunctionMeta> = mutableMapOf(),
     val typeclasses: MutableMap<String, TypeclassMeta> = mutableMapOf(),
     val instances: MutableMap<InstanceKey, InstanceMeta> = mutableMapOf(),
 ) {
     fun addType(name: String, isPrimitive: Boolean) {
-        types[name] = TypeMeta(name, isPrimitive)
+        types[name] = TypeSign(name) //, isPrimitive)
     }
     fun addTypeclass(name: String, genericVarName: String, methods: List<String>) {
         typeclasses[name] = TypeclassMeta(
