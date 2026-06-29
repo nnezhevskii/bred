@@ -37,7 +37,7 @@ fun handle<A: Comparable>(a: A, b: A) {
         }
     }
 }
-
+/*
 fun main(): Unit {
     var num: Int = 5
     if (isEven(num) == 1) {
@@ -45,12 +45,12 @@ fun main(): Unit {
     } else {
         println("Odd")
     }
-}
+}*/
 
-fun main(): Unit {
-    val a: Int = 0
-    while (true) {
-        a = "Hello"
-    }
-    handle(3, 4)
-}
+            fun main(): Unit {
+                val n: Int = readInt()
+                val same: Boolean = stringEquals("a", "a")
+                if (same) {
+                    println("ok")
+                }
+            }

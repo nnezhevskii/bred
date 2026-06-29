@@ -10,9 +10,9 @@ import org.nnezh.bred.ast.Parser
 import org.nnezh.bred.ast.ScalarVariableInitializationASTNode
 import org.nnezh.bred.ast.StaticArrayInitializationExpressionsListNode
 import org.nnezh.bred.ast.TokensContext
-import org.nnezh.bred.ast.TypeSign
 import org.nnezh.bred.ast.match
 import org.nnezh.bred.ast.parseWith
+import org.nnezh.bred.common.TypeSign
 import org.nnezh.lexer.Token
 
 class VariableInitializationParser(

@@ -1,8 +1,8 @@
 package org.nnezh
 
 import org.nnezh.bred.ast.BinaryOperator
-import org.nnezh.bred.ast.TypeSign
 import org.nnezh.bred.ast.UnaryOperator
+import org.nnezh.bred.common.TypeSign
 import org.nnezh.bred.context.ProgramGlobalContext
 
 class TypeValidator(private val globalContext: ProgramGlobalContext) {

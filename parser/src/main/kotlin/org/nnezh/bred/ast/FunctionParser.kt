@@ -11,6 +11,7 @@ import org.nnezh.bred.ast.StatementAstNode
 import org.nnezh.bred.ast.TokensContext
 import org.nnezh.bred.ast.match
 import org.nnezh.bred.ast.parseWith
+import org.nnezh.bred.common.TypeSign
 import org.nnezh.lexer.Token
 
 class FunctionParser(
@@ -25,7 +26,7 @@ class FunctionParser(
         val arguments = with(typeSignParser) { parseArguments(context) }
 
         val resultType = when (val token = context.top()) {
-            is Token.Punctuation.LBrace -> org.nnezh.bred.ast.TypeSign("Unit")
+            is Token.Punctuation.LBrace -> TypeSign("Unit")
             is Token.Punctuation.Colon -> {
                 context.consumeToken()
                 with(typeSignParser) { parse(context) }

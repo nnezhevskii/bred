@@ -1,5 +1,6 @@
 package org.nnezh.bred.ast
 
+import org.nnezh.bred.common.TypeSign
 import org.nnezh.bred.context.ProgramGlobalContext
 import org.nnezh.lexer.Position
 import org.nnezh.lexer.Token

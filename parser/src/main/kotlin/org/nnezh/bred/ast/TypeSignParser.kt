@@ -6,8 +6,8 @@ import org.nnezh.bred.ast.AstErrorFactory
 import org.nnezh.bred.ast.FunctionArgument
 import org.nnezh.bred.ast.GenericParam
 import org.nnezh.bred.ast.TokensContext
-import org.nnezh.bred.ast.TypeSign
 import org.nnezh.bred.ast.match
+import org.nnezh.bred.common.TypeSign
 import org.nnezh.lexer.Token
 
 class TypeSignParser {

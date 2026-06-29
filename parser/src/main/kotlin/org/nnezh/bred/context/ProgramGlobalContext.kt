@@ -2,7 +2,7 @@ package org.nnezh.bred.context
 
 import org.nnezh.bred.ast.FunctionDeclAstNode
 import org.nnezh.bred.ast.FunctionArgument
-import org.nnezh.bred.ast.TypeSign
+import org.nnezh.bred.common.TypeSign
 
 data class ProgramGlobalContext(
     val types: MutableMap<String, TypeSign> = mutableMapOf(),

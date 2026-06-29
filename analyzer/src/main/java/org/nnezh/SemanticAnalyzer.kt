@@ -2,8 +2,6 @@ package org.nnezh
 
 import arrow.core.Either
 import arrow.core.left
-import arrow.core.raise.context.bind
-import arrow.core.raise.either
 import arrow.core.right
 import org.nnezh.bred.ast.ASTNode
 import org.nnezh.bred.ast.ArrayDeclarationASTNode
@@ -25,19 +23,22 @@ import org.nnezh.bred.ast.FunctionDeclAstNode
 import org.nnezh.bred.ast.IfStatementAstNode
 import org.nnezh.bred.ast.InstanceDeclAstNode
 import org.nnezh.bred.ast.IntLiteralExpressionASTNode
+import org.nnezh.bred.ast.LeftValue
 import org.nnezh.bred.ast.ProgramRoot
 import org.nnezh.bred.ast.ReturnFunctionStatementAstNode
 import org.nnezh.bred.ast.ScalarVariableInitializationASTNode
-import org.nnezh.bred.ast.StatementAstNode
 import org.nnezh.bred.ast.StringLiteralExpressionASTNode
 import org.nnezh.bred.ast.TypeClassDeclAstNode
 import org.nnezh.bred.ast.TypeClassMethodDeclAstNode
-import org.nnezh.bred.ast.TypeSign
 import org.nnezh.bred.ast.UnaryExpressionASTNode
 import org.nnezh.bred.ast.VariableExpressionASTNode
 import org.nnezh.bred.ast.WhileStatementAstNode
+import org.nnezh.bred.common.BuiltInMethods
+import org.nnezh.bred.common.FunctionSignature
+import org.nnezh.bred.common.TypeSign
 import org.nnezh.bred.context.DeclaredFunctionMeta
 import org.nnezh.bred.context.ProgramGlobalContext
+import java.lang.classfile.Attributes.signature
 import java.util.Collections.singletonList
 import java.util.IdentityHashMap
 import kotlin.collections.flatMap
@@ -48,19 +49,29 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
 
     fun analyze(root: ProgramRoot): Either<List<SemanticError>, List<SemanticError.SemanticWarning>> {
         val scope = Scope()
+
+        BuiltInMethods.functions.forEach { scope.registerFunction(it) }
+
+
         root.functions.forEach { function ->
-            // TODO: Type Checking
+            val name = function.name
+            val args = function.arguments.map { it.type }
+            if (scope.getFunction(name, args) != null) {
+                return singletonList(
+                    SemanticError.VariableScopeSemanticError(
+                        function,
+                        SemanticErrorType.REDEFINE_FUNCTION
+                    )
+                ).left()
+            }
             scope.registerFunction(
                 FunctionSignature(
-                    function.name,
-                    function.arguments.map { it.type },
+                    name,
+                    args,
                     function.result
                 )
             )
         }
-        scope.registerFunction(
-            FunctionSignature("println", listOf(getPrimitiveType("String")!!), TypeSign("Unit"))
-        )
 
         // TODO << BuiltIn Functions
         return visit(root, scope)
@@ -131,6 +142,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                                 )
                             ).left()
                         } else {
+                            scope.put(node, scope.findVariable(node.name)!!.first)
                             warnings.right()
                         }
 
@@ -138,7 +150,25 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                 )
             }
 
-            is ArrayInitializationExpressionASTNode -> TODO()
+            is ArrayInitializationExpressionASTNode -> {
+                val warnings = mutableListOf<SemanticError.SemanticWarning>()
+                node.args.forEach { arg ->
+                    visit(arg, scope).fold(
+                        ifLeft = { return it.left() },
+                        ifRight = { warnings.addAll(it) }
+                    )
+                }
+                val types = node.args.map { arg -> scope.get(arg)!! }.toSet()
+                if (types.size > 1) {
+                    return singletonList(
+                        SemanticError.VariableScopeSemanticError(
+                            node,
+                            SemanticErrorType.TYPE_CHECKER_INCONSISTENT_ARRAY_TYPE
+                        )).left()
+                }
+                scope.put(node, types.first())
+                return warnings.right()
+            }
             is BinaryExpressionASTNode -> {
                 val warnings = mutableListOf<SemanticError.SemanticWarning>()
                 visit(node.left, scope).fold(
@@ -254,13 +284,61 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
             }
 
             is InstanceDeclAstNode -> TODO()
-            is AssignmentStatementAstNode -> TODO()
-            is CallFunctionStatementAstNode -> {
-                return visit(node.expression, scope)
+            is AssignmentStatementAstNode -> {
+                if (node.lValue !is LeftValue) {
+                    return singletonList(
+                        SemanticError.TypeSemanticError(
+                            node,
+                            SemanticErrorType.UNEXPECTED_LVALUE
+                        )
+                    ).left()
+                }
 
+                val warnings = mutableListOf<SemanticError.SemanticWarning>()
+
+                visit(node.lValue, scope).fold(
+                    ifLeft = { return it.left() },
+                    ifRight = { warnings.addAll(it) }
+                )
+
+                visit(node.rValue, scope).fold(
+                    ifLeft = { return it.left() },
+                    ifRight = { warnings.addAll(it) }
+                )
+
+                val lValueType = scope.get(node.lValue)!!
+                val rValueType = scope.get(node.rValue)!!
+
+                if (lValueType != rValueType) {
+                    return singletonList(
+                        SemanticError.TypeSemanticError(
+                            node,
+                            SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES
+                        )
+                    ).left()
+                }
+                return warnings.right()
             }
 
-            is ArrayDeclarationASTNode -> TODO()
+            is CallFunctionStatementAstNode -> {
+                return visit(node.expression, scope)
+            }
+
+            is ArrayDeclarationASTNode -> {
+                val warnings = mutableListOf<SemanticError.SemanticWarning>()
+                node.expression?.let {
+                    visit(it, scope).fold(
+                        ifLeft = { error -> return error.left() },
+                        ifRight = {
+//                            scope.put(node.expression!!, node.type)
+                            scope.put(node.name, TypeSign("Array", listOf(node.type)))
+                            warnings.addAll(it)
+                        }
+                    )
+                }
+                return warnings.right()
+            }
+
             is ScalarVariableInitializationASTNode -> {
                 val warnings = mutableListOf<SemanticError.SemanticWarning>()
                 val pair = scope.findVariable(node.name)
@@ -360,11 +438,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
         }
     }
 
-    data class FunctionSignature(
-        val name: String,
-        val args: List<TypeSign>,
-        val resultType: TypeSign
-    )
+
 
     private data class Scope(
         val parentScope: Scope? = null,
@@ -388,7 +462,13 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
         }
 
         fun functionExist(name: String): Boolean { // any function with this name exist. Signature may differ
-            return registeredFunctions.any { it.name == name }
+            if (registeredFunctions.any { it.name == name }) {
+                return true
+            }
+            if (parentScope == null) {
+                return false
+            }
+            return parentScope.functionExist(name)
         }
 
         fun getFunction(name: String, args: List<TypeSign>): FunctionSignature? {

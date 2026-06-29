@@ -26,11 +26,11 @@ import org.nnezh.bred.ast.ScalarVariableInitializationASTNode
 import org.nnezh.bred.ast.StatementAstNode
 import org.nnezh.bred.ast.StringLiteralExpressionASTNode
 import org.nnezh.bred.ast.TypeClassDeclAstNode
-import org.nnezh.bred.ast.TypeSign
 import org.nnezh.bred.ast.UnaryExpressionASTNode
 import org.nnezh.bred.ast.VariableExpressionASTNode
 import org.nnezh.bred.ast.WhileStatementAstNode
 import org.nnezh.bred.ast.cloneSubtree
+import org.nnezh.bred.common.TypeSign
 import org.nnezh.bred.context.BuiltInFunctionMeta
 import org.nnezh.bred.context.DeclaredFunctionMeta
 import org.nnezh.bred.context.ProgramGlobalContext

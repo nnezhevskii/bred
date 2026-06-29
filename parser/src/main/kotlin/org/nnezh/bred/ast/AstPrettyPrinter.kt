@@ -1,5 +1,6 @@
 package org.nnezh.bred.ast
 
+import org.nnezh.bred.common.TypeSign
 import java.io.PrintStream
 
 class AstPrettyPrinter(

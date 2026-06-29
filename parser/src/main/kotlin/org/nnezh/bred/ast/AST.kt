@@ -1,5 +1,7 @@
 package org.nnezh.bred.ast
 
+import org.nnezh.bred.common.TypeSign
+
 data class ProgramRoot(
     val functions: MutableList<FunctionDeclAstNode>,
     val globalVariables: List<DeclareGlobalVariableASTNode>,
@@ -18,10 +20,7 @@ data class DeclareGlobalVariableASTNode(
 
 data class DeclareTypeASTNode(val name: String) : ASTNode
 
-data class TypeSign(
-    val name: String,
-    val args: List<TypeSign> = emptyList(),
-)
+sealed interface LeftValue
 
 data class FunctionDeclAstNode(
     val name: String,
