@@ -332,7 +332,8 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                     ifRight = { }
                 )
                 val operandType = scope.get(node.operand)!!
-                if (typeValidator.produceUnaryType(node.operator.kind, operandType) == null) {
+                val unaryType = typeValidator.produceUnaryType(node.operator.kind, operandType)
+                if (unaryType == null) {
                     return singletonList(
                         SemanticError.TypeSemanticError(
                             node,
@@ -340,6 +341,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                         )
                     ).left()
                 }
+                scope.put(node, unaryType)
                 return emptyList<SemanticError.SemanticWarning>().right()
             }
 

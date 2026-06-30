@@ -237,8 +237,7 @@ from the resolved signature.
 
 Other operands produce `TYPE_CHECKER_INCOMPATIBLE_TYPES`.
 
-Implementation gap: the current analyzer validates unary expressions but does
-not store the produced type on the unary expression node. See `docs/TODO.md`.
+The analyzer stores the produced type on the unary expression node.
 
 ### 7.2 Binary Operators
 
@@ -393,7 +392,6 @@ Important known gaps:
 
 - global static arrays are parsed but are not handled as arrays by the current
   global-variable branch in `SemanticAnalyzer`;
-- unary expression result types are not recorded in the expression type table;
 - semantic validation for typeclasses and instances is incomplete;
 - `mut` is lexed but unused by the parser;
 - parser-level type names are not validated;

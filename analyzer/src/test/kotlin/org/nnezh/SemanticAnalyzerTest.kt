@@ -365,6 +365,42 @@ class SemanticAnalyzerTest {
     }
 
     @Test
+    fun `unary not result can initialize boolean variable`() {
+        assertNoSemanticDiagnostics(
+            """
+            fun main(): Unit {
+                val flag: Boolean = true
+                val ok: Boolean = !flag
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `unary minus result can initialize double variable`() {
+        assertNoSemanticDiagnostics(
+            """
+            fun main(): Unit {
+                val x: Double = -1.0
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `unary expression result can be passed as function argument`() {
+        assertNoSemanticDiagnostics(
+            """
+            fun accept(flag: Boolean): Unit { }
+            fun main(): Unit {
+                val flag: Boolean = true
+                accept(!flag)
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
     fun `if condition must be boolean`() {
         assertSingleSemanticError(
             """
