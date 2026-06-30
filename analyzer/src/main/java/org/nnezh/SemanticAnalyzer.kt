@@ -52,9 +52,14 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
 
         BuiltInMethods.functions.forEach { scope.registerFunction(it) }
 
-//        root.globalVariables.forEach { variable ->
-//            variable.
-//        }
+        root.globalVariables.forEach {
+            visit(it, scope).fold(
+                ifLeft = { it ->
+                    return it.left()
+                },
+                ifRight = {}
+            )
+        }
 
         root.functions.forEach { function ->
             val name = function.name
@@ -76,7 +81,6 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
             )
         }
 
-        // TODO << BuiltIn Functions
         return visit(root, scope)
     }
 
@@ -99,17 +103,36 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
             }
 
             is FunctionDeclAstNode -> {
-                val newScope = scope.innerScope()
+                val newScope = scope.innerScope(node.result)
                 node.arguments.forEach { arg ->
-                    newScope.put(arg.name, arg.type, false)
+                    val argType = if (arg.isArray) TypeSign("Array", listOf(arg.type)) else arg.type
+                    newScope.put(arg.name, argType, false)
                 }
-                // TODO: check function redeclaration (same name + same arguments).
-                return visit(node.body, newScope)
+                visit(node.body, newScope).fold(
+                    ifLeft = { return it.left() },
+                    ifRight = { warnings ->
+                        if (node.result != unitType() && !blockGuaranteesReturn(node.body)) {
+                            return singletonList(
+                                SemanticError.ControlFlowSemanticError(
+                                    node.body,
+                                    true,
+                                    SemanticErrorType.EXPLICIT_RETURN_IS_EXPECTED
+                                )
+                            ).left()
+                        }
+                        return warnings.right()
+                    }
+                )
             }
 
             is BlockAstNode -> {
                 val innerScope = scope.innerScope()
                 val warnings = mutableListOf<SemanticError.SemanticWarning>()
+                val flow = analyzeBlockFlow(node)
+                if (flow.errors.isNotEmpty()) {
+                    return flow.errors.left()
+                }
+                warnings.addAll(flow.warnings)
                 node.statements.forEach { node ->
                     visit(node, innerScope).fold(
                         ifLeft = { return it.left() },
@@ -120,8 +143,41 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
             }
 
             is DeclareGlobalVariableASTNode -> {
-                TODO()
+                val warnings = mutableListOf<SemanticError.SemanticWarning>()
+                val pair = scope.findVariable(node.name)
+                if (pair != null) {
+                    if (pair.second == 0) {
+                        return singletonList(
+                            SemanticError.TypeSemanticError(
+                                node,
+                                SemanticErrorType.VARIABLE_REDECLARATION
+                            )
+                        ).left()
+                    }
+                    warnings.add(SemanticError.SemanticWarning(node, SemanticErrorType.VARIABLE_OVERSHADOW))
+                }
+
+                scope.put(node.name, node.type!!, node.isMutable)
+                node.expression?.let {
+                    visit(it, scope).fold(
+                        ifLeft = { return it.left() },
+                        ifRight = { warnings.addAll(it) }
+                    )
+
+                    if (node.type != scope.get(it)) {
+                        return singletonList(
+                            SemanticError.TypeSemanticError(
+                                node,
+                                SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES
+                            )
+                        ).left()
+                    }
+
+                }
+
+                return warnings.right()
             }
+
             is DeclareTypeASTNode -> TODO()
             EmptyNode -> {
                 return listOf<SemanticError.SemanticWarning>().right()
@@ -136,10 +192,12 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                 ).left()
 
                 if (scope.findVariable(node.name)!!.first.name != "Array") {
-                    return singletonList(SemanticError.VariableScopeSemanticError(
-                        node,
-                        SemanticErrorType.ARRAY_IS_EXPECTED_BUT_GOT_SCALAR
-                    )).left()
+                    return singletonList(
+                        SemanticError.VariableScopeSemanticError(
+                            node,
+                            SemanticErrorType.ARRAY_IS_EXPECTED_BUT_GOT_SCALAR
+                        )
+                    ).left()
                 }
 
                 val warnings = mutableListOf<SemanticError.SemanticWarning>()
@@ -463,8 +521,35 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
             }
 
             is ReturnFunctionStatementAstNode -> {
-                // TODO << check returns value.
-                return emptyList<SemanticError.SemanticWarning>().right()
+                if (!node.explicit) {
+                    return emptyList<SemanticError.SemanticWarning>().right()
+                }
+
+                val expectedReturnType = scope.expectedReturnType ?: return emptyList<SemanticError.SemanticWarning>().right()
+                val actualReturnType: TypeSign
+                val warnings = mutableListOf<SemanticError.SemanticWarning>()
+                val expression = node.expression
+
+                if (expression == null) {
+                    actualReturnType = unitType()
+                } else {
+                    visit(expression, scope).fold(
+                        ifLeft = { return it.left() },
+                        ifRight = { warnings.addAll(it) }
+                    )
+                    actualReturnType = scope.get(expression)!!
+                }
+
+                if (actualReturnType != expectedReturnType) {
+                    return singletonList(
+                        SemanticError.TypeSemanticError(
+                            node,
+                            SemanticErrorType.METHOD_HAS_WRONG_RETURN
+                        )
+                    ).left()
+                }
+
+                return warnings.right()
             }
 
             is TypeClassDeclAstNode -> {
@@ -482,10 +567,12 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
         val parentScope: Scope? = null,
         private val variablesType: MutableMap<String, Pair<TypeSign, Boolean>> = mutableMapOf(),
         private val expressionTypeTable: IdentityHashMap<ExpressionASTNode, TypeSign> = IdentityHashMap(),
-        private val registeredFunctions: MutableList<FunctionSignature> = mutableListOf()
+        private val registeredFunctions: MutableList<FunctionSignature> = mutableListOf(),
+        val expectedReturnType: TypeSign? = null
     ) {
 
-        fun innerScope() = Scope(this, mutableMapOf(), expressionTypeTable, mutableListOf())
+        fun innerScope(expectedReturnType: TypeSign? = this.expectedReturnType) =
+            Scope(this, mutableMapOf(), expressionTypeTable, mutableListOf(), expectedReturnType)
 
         fun put(variable: String, type: TypeSign, isMutable: Boolean) {
             variablesType[variable] = Pair(type, isMutable)
@@ -539,4 +626,101 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
     private fun getPrimitiveType(type: String): TypeSign? {
         return globalContext.types[type]?.let { TypeSign(it.name) }
     }
+
+    private fun unitType(): TypeSign = getPrimitiveType("Unit") ?: TypeSign("Unit")
+
+    private data class BlockFlow(
+        val errors: List<SemanticError>,
+        val warnings: List<SemanticError.SemanticWarning>
+    )
+
+    private fun analyzeBlockFlow(block: BlockAstNode): BlockFlow {
+        val effectiveStatements = block.statements.filterNot { it is ReturnFunctionStatementAstNode && !it.explicit }
+        val errors = mutableListOf<SemanticError>()
+        val warnings = mutableListOf<SemanticError.SemanticWarning>()
+
+        effectiveStatements.forEach { statement ->
+            when (statement) {
+                is IfStatementAstNode -> {
+                    val thenFlow = analyzeBlockFlow(statement.thenBlock)
+                    errors.addAll(thenFlow.errors)
+                    warnings.addAll(thenFlow.warnings)
+
+                    statement.elseBlock?.let {
+                        val elseFlow = analyzeBlockFlow(it)
+                        errors.addAll(elseFlow.errors)
+                        warnings.addAll(elseFlow.warnings)
+                    }
+                }
+
+                is WhileStatementAstNode -> {
+                    val bodyFlow = analyzeBlockFlow(statement.bodyBlock)
+                    errors.addAll(bodyFlow.errors)
+                    warnings.addAll(bodyFlow.warnings)
+                }
+
+                is ForStatementAstNode -> {
+                    val bodyFlow = analyzeBlockFlow(statement.desugaredContent)
+                    errors.addAll(bodyFlow.errors)
+                    warnings.addAll(bodyFlow.warnings)
+                }
+
+                else -> {}
+            }
+        }
+
+        val returningStatementIndex = effectiveStatements.indexOfFirst { statementGuaranteesReturn(it) }
+        if (returningStatementIndex >= 0 && returningStatementIndex < effectiveStatements.lastIndex) {
+            val statementsAfterReturn = effectiveStatements.drop(returningStatementIndex + 1)
+            if (statementsAfterReturn.any { statementContainsExplicitReturn(it) }) {
+                errors.add(
+                    SemanticError.ControlFlowSemanticError(
+                        block,
+                        true,
+                        SemanticErrorType.BLOCK_CONTAINS_MORE_THAN_ONE_RETURN
+                    )
+                )
+            } else {
+                errors.add(
+                    SemanticError.ControlFlowSemanticError(
+                        block,
+                        true,
+                        SemanticErrorType.BLOCK_CONTAINS_CODE_AFTER_RETURN
+                    )
+                )
+            }
+        }
+
+        return BlockFlow(errors, warnings)
+    }
+
+    private fun blockGuaranteesReturn(block: BlockAstNode): Boolean =
+        block.statements
+            .filterNot { it is ReturnFunctionStatementAstNode && !it.explicit }
+            .any { statementGuaranteesReturn(it) }
+
+    private fun statementGuaranteesReturn(statement: ASTNode): Boolean =
+        when (statement) {
+            is ReturnFunctionStatementAstNode -> statement.explicit
+            is IfStatementAstNode -> {
+                val elseBlock = statement.elseBlock
+                elseBlock != null &&
+                        blockGuaranteesReturn(statement.thenBlock) &&
+                        blockGuaranteesReturn(elseBlock)
+            }
+            else -> false
+        }
+
+    private fun statementContainsExplicitReturn(statement: ASTNode): Boolean =
+        when (statement) {
+            is ReturnFunctionStatementAstNode -> statement.explicit
+            is IfStatementAstNode -> blockContainsExplicitReturn(statement.thenBlock) ||
+                    statement.elseBlock?.let { blockContainsExplicitReturn(it) } == true
+            is WhileStatementAstNode -> blockContainsExplicitReturn(statement.bodyBlock)
+            is ForStatementAstNode -> blockContainsExplicitReturn(statement.desugaredContent)
+            else -> false
+        }
+
+    private fun blockContainsExplicitReturn(block: BlockAstNode): Boolean =
+        block.statements.any { statementContainsExplicitReturn(it) }
 }

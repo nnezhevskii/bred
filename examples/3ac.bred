@@ -1,4 +1,2 @@
-            fun main(): Unit {
-                val n: Int = 1
-                val bad: Int = n[0]
-            }
+            val answer: Int = "wrong"
+            fun main(): Unit { }
