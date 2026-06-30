@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.nnezh.bred.codegenerator.TemplateInstantiator
+import org.nnezh.bred.common.TypeSign
 import org.nnezh.bred.context.ProgramContextCollector
 import org.nnezh.bred.context.ProgramGlobalContext
 import org.nnezh.lexer.Lexer

@@ -128,11 +128,13 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
             is BlockAstNode -> {
                 val innerScope = scope.innerScope()
                 val warnings = mutableListOf<SemanticError.SemanticWarning>()
-                val flow = analyzeBlockFlow(node)
-                if (flow.errors.isNotEmpty()) {
-                    return flow.errors.left()
+                if (scope.checkControlFlow) {
+                    val flow = analyzeBlockFlow(node)
+                    if (flow.errors.isNotEmpty()) {
+                        return flow.errors.left()
+                    }
+                    warnings.addAll(flow.warnings)
                 }
-                warnings.addAll(flow.warnings)
                 node.statements.forEach { node ->
                     visit(node, innerScope).fold(
                         ifLeft = { return it.left() },
@@ -238,7 +240,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                         )
                     ).left()
                 }
-                scope.put(node, types.first())
+                types.firstOrNull()?.let { scope.put(node, it) }
                 return warnings.right()
             }
 
@@ -411,10 +413,10 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
 
             is ArrayDeclarationASTNode -> {
                 val warnings = mutableListOf<SemanticError.SemanticWarning>()
-                node.expression?.let {
-                    visit(it, scope).fold(
+                node.expression?.let { initializer ->
+                    visit(initializer, scope).fold(
                         ifLeft = { error -> return error.left() },
-                        ifRight = {
+                        ifRight = { initializerWarnings ->
                             val expectedSize = node.size
                             val actualSize = (node.expression as ArrayInitializationExpressionASTNode).args.size
 
@@ -427,11 +429,22 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                                 ).left()
                             }
 
-                            scope.put(node.name, TypeSign("Array", listOf(node.type)), node.isMutable)
-                            warnings.addAll(it)
+                            val initializerElementType = scope.get(initializer)
+                            if (initializerElementType != null && initializerElementType != node.type) {
+                                return singletonList(
+                                    SemanticError.TypeSemanticError(
+                                        node,
+                                        SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES
+                                    )
+                                ).left()
+                            }
+
+
+                            warnings.addAll(initializerWarnings)
                         }
                     )
                 }
+                scope.put(node.name, TypeSign("Array", listOf(node.type)), node.isMutable)
                 return warnings.right()
             }
 
@@ -468,7 +481,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
             }
 
             is ForStatementAstNode -> {
-                return visit(node.desugaredContent, scope)
+                return visit(node.desugaredContent, scope.withControlFlowChecks(false))
             }
 
             is IfStatementAstNode -> {
@@ -568,11 +581,15 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
         private val variablesType: MutableMap<String, Pair<TypeSign, Boolean>> = mutableMapOf(),
         private val expressionTypeTable: IdentityHashMap<ExpressionASTNode, TypeSign> = IdentityHashMap(),
         private val registeredFunctions: MutableList<FunctionSignature> = mutableListOf(),
-        val expectedReturnType: TypeSign? = null
+        val expectedReturnType: TypeSign? = null,
+        val checkControlFlow: Boolean = true
     ) {
 
         fun innerScope(expectedReturnType: TypeSign? = this.expectedReturnType) =
-            Scope(this, mutableMapOf(), expressionTypeTable, mutableListOf(), expectedReturnType)
+            Scope(this, mutableMapOf(), expressionTypeTable, mutableListOf(), expectedReturnType, checkControlFlow)
+
+        fun withControlFlowChecks(enabled: Boolean) =
+            Scope(parentScope, variablesType, expressionTypeTable, registeredFunctions, expectedReturnType, enabled)
 
         fun put(variable: String, type: TypeSign, isMutable: Boolean) {
             variablesType[variable] = Pair(type, isMutable)
@@ -659,11 +676,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                     warnings.addAll(bodyFlow.warnings)
                 }
 
-                is ForStatementAstNode -> {
-                    val bodyFlow = analyzeBlockFlow(statement.desugaredContent)
-                    errors.addAll(bodyFlow.errors)
-                    warnings.addAll(bodyFlow.warnings)
-                }
+                is ForStatementAstNode -> {}
 
                 else -> {}
             }

@@ -1,2 +1,6 @@
-            val answer: Int = "wrong"
-            fun main(): Unit { }
+fun main(): Unit {
+    val values: Int[2]
+    values[0] = 1
+    values[1] = 3
+    val first: Int = values[0]
+}

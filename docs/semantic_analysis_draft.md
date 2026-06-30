@@ -1,443 +1,400 @@
-# bred — Semantic Analysis (Draft)
+# bred - Semantic Analysis
 
-Technical reference for **semantic checks after AST construction**. Not part of the grammar (`docs/grammar.md` covers syntax only).
+This document describes the current `analyzer` module. The older semantic code
+under the main source tree is intentionally out of scope.
 
-**Source of truth for behavior (tests):**
+Source of truth:
 
-| Analyzer | Test file |
-|----------|-----------|
-| `VariableScopeSubAnalyzer` | `src/test/kotlin/org/nnezh/semantic/VariableScopeAnalyzerTest.kt` |
-| `FunctionSubAnalyzer` | `src/test/kotlin/org/nnezh/semantic/FunctionAnalyzerTest.kt` |
-| `TypeChecker` | `src/test/kotlin/org/nnezh/semantic/TypeCheckerTest.kt` (intended semantics; failures track gaps) |
-| `SemanticControlFlowAnalyzer` | no dedicated test file (behavior covered indirectly) |
-| Full pipeline | `SemanticAnalyzer` (sequential orchestration) |
+- `analyzer/src/main/java/org/nnezh/SemanticAnalyzer.kt`
+- `analyzer/src/main/java/org/nnezh/TypeValidator.kt`
+- `analyzer/src/main/java/org/nnezh/SemanticError.kt`
+- `analyzer/src/test/kotlin/org/nnezh/SemanticAnalyzerTest.kt`
+- `analyzer/src/test/kotlin/org/nnezh/SemanticAnalyzerTestSupport.kt`
+- shared context and signatures in `common` and `parser/src/main/.../context`
 
-**Implementation:**
-
-| Component | File |
-|-----------|------|
-| Orchestrator | `src/main/kotlin/org/nnezh/semantic/SemanticAnalyzer.kt` |
-| Visitor base | `src/main/kotlin/org/nnezh/semantic/generic/SemanticSubAnalyzer.kt` |
-| Variable scope | `src/main/kotlin/org/nnezh/semantic/analyzers/VariableScopeSubAnalyzer.kt` |
-| Function registry | `src/main/kotlin/org/nnezh/semantic/analyzers/FunctionSubAnalyzer.kt` |
-| Type checking | `src/main/kotlin/org/nnezh/semantic/analyzers/TypeChecker.kt` |
-| Control flow | `src/main/kotlin/org/nnezh/semantic/analyzers/SemanticControlFlowAnalyzer.kt` |
-| Errors | `src/main/kotlin/org/nnezh/semantic/generic/SemanticError.kt` |
-| Types | `src/main/kotlin/org/nnezh/base/Types.kt` |
-
----
-
-## Pipeline
-
-`SemanticAnalyzer` runs **four** passes **sequentially**. Passes 1–3 short-circuit on critical errors; pass 4 runs if pass 3 produced no critical errors.
-
-```mermaid
-flowchart LR
-    ast[ProgramASTNode]
-    vsa[VariableScopeSubAnalyzer]
-    fsa[FunctionSubAnalyzer]
-    tc[TypeChecker]
-    scfa[SemanticControlFlowAnalyzer]
-    errs[List of SemanticError]
-    ast --> vsa
-    vsa -->|no critical errors| fsa
-    fsa -->|no critical errors| tc
-    tc -->|no critical errors| scfa
-    vsa --> errs
-    fsa --> errs
-    tc --> errs
-    scfa --> errs
-```
-
-1. **Variable scope** — name resolution, redeclaration, overshadowing, array index variables in assignments.
-2. **Functions** — registry, arity at call sites, duplicate signatures.
-3. **Types** — expression type inference (side table), compatibility checks; uses `FunctionSubAnalyzer.registry` for overload resolution by argument types.
-4. **Control flow** — return-path / explicit-return expectations per function (`SemanticControlFlowAnalyzer`).
-
-The AST (`org.nnezh.ast`) is **never modified**. Inferred expression types are stored in `ASTNodeTypeTable` (`IdentityHashMap<ExpressionASTNode, Type>`).
-
----
-
-## Inputs / Outputs
-
-- **Input:** `ProgramASTNode`.
-- **Output:** `List<SemanticError>` (all passes combined).
-
-### Error taxonomy
-
-| Wrapper | `SemanticErrorType` values |
-|---------|---------------------------|
-| `VariableScopeSemanticError` | `UNKNOWN_VARIABLE`, `VARIABLE_REDECLARATION`, `VARIABLE_OVERSHADOW` |
-| `FunctionSemanticError` | `FUNCTION_NOT_FOUND`, `FUNCTION_EXISTS_BUT_WRONG_ARGUMENTS_AMOUNT`, `REDEFINE_FUNCTION` |
-| `TypeSemanticError` | `TYPE_CHECKER_INCOMPATIBLE_TYPES`, `TYPE_CHECKER_INCONSISTENT_ARRAY_TYPE`, `ARRAY_INDEX_IS_NOT_INTEGER`, `INVALID_AMOUNT_OF_ARGUMENTS_IN_ARRAYS_INITIALIZATION`, `METHOD_HAS_WRONG_RETURN` |
-| `ControlFlowSemanticError` | `EXPLICIT_RETURN_IS_EXPECTED` |
-
-`FUNCTION_IS_USED_AS_VARIABLE` exists in the enum but is **not emitted** (legacy).
-
-All current semantic errors use `isCriticalError = true`.
-
----
-
-## 1. Variable scope (`VariableScopeSubAnalyzer`)
-
-### Responsibilities
-
-- Lexical scoping for variables (`val` / `var` / function parameters).
-- Forbid redeclaration in the same scope.
-- Forbid overshadowing names from parent scopes.
-- Detect unknown variable uses.
-
-### Scope model
-
-- **Scope:** `name → VariableDeclaration(name, type, isMutable)`.
-- **Lookup** returns `(declaration, isCurrentScope)`.
-- **Scopes created for:** globals, each function body (args + block), each nested block (`if`/`while`/`for` desugared content).
-
-### Traversal policy
-
-- **Within one statement:** collect **all** errors (e.g. multiple `UNKNOWN_VARIABLE` in one initializer).
-- **Within a block:** sequential statements; stop after first statement with a critical error.
-- **`if` / `while`:** if condition has critical error, body not analyzed.
-- **Binding:** variable added to scope only if its declaration produced no critical errors.
-
-### Diagnostics
-
-#### `UNKNOWN_VARIABLE` (critical)
-
-Unresolved name in `VariableExpressionNode`, unknown assignment target, or RHS expressions.
-
-#### `VARIABLE_REDECLARATION` (critical)
-
-Second declaration of the same name in the **current** scope (`lookUp(...).second == true`).
-
-#### `VARIABLE_OVERSHADOW` (critical)
-
-Declaration hides a name from a **parent** scope (global, outer local, or function argument vs global).
-
-### Not implemented
-
-- Assignment to immutable `val` (`G-32` in `docs/TODO.md`).
-
-### Test coverage map
-
-| Behavior | Test name (abbrev.) |
-|----------|---------------------|
-| Unknown in `return` | `unknown variable in expression is critical` |
-| Unknown assignment target | `unknown variable in assignment is critical` |
-| Unknown in initializer | `unknown variable in initializer is unknown variable not uninitialized` |
-| Multiple unknowns in initializer | `unknown variables in initializer are all reported as unknown` |
-| OVERSHADOW + unknowns in one statement | `returns all errors found inside statement but stops after critical statement` |
-| Valid `var` init with global + param | `mutable variable initializer can use global constant and parameter` |
-| Multiple unknowns in assignment RHS | `assignment reports all unknown variables in expression` |
-| Stop after critical statement | `calc function reports only unknown identifiers in invalid reassignment` |
-| Unknowns in call arguments | `function call reports all unknown variables in arguments` |
-| `var` reassignment | `mutable variable can be reassigned after initialization` |
-| `if` condition short-circuit | `critical error in if condition prevents analyzing then block` |
-| REDECLARATION | `redeclaring name in same scope is critical` |
-| OVERSHADOW in nested block | `shadowing variable in nested block is critical` |
-| OVERSHADOW function arg | `shadowing function argument over global is critical` |
-| OVERSHADOW local over global | `shadowing local variable over global is critical` |
-| Outer scope visible inside block | `variable from outer scope is visible inside nested block` |
-| Inner scope not visible outside | `variable declared in if/while block is not visible outside`, `for counter variable is not visible after loop` |
-
----
-
-## 2. Function registry (`FunctionSubAnalyzer`)
-
-### Responsibilities
-
-- Register built-ins (`BuiltInMethods`) and user `fun` declarations.
-- Check call sites: function exists, arity matches some overload.
-- Forbid duplicate signatures (`name + parameter types`; return type excluded).
-- Allow function and variable names to coexist (syntactic disambiguation).
-
-### Signature identity
-
-```ebnf
-signatureKey ::= name '(' paramType { ',' paramType } ')' ;
-```
-
-| Case | Allowed |
-|------|---------|
-| Same name, different arity | yes |
-| Same name, same arity, different parameter types | yes |
-| Same name, same parameter types, different return type | no → `REDEFINE_FUNCTION` |
-| Same name, same parameter types, different parameter names only | no → `REDEFINE_FUNCTION` |
-
-```bred
-fun foo(x: Int): Unit { }
-fun foo(x: String): Unit { }        // ok
-
-fun foo(x: String): Unit { }
-fun foo(x: String): String {       // REDEFINE_FUNCTION
-    return x
-}
-```
-
-### Traversal policy
-
-- Register all functions first; then analyze globals and bodies.
-- **No block short-circuit** (unlike variable scope).
-- On `REDEFINE_FUNCTION` during registration, analysis **stops entirely** (`G-33`).
-
-### Diagnostics
-
-| Error | When | `where` |
-|-------|------|---------|
-| `FUNCTION_NOT_FOUND` | Call to unknown name | `FunctionCallExpressionNode` |
-| `FUNCTION_EXISTS_BUT_WRONG_ARGUMENTS_AMOUNT` | Name exists, no overload with matching arity | `FunctionCallExpressionNode` |
-| `REDEFINE_FUNCTION` | Duplicate `signatureKey` (incl. builtins) | `ProgramASTNode` (should be duplicate decl — `G-33`) |
-
-**Note:** this pass does **not** check argument types at call sites; that is `TypeChecker`.
-
-### Function / variable name coexistence
-
-| Surface form | Resolved as | Analyzer |
-|--------------|-------------|----------|
-| `ident(...)` | function call | `FunctionSubAnalyzer` + `TypeChecker` |
-| `ident` in expression | variable | `VariableScopeSubAnalyzer` + `TypeChecker` |
-| `val ident` / `var ident` | variable declaration | scope + type init check |
-
-### Test coverage map
-
-| Behavior | Test name (abbrev.) |
-|----------|---------------------|
-| Valid arity | `valid call with matching arity` |
-| Types not checked at arity pass | `argument types are not checked` |
-| Overload by arity | `overload by arity is allowed`, `different arity is not redefine` |
-| Overload by parameter types | `overload by parameter types is allowed` |
-| Redefine same param types | `duplicate user function same arity`, `duplicate same parameter types different return type is redefine`, `duplicate same parameter types implicit Unit and explicit return type is redefine`, `redefine builtin with same arity` |
-| Forward reference | `forward reference between functions` |
-| Builtin call | `builtin call is valid` |
-| Call in RHS / nested / statement | `call in assignment RHS`, `nested call in arguments`, `statement-level call` |
-| Unknown function | `unknown function is critical` |
-| Wrong arity | `too few arguments`, `too many arguments`, `zero args when one required`, `builtin wrong arity` |
-| Same name coexistence | `global val and function with same name`, `local val and function with same name`, … |
-| Arity error + arg walk | `wrong arity and unknown args in same call both reported` |
-| Redefine early abort | `redefine stops entire program analysis early` |
-
----
-
-## 3. Type checking (`TypeChecker`)
-
-### Responsibilities
-
-- Infer type of each `ExpressionASTNode` visited; store in `ASTNodeTypeTable` (identity map, AST unchanged).
-- Check compatibility: initializers, assignments, `if`/`while` conditions, `return` vs function result type, function call argument types vs registry.
-
-### Supporting types
+## 1. Public API
 
 ```kotlin
-class ASTNodeTypeTable {
-    // IdentityHashMap<ExpressionASTNode, Type>
-    fun put(node: ExpressionASTNode, type: Type)
-    fun get(node: ExpressionASTNode): Type?
-}
-
-class TypeScope(parentScope, typeTable) {
-    // variable name → Type (lexical, mirrors scope structure)
-    // delegates expression lookup to typeTable + parent
-}
-
-class TypeValidator {
-    fun check(typeA, typeB): Boolean           // structural equality ==
-    fun checkUnaryOperation(op, operandType)    // "-" → Int only; "!" → Boolean only
-    fun produceBinaryType(op, left, right)      // same-type rule (see limitations)
+class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
+    fun analyze(root: ProgramRoot): Either<List<SemanticError>, List<SemanticError.SemanticWarning>>
 }
 ```
 
-`TypeChecker` receives `FunctionRegistry` from `FunctionSubAnalyzer` (shared built-ins + user signatures).
+Result shape:
 
-### Intended operator typing rules
+- `Left(List<SemanticError>)`: at least one critical semantic error.
+- `Right(List<SemanticWarning>)`: no critical errors; warnings may be present.
 
-Tests in `TypeCheckerTest` define **target** behavior (not current implementation). Operator result types:
+Tests normally require no errors and no warnings unless a warning is the
+expected result.
 
-| Operators | Operand type(s) | Result type |
-|-----------|-----------------|-------------|
-| `%` | `Int`, `Int` | `Int` |
-| `%` | `Double`, `Double` | **rejected** (modulo is Int-only) |
-| `+` `-` `*` `/` | `Double`, `Double` | `Double` |
-| `==` `!=` `<` `>` `<=` `>=` | same numeric type (`Int`/`Int` or `Double`/`Double`) | `Boolean` |
-| `==` `!=` | `String`, `String` | `Boolean` |
-| `&&` `\|\|` | `Boolean`, `Boolean` | `Boolean` |
-| `-` (unary) | `Int` | `Int` |
-| `-` (unary) | `Double` | `Double` |
-| `!` (unary) | `Boolean` | `Boolean` |
+## 2. Setup Before Traversal
 
-**Rejected (must produce `TYPE_CHECKER_INCOMPATIBLE_TYPES`):**
+The test pipeline is:
 
-- mixed numeric without promotion (`Int` + `Double`, `Int` == `String`)
-- arithmetic/logical on wrong types (`true + false`, `1 && 0`, `-"x"`, `!1`)
-- non-boolean `if` / `while` conditions
-- initializer/assignment/return type mismatch
-- call with no overload matching inferred argument types (incl. builtins)
+```text
+source -> Lexer -> AbstractSyntaxTreeBuilder -> ProgramContextCollector -> SemanticAnalyzer
+```
 
-**Numeric promotion:** not supported — `Int` and `Double` are incompatible in binary ops.
+`ProgramContextCollector` builds a `ProgramGlobalContext` and currently records:
 
-### Expression type inference
+- primitive types `Int`, `Double`, `String`, `Boolean`;
+- declared functions;
+- typeclasses;
+- instances;
+- a `println` built-in in the context-level function map.
 
-| Node | Inferred type |
-|------|---------------|
-| `IntLiteralExpressionNode` | `IntType` |
-| `DoubleLiteralExpressionNode` | `DoubleType` |
-| `BooleanLiteralExpressionNode` | `BoolType` |
-| `StringLiteralExpressionNode` | `StringType` |
-| `VariableExpressionNode` | type from `TypeScope` by name |
-| `BinaryExpressionASTNode` | per operator table above |
-| `UnaryExpressionASTNode` | per operator table; result **must** be stored on the unary node |
-| `FunctionCallExpressionNode` | `returnType` of the resolved overload; args must match signature |
-| `ArrayAccessExpressionASTNode` | element type of `StaticArrayType`; index must be `Int` |
-| `StaticArrayInitializationExpressionsListNode` | unified element type of all values |
+`SemanticAnalyzer` also registers all functions from
+`common/src/main/kotlin/org/nnezh/bred/common/BuiltInMethods.kt` in its own
+semantic function registry before analyzing the program.
 
-All inferred expression types are recorded in `ASTNodeTypeTable` (identity map).
+The analyzer then:
 
-### Arrays (semantic)
+1. visits global variables;
+2. registers user function signatures;
+3. visits the program's functions.
 
-| Scenario | `SemanticErrorType` | `where` |
-|----------|---------------------|---------|
-| Init list mixed element types | `TYPE_CHECKER_INCONSISTENT_ARRAY_TYPE` | `StaticArrayInitializationExpressionsListNode` |
-| Non-integer index | `ARRAY_INDEX_IS_NOT_INTEGER` | `ArrayAccessExpressionASTNode` |
-| `size != values.size` on init | `INVALID_AMOUNT_OF_ARGUMENTS_IN_ARRAYS_INITIALIZATION` | `StaticArrayExpressionNode` |
-| `arr[0] = incompatible` | `TYPE_CHECKER_INCOMPATIBLE_TYPES` | `AssignmentStatementASTNode` |
-| Unknown array name | `UNKNOWN_VARIABLE` | `ArrayAccessExpressionASTNode` or `AssignmentStatementASTNode` |
-| `val arr: Int[n] = [1, 2]` | no type errors when element types match | — |
+Typeclass and instance declarations are not visited by the semantic analyzer.
+They are accepted by the parser and are mainly consumed by template
+instantiation.
 
-Tests: `TypeCheckerTest` region **Arrays**, `VariableScopeAnalyzerTest` region **Arrays**.
+## 3. Scope Model
 
-### Statement / declaration checks
+The analyzer uses an internal recursive `Scope`.
 
-| Construct | Check |
-|-----------|-------|
-| `VariableInitializationASTNode` | scalar: `variableType == infer(valExpression)`; static array: element type == init-list unified type; size == list length |
-| `AssignmentStatementASTNode` | `infer(lvalue) == infer(rvalue)`; array lvalue → element type |
-| `IfStatementASTNode` / `WhileStatementASTNode` | `infer(condition) == BoolType` |
-| `DeclareFunctionASTNode` | `resultType == type(first ReturnFunctionStatementASTNode in body)` |
-| `FunctionCallExpressionNode` | inferred arg types match a registered signature |
+Each scope contains:
 
-### Traversal policy
+- variable bindings: `name -> (TypeSign, isMutable)`;
+- a shared identity table for expression types:
+  `IdentityHashMap<ExpressionASTNode, TypeSign>`;
+- registered function signatures;
+- the expected return type for the current function;
+- a flag controlling local control-flow checks.
 
-- Analyze globals, then functions (same visitor shape as other analyzers).
-- **Block short-circuit:** stop block on first critical error (like variable scope).
-- **Binary:** short-circuit on critical error in left operand before analyzing right.
+Variable lookup walks parent scopes. Function lookup walks parent scopes and
+matches exact name plus exact argument type list.
 
-### Diagnostic
+Array variables are represented as:
 
-#### `TYPE_CHECKER_INCOMPATIBLE_TYPES` (critical)
+```kotlin
+TypeSign("Array", listOf(elementType))
+```
 
-Emitted when types do not match. `where` points to the offending node:
+Array parameters are converted to the same representation during function
+signature registration and when function arguments are put into scope.
 
-- `VariableInitializationASTNode` — initializer mismatch
-- `BinaryExpressionASTNode` — operand types differ
-- `AssignmentStatementASTNode` — assignment mismatch
-- `IfStatementASTNode` / `WhileStatementASTNode` — non-boolean condition
-- `DeclareFunctionASTNode` — return type mismatch
-- `FunctionCallExpressionNode` — no overload for inferred argument types
-- `UnaryExpressionASTNode` — invalid unary operand type
+## 4. Diagnostics
 
-### Known gaps (implementation vs intended tests)
+`SemanticErrorType` currently contains:
 
-`TypeCheckerTest` is the specification for target behavior. As of the latest run, **many tests intentionally fail** until `TypeChecker` / `TypeValidator` are completed.
+```text
+VARIABLE_OVERSHADOW
+VARIABLE_REDECLARATION
+UNKNOWN_VARIABLE
+VARIABLE_CHANGING_IMMUTABLE
+UNEXPECTED_LVALUE
+FUNCTION_NOT_FOUND
+FUNCTION_IS_USED_AS_VARIABLE
+REDEFINE_FUNCTION
+FUNCTION_EXISTS_BUT_WRONG_ARGUMENTS
+COULDNT_RESOLVE_ARGUMENT_TYPE
+TYPE_CHECKER_INCOMPATIBLE_TYPES
+TYPE_CHECKER_INCONSISTENT_ARRAY_TYPE
+ARRAY_INDEX_IS_NOT_INTEGER
+INVALID_AMOUNT_OF_ARGUMENTS_IN_ARRAYS_INITIALIZATION
+ARRAY_IS_EXPECTED_BUT_GOT_SCALAR
+BLOCK_CONTAINS_MORE_THAN_ONE_RETURN
+BLOCK_CONTAINS_CODE_AFTER_RETURN
+METHOD_HAS_NO_RETURN
+METHOD_HAS_WRONG_RETURN
+EXPLICIT_RETURN_IS_EXPECTED
+```
 
-| Gap | Intended | Current implementation |
-|-----|----------|------------------------|
-| Comparison/logical operators | `==`, `<`, `&&` → `Boolean` | `produceBinaryType` returns operand type when equal |
-| Unary `-` / `!` | result typed on unary node | operand checked only; unary node often untyped → NPE downstream |
-| Unary `-` on `Double` | allowed | `checkUnaryOperation` allows `Int` only |
-| Call result type | store callee `returnType` on call node | not stored |
-| `if` condition error | short-circuit then-block | then-block still analyzed |
-| Return analysis | all paths / nested returns | per-return checks in `analyzeReturnFunctionStatementASTNode`; redundant top-level-only check removed |
-| Static array init | element type match, size check | fixed in `TypeChecker` (G-37) |
-| Array index in assign scope | index variables resolved | fixed in `VariableScopeSubAnalyzer` (G-40) |
-| `FunctionRegistry.getResultType` | positional arg equality | fixed (G-41) |
-| Multiple errors in one expr | report incompatible comparison | may report on wrong node |
-| Cyclic / forward initializers | diagnostic, no crash | some cases **throw** (NPE); `val a = a + 1` may report **no** error |
-| Function as value | `takeInt(foo)` when only `fun foo()` exists → error, no crash | **throws** on bare function identifier in value position |
-| First-class functions | not supported | function name may be treated as unknown variable or crash |
+Current emitted wrappers:
 
-### Pathological cases (intended robustness)
+| Wrapper | Critical |
+|---------|----------|
+| `VariableScopeSemanticError` | yes |
+| `FunctionSemanticError` | yes |
+| `TypeSemanticError` | yes |
+| `ControlFlowSemanticError` | value supplied at creation; current errors are critical |
+| `SemanticWarning` | no |
 
-These are **stress tests** for `TypeChecker` — the analyzer must always finish with diagnostics, never throw:
+`VARIABLE_OVERSHADOW` is emitted as a warning, not as a critical error.
 
-| Scenario | Expected behavior |
-|----------|-------------------|
-| `val a: Int = a + 1` | At least one type error (cyclic/forward use) |
-| `val a = b; val b = a` (same block or globals) | At least one error |
-| `val x = y + 1` before `val y = 10` | At least one error |
-| `takeInt(foo)` when only `fun foo(): Unit` exists | Error — no first-class functions |
-| `return foo` when `foo` is only a function | Error |
-| `outer(mid(leaf))` with `leaf(): Unit`, `mid(x: Int): Int` | Error at inner/outer call |
-| Deep nesting (`if` × 7, `if`/`while`/`for` stack) | Reach innermost error without stack overflow |
-| Mutual recursion with wrong arg type | Error on offending call |
-| Second `return` wrong type after valid `return` | Error on all return paths |
+Some enum values exist but are not covered by current tests or are not normally
+emitted by the current analyzer, for example `FUNCTION_IS_USED_AS_VARIABLE` and
+`METHOD_HAS_NO_RETURN`.
 
-Helper `assertTypeCheckSurvives` / `assertSurvivesWithAtLeastOneError` enforce **no throw + at least one diagnostic** for the worst cases.
+## 5. Variables
 
-### Test coverage map
+### 5.1 Declarations
 
-`TypeCheckerTest` — **~116 tests** (intended semantics; region **Arrays** specifies target array behavior).
+For scalar local declarations:
 
-| Category | Examples |
-|----------|----------|
-| Literals / scope | `all primitive literals match their annotations`, `global val initializer is type-checked`, `nested block sees outer variable type` |
-| Arithmetic / compare | `int arithmetic chain`, `int comparison produces boolean`, `double comparison produces boolean` |
-| Logical / unary | `logical and and or require boolean operands`, `unary minus on int`, `unary minus on double`, `unary not on boolean`, `nested unary and binary` |
-| Control flow | `if and else with boolean condition from expression`, `while with boolean expression condition` |
-| Returns | `function returns expression of correct type`, `function returns call result`, `implicit Unit function with empty body` |
-| Calls | `builtin stringConcat`, `stringEquals`, overload `foo(Int)` / `foo(String)`, `multi argument user function` |
-| Negative init/assign | `boolean assigned to int`, `int comparison assigned to int`, `string to int`, `global val mismatch`, `assignment to var` |
-| Negative operators | `int + double`, `int + string`, `int == string`, `1 && 0`, `true + false`, `!1`, `-true`, `-"x"` |
-| Negative control flow | `if (1)`, `if ("yes")`, `while (42)` |
-| Negative calls/returns | wrong return type, wrong overload, `println(42)`, `stringConcat("a", 1)` |
-| Traversal edges | block short-circuit, if condition short-circuit, multiple errors in comparison |
-| Deep nesting positive | `deeply nested arithmetic with precedence`, `chained comparisons and logical operators`, `triple nested unary and comparison`, `nested if else with boolean guards`, `while nested in if`, `for loop body with int arithmetic`, nested calls, builtin chains, `function and variable same name` |
-| Deep nesting negative | nested non-boolean `if`, outer wrong `if` short-circuit, wrong type in parentheses, logical chain with int, comparison in arithmetic, nested wrong calls (3 levels), `substring` wrong index type, for/while/else body errors |
-| Multi-function | `forward reference call chain`, fail-fast vs independent function checks |
-| **Arrays** | `static array with matching initialization list`, `array read with int index`, `incompatible type in array element assignment`, init list inconsistent types, non-integer index, size mismatch |
-| **Pathological** | cyclic initializers (self/mutual/global/forward), function-as-argument (bare name, nested depth 3, `return foo`), unit-in-arithmetic, builtin chain break, overload with no match, cascading wrong args, second return wrong type, assignment to param, 7-deep `if` nesting |
+1. Check whether the name exists in the current or parent scope.
+2. If it exists in the current scope, emit `VARIABLE_REDECLARATION`.
+3. If it exists only in a parent scope, emit warning `VARIABLE_OVERSHADOW`.
+4. Put the declared name in scope before analyzing the initializer.
+5. Analyze the initializer expression.
+6. Require the declared type to equal the initializer expression type.
 
----
+The same redeclaration and shadowing policy is used for global scalar
+variables.
 
-## 4. Control flow (`SemanticControlFlowAnalyzer`)
+Important current behavior: because a scalar variable is inserted into scope
+before its initializer is analyzed, self-reference behavior is not separately
+diagnosed as "use before initialization".
 
-### Responsibilities
+### 5.2 Assignment
 
-- Per-function return-path analysis after type checking.
-- Detect implicit `return Unit` in non-`Unit` functions when explicit return is expected.
+Assignments require a parser-level left value:
 
-### Diagnostics
+- variable expression;
+- array element access.
 
-| Error | When | `where` |
-|-------|------|---------|
-| `EXPLICIT_RETURN_IS_EXPECTED` | Non-`Unit` function body terminates with implicit/synthetic return only | `BlockASTNode` |
+The analyzer additionally:
 
-Does not extend `SemanticSubAnalyzer`; uses a separate walker.
+- analyzes the left side;
+- analyzes the right side;
+- rejects assignment to immutable scalar variables with
+  `VARIABLE_CHANGING_IMMUTABLE`;
+- requires left and right types to be equal.
 
----
+Array element assignment is allowed even when the array binding was declared
+with `val`; mutability is checked only for scalar variable lvalues.
 
-## Out of scope (entire semantic phase)
+## 6. Functions
 
-- Runtime semantics / code generation
-- Type inference for `val x = expr` without annotation (`G-03`)
-- Distinguishing `val a = a + 1` self-use from unknown variable (reported as `UNKNOWN_VARIABLE`)
-- Full operator typing (comparison → `Bool`, arithmetic promotion)
-- Assignment to immutable `val` (`G-32`)
+### 6.1 Registration
 
----
+Before function bodies are analyzed, user functions are registered after global
+variables are processed.
 
-## Open gaps (`docs/TODO.md`)
+A user function signature is:
 
-| ID | Item |
-|----|------|
-| G-32 | Assignment to immutable `val` |
-| G-33 | `REDEFINE_FUNCTION` early abort + wrong `where` |
-| G-34 | Align traversal policies across analyzers |
-| G-35 | Function parameter names vs registry |
-| G-09 | For-loop bound types |
-| G-31 | Missing return on non-Unit functions (parser synthetic `return Unit`) |
-| G-37 | Static array init: element type vs `StaticArrayType` mismatch |
-| G-38 | Scalar rhs on array decl → parse error, not `ClassCastException` |
-| G-39 | `val` static arrays: `isMutable = false` |
-| G-40 | Array assignment: validate index expression in scope pass |
-| G-41 | `FunctionRegistry.getResultType`: positional overload match |
+```text
+name + argument TypeSign list
+```
 
-TypeChecker-specific follow-ups (not yet in TODO): unary result typing, per-operator binary rules, call result types.
+Return type and parameter names are not part of duplicate detection. Therefore
+same name and same argument types with a different return type is
+`REDEFINE_FUNCTION`.
+
+Array parameters are registered as `Array<elementType>`:
+
+```text
+fun take(values: Int[])
+```
+
+is registered as:
+
+```kotlin
+FunctionSignature("take", listOf(TypeSign("Array", listOf(TypeSign("Int")))), ...)
+```
+
+### 6.2 Calls
+
+For a function call:
+
+1. Analyze all argument expressions.
+2. Read each argument type from the expression type table.
+3. Resolve a function by exact name and exact positional argument types.
+4. If the name exists but no signature matches, emit
+   `FUNCTION_EXISTS_BUT_WRONG_ARGUMENTS`.
+5. If no function with that name exists, emit `FUNCTION_NOT_FOUND`.
+6. Store the resolved result type on the call expression.
+
+Forward function references are valid because all user functions are registered
+before bodies are visited.
+
+Function names are not first-class values. A bare function name in expression
+position is analyzed as a variable and normally produces `UNKNOWN_VARIABLE`.
+
+## 7. Expression Type Rules
+
+Literal types:
+
+| Expression node | Type |
+|-----------------|------|
+| `IntLiteralExpressionASTNode` | `Int` |
+| `DoubleLiteralExpressionASTNode` | `Double` |
+| `StringLiteralExpressionASTNode` | `String` |
+| `BooleanLiteralExpressionASTNode` | `Boolean` |
+
+Variables read their type from scope. Function calls read their result type
+from the resolved signature.
+
+### 7.1 Unary Operators
+
+`TypeValidator.produceUnaryType` defines:
+
+| Operator | Operand type | Result |
+|----------|--------------|--------|
+| `-` | `Int` | `Int` |
+| `-` | `Double` | `Double` |
+| `!` | `Boolean` | `Boolean` |
+
+Other operands produce `TYPE_CHECKER_INCOMPATIBLE_TYPES`.
+
+Implementation gap: the current analyzer validates unary expressions but does
+not store the produced type on the unary expression node. See `docs/TODO.md`.
+
+### 7.2 Binary Operators
+
+`TypeValidator.produceBinaryType` defines:
+
+| Operators | Accepted operands | Result |
+|-----------|-------------------|--------|
+| `==`, `!=` | equal types | `Boolean` |
+| `+` | `Int`/`Int`, `Double`/`Double`, `String`/`String` | operand type |
+| `-`, `*`, `/` | `Int`/`Int`, `Double`/`Double` | operand type |
+| `%` | `Int` and `Int` | `Int` |
+| `&&`, `||` | `Boolean` and `Boolean` | `Boolean` |
+| `<`, `>`, `<=`, `>=` | numeric/numeric or `String`/`String` | `Boolean` |
+
+There is no numeric promotion. `Int + Double` is rejected.
+
+Note: the implementation of relational operators accepts mixed `Int`/`Double`
+comparisons because it checks that both operands are numeric, not that they are
+equal. This is not covered by a dedicated analyzer test and is tracked in
+`docs/TODO.md`.
+
+## 8. Arrays
+
+### 8.1 Local Arrays
+
+For a local static array declaration:
+
+```bred
+val values: Int[3] = [1, 2, 3]
+```
+
+the analyzer:
+
+1. analyzes the initializer list when present;
+2. checks that initializer length equals declaration size;
+3. checks that the initializer element type equals the declared element type;
+4. puts the variable as `Array<Int>` in scope.
+
+`val values: Int[3]` without initializer is valid and puts `Array<Int>` in
+scope.
+
+Empty initializer lists are valid only when the declared size is `0`.
+
+### 8.2 Array Initialization Expressions
+
+Each element is analyzed. If the set of element types has more than one member,
+the analyzer emits `TYPE_CHECKER_INCONSISTENT_ARRAY_TYPE`.
+
+For a non-empty homogeneous list, the expression type is the element type.
+For an empty list, no element type is stored; size checking still happens at
+the declaration node.
+
+### 8.3 Array Access
+
+For `values[index]`, the analyzer:
+
+1. resolves `values`;
+2. requires its type name to be `Array`;
+3. analyzes `index`;
+4. requires the index type to be `Int`;
+5. stores the element type on the access expression.
+
+Using array access on a scalar variable produces `ARRAY_IS_EXPECTED_BUT_GOT_SCALAR`.
+
+## 9. Control Flow and Returns
+
+The parser appends a synthetic non-explicit Unit return to functions with no
+top-level explicit return. The analyzer ignores non-explicit synthetic returns
+for control-flow guarantees.
+
+Return expression checking:
+
+- explicit `return` with no expression has type `Unit`;
+- explicit `return expression` uses the expression type;
+- the actual return type must equal the current function's expected type;
+- mismatches produce `METHOD_HAS_WRONG_RETURN`.
+
+Non-`Unit` functions must have a guaranteed explicit return. A block guarantees
+return if it contains:
+
+- an explicit return statement; or
+- an `if` statement with an `else` branch where both branches guarantee return.
+
+`while` and `for` bodies do not satisfy the function-level return requirement.
+
+Block flow checks ignore synthetic returns and detect:
+
+- `BLOCK_CONTAINS_CODE_AFTER_RETURN` when ordinary code follows a guaranteed
+  return;
+- `BLOCK_CONTAINS_MORE_THAN_ONE_RETURN` when another explicit return appears
+  after a guaranteed return.
+
+For-loop desugared content is visited with control-flow checks disabled for
+that synthetic block, but nested statements are still semantically analyzed.
+
+## 10. Typeclasses, Instances, and Templates
+
+The semantic analyzer does not currently validate typeclass declarations or
+instance declarations directly.
+
+Template and typeclass method rewriting happens in
+`parser/src/main/kotlin/org/nnezh/bred/codegenerator/TemplateInstantiator.kt`.
+This component:
+
+- collects generic functions as templates;
+- collects typeclass method names;
+- clones instance methods using mangled names;
+- instantiates generic function calls when concrete argument types can be
+  inferred;
+- rewrites typeclass method calls to mangled instance method calls when an
+  instance is available;
+- returns `ASTError` on missing constrained instances, missing instance
+  methods, or generated name collisions.
+
+Because this is outside the current analyzer traversal, semantic validation of
+raw typeclass and instance declarations remains incomplete.
+
+## 11. Built-ins
+
+`common.BuiltInMethods` defines semantic signatures for:
+
+```text
+readString(String, Int): Unit
+println(String): Unit
+stringToInt(String): Int
+intToString(Int, String, Int): Unit
+doubleToString(Double, String, Int): Unit
+stringToDouble(String): Double
+intToDouble(Int): Double
+readInt(): Int
+readDouble(): Double
+readBoolean(): Boolean
+doubleToInt(Double): Int
+booleanToString(Boolean, String, Int): Unit
+stringLength(String): Int
+stringConcat(String, String, String, Int): Unit
+stringEquals(String, String): Boolean
+substring(String, Int, Int, String, Int): Unit
+currentTimeMillis(): Int
+random(Int, Int): Int
+```
+
+The semantic tests cover representative built-ins such as `println`,
+`readInt`, and `stringEquals`.
+
+## 12. Known Gaps
+
+The current implementation and tests leave several open items. Actionable
+entries are maintained in `docs/TODO.md`.
+
+Important known gaps:
+
+- global static arrays are parsed but are not handled as arrays by the current
+  global-variable branch in `SemanticAnalyzer`;
+- unary expression result types are not recorded in the expression type table;
+- semantic validation for typeclasses and instances is incomplete;
+- `mut` is lexed but unused by the parser;
+- parser-level type names are not validated;
+- the context-level built-in registry and semantic built-in registry are split.

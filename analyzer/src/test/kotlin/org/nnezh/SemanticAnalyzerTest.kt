@@ -852,7 +852,7 @@ class SemanticAnalyzerTest {
     }
 
     @Test
-    fun `array initialization element type must match declared element type`() {
+        fun `array initialization element type must match declared element type`() {
         assertSingleSemanticError(
             """
             fun main(): Unit {
