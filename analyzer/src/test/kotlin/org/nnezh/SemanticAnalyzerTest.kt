@@ -595,6 +595,315 @@ class SemanticAnalyzerTest {
 
     // endregion
 
+    // region Return and control-flow edge cases
+
+    @Test
+    fun `non unit function may return through nested complete if else`() {
+        assertNoSemanticDiagnostics(
+            """
+            fun choose(a: Int, b: Int): Int {
+                if (a > 0) {
+                    return 1
+                } else {
+                    if (b > 0) {
+                        return 2
+                    } else {
+                        return 3
+                    }
+                }
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `incomplete nested if is valid when followed by unconditional return`() {
+        assertNoSemanticDiagnostics(
+            """
+            fun choose(a: Int, b: Int): Int {
+                if (a > 0) {
+                    return 1
+                } else {
+                    if (b > 0) {
+                        return 2
+                    }
+                }
+                return 3
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `incomplete nested if without later return is missing explicit return`() {
+        assertSingleSemanticError(
+            """
+            fun choose(a: Int, b: Int): Int {
+                if (a > 0) {
+                    return 1
+                } else {
+                    if (b > 0) {
+                        return 2
+                    }
+                }
+            }
+            """.trimIndent(),
+            SemanticErrorType.EXPLICIT_RETURN_IS_EXPECTED,
+            BlockAstNode::class.java,
+        )
+    }
+
+    @Test
+    fun `while return does not satisfy non unit function return requirement`() {
+        assertSingleSemanticError(
+            """
+            fun choose(a: Int): Int {
+                while (a > 0) {
+                    return a
+                }
+            }
+            """.trimIndent(),
+            SemanticErrorType.EXPLICIT_RETURN_IS_EXPECTED,
+            BlockAstNode::class.java,
+        )
+    }
+
+    @Test
+    fun `for return does not satisfy non unit function return requirement`() {
+        assertSingleSemanticError(
+            """
+            fun choose(): Int {
+                for (i in 0 to 2) {
+                    return i
+                }
+            }
+            """.trimIndent(),
+            SemanticErrorType.EXPLICIT_RETURN_IS_EXPECTED,
+            BlockAstNode::class.java,
+        )
+    }
+
+    @Test
+    fun `unit function returning value is wrong return type`() {
+        assertSingleSemanticError(
+            """
+            fun log(): Unit {
+                return 1
+            }
+            """.trimIndent(),
+            SemanticErrorType.METHOD_HAS_WRONG_RETURN,
+            ReturnFunctionStatementAstNode::class.java,
+        )
+    }
+
+    @Test
+    fun `wrong return type inside else branch is reported on return statement`() {
+        assertSingleSemanticError(
+            """
+            fun choose(flag: Boolean): Int {
+                if (flag) {
+                    return 1
+                } else {
+                    return "bad"
+                }
+            }
+            """.trimIndent(),
+            SemanticErrorType.METHOD_HAS_WRONG_RETURN,
+            ReturnFunctionStatementAstNode::class.java,
+        )
+    }
+
+    @Test
+    fun `return after complete if else is multiple return in one block`() {
+        assertSingleSemanticError(
+            """
+            fun choose(flag: Boolean): Int {
+                if (flag) {
+                    return 1
+                } else {
+                    return 2
+                }
+                return 3
+            }
+            """.trimIndent(),
+            SemanticErrorType.BLOCK_CONTAINS_MORE_THAN_ONE_RETURN,
+            BlockAstNode::class.java,
+        )
+    }
+
+    @Test
+    fun `ordinary code after complete if else return is unreachable code`() {
+        assertSingleSemanticError(
+            """
+            fun choose(flag: Boolean): Int {
+                if (flag) {
+                    return 1
+                } else {
+                    return 2
+                }
+                val unreachable: Int = 3
+            }
+            """.trimIndent(),
+            SemanticErrorType.BLOCK_CONTAINS_CODE_AFTER_RETURN,
+            BlockAstNode::class.java,
+        )
+    }
+
+    // endregion
+
+    // region Functions and overload edge cases
+
+    @Test
+    fun `array and scalar overloads with same arity are distinct`() {
+        assertNoSemanticDiagnostics(
+            """
+            fun take(value: Int): Int {
+                return value
+            }
+            fun take(values: Int[]): Int {
+                return values[0]
+            }
+            fun main(): Unit {
+                val values: Int[1] = [7]
+                val a: Int = take(1)
+                val b: Int = take(values)
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `duplicate array parameter function signature is rejected`() {
+        assertSingleSemanticError(
+            """
+            fun take(values: Int[]): Unit { }
+            fun take(other: Int[]): Int {
+                return other[0]
+            }
+            """.trimIndent(),
+            SemanticErrorType.REDEFINE_FUNCTION,
+        )
+    }
+
+    @Test
+    fun `builtin call with wrong argument type is wrong arguments`() {
+        assertSingleSemanticError(
+            """
+            fun main(): Unit {
+                println(1)
+            }
+            """.trimIndent(),
+            SemanticErrorType.FUNCTION_EXISTS_BUT_WRONG_ARGUMENTS,
+            FunctionCallExpressionASTNode::class.java,
+        )
+    }
+
+    // endregion
+
+    // region Arrays desired behavior and negative edge cases
+
+    @Test
+    fun `static array without initializer can be read later`() {
+        assertNoSemanticDiagnostics(
+            """
+            fun main(): Unit {
+                val values: Int[2]
+                val first: Int = values[0]
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `static array without initializer can be passed to array parameter`() {
+        assertNoSemanticDiagnostics(
+            """
+            fun take(values: Int[]): Unit { }
+            fun main(): Unit {
+                val values: Int[2]
+                take(values)
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `empty initialization list matches zero sized array`() {
+        assertNoSemanticDiagnostics(
+            """
+            fun main(): Unit {
+                val values: Int[0] = []
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `empty initialization list with non zero size is size mismatch`() {
+        assertSingleSemanticError(
+            """
+            fun main(): Unit {
+                val values: Int[2] = []
+            }
+            """.trimIndent(),
+            SemanticErrorType.INVALID_AMOUNT_OF_ARGUMENTS_IN_ARRAYS_INITIALIZATION,
+            ArrayDeclarationASTNode::class.java,
+        )
+    }
+
+    @Test
+    fun `array initialization element type must match declared element type`() {
+        assertSingleSemanticError(
+            """
+            fun main(): Unit {
+                val values: Int[2] = [1.0, 2.0]
+            }
+            """.trimIndent(),
+            SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
+            ArrayDeclarationASTNode::class.java,
+        )
+    }
+
+    @Test
+    fun `string array initialization rejects mixed element types`() {
+        assertSingleSemanticError(
+            """
+            fun main(): Unit {
+                val values: String[2] = ["a", 1]
+            }
+            """.trimIndent(),
+            SemanticErrorType.TYPE_CHECKER_INCONSISTENT_ARRAY_TYPE,
+            ArrayInitializationExpressionASTNode::class.java,
+        )
+    }
+
+    @Test
+    fun `array parameter index must be int`() {
+        assertSingleSemanticError(
+            """
+            fun first(values: Int[]): Int {
+                return values[true]
+            }
+            """.trimIndent(),
+            SemanticErrorType.ARRAY_INDEX_IS_NOT_INTEGER,
+            ArrayElementAccessASTNode::class.java,
+        )
+    }
+
+    @Test
+    fun `array parameter element assignment checks value type`() {
+        assertSingleSemanticError(
+            """
+            fun write(values: Int[]): Unit {
+                values[0] = "bad"
+            }
+            """.trimIndent(),
+            SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
+        )
+    }
+
+    // endregion
+
     // region Public pipeline and TODO regression coverage
 
     @Test
