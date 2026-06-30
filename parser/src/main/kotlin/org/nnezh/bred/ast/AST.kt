@@ -10,14 +10,6 @@ data class ProgramRoot(
     val instances: List<InstanceDeclAstNode> = emptyList(),
 ) : ASTNode
 
-data class DeclareGlobalVariableASTNode(
-    val name: String,
-    val type: TypeSign? = null,
-    val expression: ExpressionASTNode? = null,
-    val isMutable: Boolean = false,
-    val size: Int? = null,
-) : ASTNode
-
 data class DeclareTypeASTNode(val name: String) : ASTNode
 
 sealed interface LeftValue
@@ -49,6 +41,14 @@ data class ScalarVariableInitializationASTNode(
     val expression: ExpressionASTNode,
     val isMutable: Boolean,
 ) : DeclareVariableASTNode
+
+data class DeclareGlobalVariableASTNode(
+    val name: String,
+    val type: TypeSign? = null,
+    val expression: ExpressionASTNode? = null,
+    val isMutable: Boolean = false,
+    val size: Int? = null,
+) : ASTNode
 
 data class ArrayDeclarationASTNode(
     val name: String,
