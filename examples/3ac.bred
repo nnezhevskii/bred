@@ -12,6 +12,10 @@ fun printValue<T: Printable>(value: T) {
     println(toString(value))
 }
 
+fun printArray<T: Printable>(arr: Array<T>) {
+
+}
+
 /*
 fun arrayToString<T: Printable>(arr: Array<T>, size: Int): String {
     var buff: String = ""
@@ -53,13 +57,16 @@ fun main(): Unit {
          arr[i] = random(0, 50)
     }
 
+    printArray(arr)
     printValue(3)
+    // printArray(arr)
   //  println(arrayToString(arr, arrSize))
 
 /*
     bubbleSort(arr, arrSize)
     println("After sorting:")
     println(arrayToString(arr, arrSize))
+
 */
     readInt()
 }

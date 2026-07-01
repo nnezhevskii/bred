@@ -23,8 +23,11 @@ class CTranspile {
     private var firstFunctionWasProceeded: Boolean = false
 
     fun compile(instructions: List<LLTACElement>): List<String> {
+        firstFunctionWasProceeded = false
         val context = Context(instructions)
-        val cCode = mutableListOf<String>()
+        val cCode = collectFunctionHeaders(instructions)
+            .map { renderPrototype(it) }
+            .toMutableList()
         while (!context.eof) {
             cCode.addAll(
                 when (context.top) {
@@ -41,6 +44,42 @@ class CTranspile {
         cCode.add("}")
         return cCode
     }
+
+    private fun collectFunctionHeaders(instructions: List<LLTACElement>): List<FunctionHeader> {
+        val headers = mutableListOf<FunctionHeader>()
+        var index = 0
+        while (index < instructions.size) {
+            val instruction = instructions[index]
+            if (instruction is LLTACFunc) {
+                val params = mutableListOf<Pair<String, Type>>()
+                index++
+                while (index < instructions.size) {
+                    val param = instructions[index] as? LLTACInstruction ?: break
+                    if (param.opcode != LLTACOperation.LLTAC_GET_PARAM) {
+                        break
+                    }
+                    val variable = param.destination as Operand.Variable
+                    params.add(variable.name to variable.type)
+                    index++
+                }
+                headers.add(FunctionHeader(instruction.name, instruction.type, params))
+            } else {
+                index++
+            }
+        }
+        return headers
+    }
+
+    private fun renderPrototype(header: FunctionHeader): String =
+        "${renderFunctionSignature(header)};"
+
+    private fun renderFunctionSignature(header: FunctionHeader): String =
+        if (isMainFunction(header.name)) {
+            "int main(int size, char** arg)"
+        } else {
+            val params = header.params.joinToString(",") { (name, type) -> "${typeToStringInArguments(type)} $name" }
+            "${typeToStringInArguments(header.returnType)} ${header.name}($params)"
+        }
 
     private fun parseLabel(context: Context): List<String> {
         val label: LLTACLabel = context.consume() as LLTACLabel
@@ -274,13 +313,7 @@ class CTranspile {
             )
         }
 
-        val lines = mutableListOf<String>()
-        val param = params.joinToString(",") { par -> "${typeToStringInArguments(par.second)} ${par.first}" }
-        lines.add(
-            "${typeToStringInArguments(type)} $name(${param}) {"
-        )
-
-        return lines
+        return listOf("${renderFunctionSignature(FunctionHeader(name, type, params))} {")
     }
 
 
@@ -315,6 +348,12 @@ class CTranspile {
             Type.UnitType -> "void"
         }
     }
+
+    private data class FunctionHeader(
+        val name: String,
+        val returnType: Type,
+        val params: List<Pair<String, Type>>,
+    )
 
     private class Context(private val tacLines: List<LLTACElement>) {
         private var counter: Int = 0
