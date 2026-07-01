@@ -1,122 +1,92 @@
 package org.nnezh
 
-import org.nnezh.lexer.Lexer
 import org.nnezh.lexer.readSource
-import arrow.core.raise.either
-//import org.nnezh.ast.AbstractSyntaxTreeBuilder
-import org.nnezh.bred.ast.ProgramASTNode
-import org.nnezh.org.nnezh.ICGenerator.LLTACGenerator
-//import org.nnezh.org.nnezh.ast.AbstractSyntaxTreeExpressionParser
 import org.nnezh.org.nnezh.compiler.CTranspile
-import org.nnezh.org.nnezh.semantic.SemanticAnalyzer
+import org.nnezh.org.nnezh.compiler.TACCompilerImpl
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.concurrent.TimeUnit
+import kotlin.system.exitProcess
 
+private const val DEFAULT_SOURCE_PATH = "examples/3ac.bred"
+private const val DEFAULT_C_OUTPUT_PATH = "main.c"
+private const val DEFAULT_EXE_OUTPUT_PATH = "main.exe"
+private const val DEFAULT_VCVARS64_PATH =
+    "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Auxiliary\\Build\\vcvars64.bat"
 
-// TODO: VARIABLE_CHANGING_IMMUTABLE -Необходимо добавить тесты
-// TODO - добавить проверку, что функция main() существует
 fun main(args: Array<String>) {
+    val sourcePath = args.getOrNull(0) ?: DEFAULT_SOURCE_PATH
+    val cOutputPath = args.getOrNull(1) ?: DEFAULT_C_OUTPUT_PATH
+    val exeOutputPath = args.getOrNull(2) ?: DEFAULT_EXE_OUTPUT_PATH
+    val vcvarsPath = System.getenv("VCVARS64_PATH") ?: DEFAULT_VCVARS64_PATH
 
-    val path = args.firstOrNull() ?: "examples/3ac.bred"
-    val result = either {
-        val source = readSource(path).bind()
-        val tokens = Lexer(source).tokenize().bind()
+    try {
+        val source = readSource(sourcePath).fold(
+            ifLeft = { error(it.message) },
+            ifRight = { it },
+        )
+        val tac = TACCompilerImpl().compile(source)
+        val cBody = CTranspile().compile(tac)
+        val cFile = Path.of(cOutputPath).toAbsolutePath()
+        val runtime = Files.readAllLines(Path.of("runtime.c"))
 
-        val stringBuilder = StringBuilder()
-        stringBuilder.append("Tokens for '$path':")
+        cFile.parent?.let { Files.createDirectories(it) }
+        Files.write(cFile, runtime + cBody)
 
-        for (token in tokens) {
-            stringBuilder.append("  ${token.position}\t${token::class.simpleName}\t${token.lexeme}\n")
-        }
-        stringBuilder.toString()
+        compileWithMsvc(
+            vcvarsPath = vcvarsPath,
+            cFile = cFile,
+            exeFile = Path.of(exeOutputPath).toAbsolutePath(),
+        )
 
-//        val ast = AbstractSyntaxTreeBuilder(AbstractSyntaxTreeExpressionParser()).build(tokens).bind()
+        println("Generated ${cFile}")
+        println("Generated ${Path.of(exeOutputPath).toAbsolutePath()}")
+    } catch (error: Throwable) {
+        System.err.println(error.message ?: error.toString())
+        exitProcess(1)
+    }
+}
 
-        val semanticAnalyzer = SemanticAnalyzer()
-        val res = semanticAnalyzer(ast as ProgramASTNode)
-        if (res.any { it.isCriticalError }) {
-            res.joinToString("\n")
-        } else {
-            val tacGenerator = LLTACGenerator(
-                typeTable = semanticAnalyzer.typeTable,
-                functionRegistry = semanticAnalyzer.functionRegistry
-            )
-
-            val tacCode = tacGenerator.build(ast)
-
-            val main = CTranspile().compile(tacCode) //.joinToString("\n")
-            val runtime = File("runtime.c").readLines()
-            val final = runtime + main
-            Files.write(Path.of("main.c"), final)
-            val vcvarsPath = """C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat"""
-
-            val sourceFile = File("main.c")
-            val outputFile = File("main.exe")
-
-            if (!sourceFile.exists()) {
-                println("Пиздец, а где файл-то? main.c не найден в корне проекта!")
-                return
-            }
-
-            if (!File(vcvarsPath).exists()) {
-                println("Бля, батник MSVC по этому пути отсутствует: $vcvarsPath")
-                return
-            }
-
-            // Собираем команду для cmd.exe
-            // cl.exe берёт main.c и делает из него main.exe (/Fe)
-            // Оборачиваем ВСЮ строку после /c в экранированные кавычки "\""
-            val command = listOf(
-                "cmd.exe", "/c",
-                "\"\"$vcvarsPath\" && cl.exe /O2 /Fe:\"${outputFile.name}\" \"${sourceFile.name}\"\""
-            )
-
-            val process = ProcessBuilder(command)
-                .directory(File(".")) // Рабочая папка — корень проекта
-                .redirectErrorStream(true)
-                .start()
-
-            // Выводим в консоль всё, что думает MSVC о твоём коде
-            process.inputStream.bufferedReader().use { reader ->
-                reader.forEachLine { line -> println("[MSVC]: $line") }
-            }
-
-            val finished = process.waitFor(5, TimeUnit.SECONDS)
-
-            if (finished && process.exitValue() == 0) {
-                println("\nDone.")
-            } else {
-                println("\nException: ${process.exitValue()}")
-            }
-
-//            val process = ProcessBuilder(command)
-//                .directory(sourceFile.parentFile) // Рабочая папка — там, где лежит исходник
-//                .redirectErrorStream(true)        // Сливаем ошибки и обычный вывод в один поток
-//                .start()
-
-            // 4. Читаем, что нам выплюнул компилятор (выхлоп cl.exe)
-//            process.inputStream.bufferedReader().use { reader ->
-//                reader.forEachLine { line -> println("[MSVC LOG]: $line") }
-//            }
-
-//            tacCode.joinToString("\n")
-
-//            PrettyPrinter().format (tacGenerator.build(ast)).joinToString("\n")
-        }
-
-//        res.joinToString("\n").ifEmpty { "<NoErrors>" }
-//        if (res.any { it.isCriticalError }) {
-//            res.joinToString("\n")
-//        } else {
-
-//        }
-
+private fun compileWithMsvc(
+    vcvarsPath: String,
+    cFile: Path,
+    exeFile: Path,
+) {
+    val vcvarsFile = File(vcvarsPath)
+    if (!vcvarsFile.exists()) {
+        error("MSVC vcvars64.bat not found: $vcvarsPath")
+    }
+    if (!Files.exists(cFile)) {
+        error("Generated C file does not exist: $cFile")
     }
 
-    result.fold(
-        ifLeft = { System.err.println(it) },
-        ifRight = { println(it) }
+    exeFile.parent?.let { Files.createDirectories(it) }
+
+    val command = listOf(
+        "cmd.exe",
+        "/c",
+        "\"\"$vcvarsPath\" && cl.exe /O2 /Fe:\"${exeFile.fileName}\" \"${cFile.fileName}\"\"",
     )
+
+    val process = ProcessBuilder(command)
+        .directory(cFile.parent.toFile())
+        .redirectErrorStream(true)
+        .start()
+
+    process.inputStream.bufferedReader().use { reader ->
+        reader.forEachLine { line -> println("[MSVC]: $line") }
+    }
+
+    val exitCode = process.waitFor()
+    if (exitCode != 0) {
+        error("MSVC cl.exe failed with exit code $exitCode")
+    }
+
+    val producedExe = cFile.parent.resolve(exeFile.fileName)
+    if (producedExe != exeFile && Files.exists(producedExe)) {
+        Files.move(producedExe, exeFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+    }
+    if (!Files.exists(exeFile)) {
+        error("MSVC cl.exe finished successfully but executable was not found: $exeFile")
+    }
 }

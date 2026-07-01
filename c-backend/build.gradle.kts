@@ -1,6 +1,5 @@
 plugins {
     kotlin("jvm") version "2.3.10"
-    `java-library`
 }
 
 group = "org.nnezh"
@@ -11,7 +10,7 @@ repositories {
 }
 
 dependencies {
-    api("io.arrow-kt:arrow-core:2.2.2.1")
+    implementation(project(":common"))
 
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")

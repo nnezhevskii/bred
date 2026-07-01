@@ -30,8 +30,8 @@ fun main() {
         "whileGuardedAccum",
     )
     (only ?: programs).forEach { testName ->
-        val sourcePath = Paths.get("src/test/resources/$testName.bred")
-        val outputPath = Paths.get("src/test/resources/$testName.3ac")
+        val sourcePath = Paths.get("tac/src/test/resources/$testName.bred")
+        val outputPath = Paths.get("tac/src/test/resources/$testName.3ac")
         val src = Files.readString(sourcePath)
         val actual = TACCompilerImpl()
             .compile(src)

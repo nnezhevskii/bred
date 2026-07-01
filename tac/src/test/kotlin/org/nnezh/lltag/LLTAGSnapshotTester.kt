@@ -34,8 +34,8 @@ class LLTAGSnapshotTester {
     }
 
     fun compare(testName: String) {
-        val tacCodePath = Paths.get("src/test/resources/$testName.3ac")
-        val sourceCode: Path = Paths.get("src/test/resources/$testName.bred")
+        val tacCodePath = Paths.get("tac/src/test/resources/$testName.3ac")
+        val sourceCode: Path = Paths.get("tac/src/test/resources/$testName.bred")
         val src = Files.readString(sourceCode)
         val actualCommands = TACCompilerImpl().compile(src)
             .let { PrettyPrinter().format(it) }

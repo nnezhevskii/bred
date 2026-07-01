@@ -12,7 +12,7 @@ import org.nnezh.org.nnezh.ICGenerator.RightValue
 import org.nnezh.org.nnezh.base.Type
 import java.util.Collections.singletonList
 
-class CTranspile(private val tacCompiler: TACCompiler = TACCompilerImpl()) {
+class CTranspile {
 
     private val runtime = listOf<String>(
         "#include <stdbool.h>",
@@ -22,10 +22,6 @@ class CTranspile(private val tacCompiler: TACCompiler = TACCompilerImpl()) {
 
     private val StringDefaultSize = 1024
     private var firstFunctionWasProceeded: Boolean = false
-
-    fun compile(path: String): List<String> {
-        return compile(tacCompiler.compile(path))
-    }
 
     fun compile(instructions: List<LLTACElement>): List<String> {
         val context = Context(instructions)
@@ -62,7 +58,8 @@ class CTranspile(private val tacCompiler: TACCompiler = TACCompilerImpl()) {
             LLTACOperation.LLTAC_ASSIGN -> {
                 val dest = (instruction.destination as LeftValue).asLeftValue()
                 val value = (instruction.arg1!! as RightValue).asRightValue()
-                if (instruction.destination.type == Type.StringType) {
+                val destination = instruction.destination as Operand
+                if (destination.type == Type.StringType) {
                     cCode.add("strncpy(${dest}, ${value}, sizeof(${dest}));")
                 } else {
                     cCode.add(
@@ -161,15 +158,17 @@ class CTranspile(private val tacCompiler: TACCompiler = TACCompilerImpl()) {
             if (localTop == null || localTop is LLTACFunc) {
                 break
             }
-            if (localTop is LLTACInstruction && localTop.destination is Operand.Variable) {
+            val destination = (localTop as? LLTACInstruction)?.destination as? Operand.Variable
+            if (localTop is LLTACInstruction && destination != null) {
                 if (localTop.opcode == LLTACOperation.LLTAC_ALLOC) {
-                    (localTop.destination).let {
-                        staticArrays.computeIfAbsent((it.type as Type.StaticArrayType).elementType) { mutableSetOf() }
-                        staticArrays[it.type.elementType]!!.add(it)
+                    destination.let {
+                        val arrayType = it.type as Type.StaticArrayType
+                        staticArrays.computeIfAbsent(arrayType.elementType) { mutableSetOf() }
+                        staticArrays[arrayType.elementType]!!.add(it)
                     }
                 } else {
                     if (localTop.opcode != LLTACOperation.LLTAC_STX) {
-                        (localTop.destination).let {
+                        destination.let {
                             scalarVariables.computeIfAbsent(it.type) { mutableSetOf() }
                             scalarVariables[it.type]!!.add(it.name)
                         }

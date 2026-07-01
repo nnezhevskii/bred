@@ -219,18 +219,21 @@ class TemplateInstantiator(
         rewriteContext: TemplateRewriteContext,
     ): FunctionCallExpressionASTNode {
         val transformedArguments = expression.arguments.map { transformExpression(it, scope, rewriteContext) }
-        val argumentTypes = expression.arguments.map { inferType(it, scope, rewriteContext) }
 
         templates[expression.name]?.let { template ->
+            val argumentTypes = expression.arguments.map { inferType(it, scope, rewriteContext) }
             val generated = generateTemplateFunction(template, argumentTypes)
             return FunctionCallExpressionASTNode(generated.name, transformedArguments)
         }
 
-        resolveTypeClassMethod(expression.name, argumentTypes.firstOrNull(), rewriteContext)?.let { method ->
-            return FunctionCallExpressionASTNode(
-                name = mangleFunctionName(method.name, method.arguments, method.result),
-                arguments = transformedArguments,
-            )
+        if (expression.name in typeClassMethods) {
+            val argumentTypes = expression.arguments.map { inferType(it, scope, rewriteContext) }
+            resolveTypeClassMethod(expression.name, argumentTypes.firstOrNull(), rewriteContext)?.let { method ->
+                return FunctionCallExpressionASTNode(
+                    name = mangleFunctionName(method.name, method.arguments, method.result),
+                    arguments = transformedArguments,
+                )
+            }
         }
 
         return FunctionCallExpressionASTNode(expression.name, transformedArguments)

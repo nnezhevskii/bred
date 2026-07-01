@@ -44,10 +44,22 @@ import java.util.IdentityHashMap
 import kotlin.collections.flatMap
 import kotlin.collections.set
 
+data class SemanticAnalysisResult(
+    val warnings: List<SemanticError.SemanticWarning>,
+    val expressionTypes: Map<ExpressionASTNode, TypeSign>,
+)
+
 class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
     private val typeValidator = TypeValidator(globalContext)
 
     fun analyze(root: ProgramRoot): Either<List<SemanticError>, List<SemanticError.SemanticWarning>> {
+        return analyzeWithResult(root).fold(
+            ifLeft = { it.left() },
+            ifRight = { it.warnings.right() },
+        )
+    }
+
+    fun analyzeWithResult(root: ProgramRoot): Either<List<SemanticError>, SemanticAnalysisResult> {
         val scope = Scope()
 
         BuiltInMethods.functions.forEach { scope.registerFunction(it) }
@@ -81,7 +93,10 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
             )
         }
 
-        return visit(root, scope)
+        return visit(root, scope).fold(
+            ifLeft = { it.left() },
+            ifRight = { SemanticAnalysisResult(it, scope.expressionTypesSnapshot()).right() },
+        )
     }
 
     private fun visit(node: ASTNode, scope: Scope): Either<List<SemanticError>, List<SemanticError.SemanticWarning>> {
@@ -604,6 +619,9 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
         fun registerFunction(function: FunctionSignature) {
             registeredFunctions.add(function)
         }
+
+        fun expressionTypesSnapshot(): Map<ExpressionASTNode, TypeSign> =
+            IdentityHashMap(expressionTypeTable)
 
         fun functionExist(name: String): Boolean { // any function with this name exist. Signature may differ
             if (registeredFunctions.any { it.name == name }) {
