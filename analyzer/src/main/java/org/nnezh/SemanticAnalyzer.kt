@@ -200,7 +200,9 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                 return warnings.right()
             }
 
-            is DeclareTypeASTNode -> TODO()
+            is DeclareTypeASTNode -> {
+                TODO()
+            }
             EmptyNode -> {
                 return listOf<SemanticError.SemanticWarning>().right()
             }
@@ -434,6 +436,8 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                         ).left()
                     }
 //                    VARIABLE_CHANGING_IMMUTABLE
+                } else if (node is ArrayElementAccessASTNode) {
+
                 }
 
                 if (lValueType != rValueType) {
@@ -489,7 +493,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                         scope.endInitializing(node.name)
                     }
                 }
-                scope.put(node.name, TypeSign("Array", listOf(node.type)), node.isMutable)
+                scope.put(node.name, node.type, node.isMutable)
                 return warnings.right()
             }
 

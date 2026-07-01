@@ -1,7 +1,51 @@
-fun main(): Unit {
-    val a: Int = readInt()
-    for (i in 0 to a) {
-        println("Hello, World!")
+
+
+fun arrayToString(arr: Array<Int>, size: Int): String {
+    var buff: String = ""
+
+    if (size == 0) {
+        return ""
     }
+    if (size == 1) {
+        return intToString(arr[0])
+    }
+
+    for (i in 0 to size - 1) {
+        buff = buff + intToString(arr[i]) + " "
+    }
+    buff = buff + intToString(arr[size - 1])
+
+    return buff
+}
+
+
+/*
+fun bubbleSort(a: Array<Int>, size: Int) {
+    for (i in 0 to size) {
+        for (j in 0 to size) {
+            if (a[i] < a[j]) {
+                val temp: Int = a[j]
+                a[j] = a[i]
+                a[i] = temp
+            }
+        }
+    }
+}
+*/
+
+fun main(): Unit {
+    val arrSize: Int = readInt()
+    val arr: Array<Int>[1024]
+
+    for (i in 0 to arrSize) {
+         arr[i] = random(0, 50)
+    }
+
+    println(arrayToString(arr, arrSize))
+
+    bubbleSort(arr, arrSize)
+    println("After sorting:")
+    println(arrayToString(arr, arrSize))
+
     readInt()
 }

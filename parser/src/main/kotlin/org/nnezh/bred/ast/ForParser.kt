@@ -38,7 +38,7 @@ class ForParser(
         val syntheticOpPosition = toKeyword.position
         val counterInit = ScalarVariableInitializationASTNode(counterName.lexeme,
             TypeSign("Int"), initialValue, isMutable = true)
-        val toVariableName = "\$right_border${counterName.lexeme}"
+        val toVariableName = "_right_border${counterName.lexeme}"
         val rightBorderInit = ScalarVariableInitializationASTNode(toVariableName, TypeSign("Int"), finalValue, isMutable = false)
         val limitToken = Token.Identifier(toVariableName, syntheticOpPosition)
         val counter = VariableExpressionNode(counterName)

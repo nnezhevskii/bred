@@ -10,15 +10,15 @@ func findPairSum_Array_Int_Int:
   RET var4:Int
 lbl1:
   ASSIGN i:Int 0:Int
-  ASSIGN $right_borderi:Int size:Int
+  ASSIGN _right_borderi:Int size:Int
 lbl2:
-  LT var6:Boolean i:Int $right_borderi:Int
+  LT var6:Boolean i:Int _right_borderi:Int
   JMP_IF_NOT lbl3 var6:Boolean
   ASSIGN var10:Int 1:Int
   ADD j:Int i:Int var10:Int
-  ASSIGN $right_borderj:Int size:Int
+  ASSIGN _right_borderj:Int size:Int
 lbl4:
-  LT var11:Boolean j:Int $right_borderj:Int
+  LT var11:Boolean j:Int _right_borderj:Int
   JMP_IF_NOT lbl5 var11:Boolean
   ASSIGN var16:Int 0:Int
   LOAD var16:Int arr:Array i:Int

@@ -14,9 +14,9 @@ lbl1:
   ASSIGN maxVal:Int var7:Int
   ASSIGN maxIdx:Int 0:Int
   ASSIGN i:Int 1:Int
-  ASSIGN $right_borderi:Int size:Int
+  ASSIGN _right_borderi:Int size:Int
 lbl2:
-  LT var8:Boolean i:Int $right_borderi:Int
+  LT var8:Boolean i:Int _right_borderi:Int
   JMP_IF_NOT lbl3 var8:Boolean
   ASSIGN var14:Int 0:Int
   LOAD var14:Int arr:Array i:Int

@@ -24,7 +24,7 @@ fun main(args: Array<String>) {
     val messages = CExecutableBuilder().build(
         cLines = cLines,
         outputExe = exeOutputPath,
-        keepIntermediateC = keepIntermediateC,
+        keepIntermediateC = true,
     )
 
     messages.forEach(::println)

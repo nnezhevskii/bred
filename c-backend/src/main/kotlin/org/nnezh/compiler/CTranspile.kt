@@ -20,7 +20,6 @@ class CTranspile {
         "#include <stdio.h>"
     )
 
-    private val StringDefaultSize = 1024
     private var firstFunctionWasProceeded: Boolean = false
 
     fun compile(instructions: List<LLTACElement>): List<String> {
@@ -56,15 +55,14 @@ class CTranspile {
         val instruction = (context.consume() as LLTACInstruction)
         when (instruction.opcode) {
             LLTACOperation.LLTAC_ASSIGN -> {
+                val destination = instruction.destination as Operand
                 val dest = (instruction.destination as LeftValue).asLeftValue()
                 val value = (instruction.arg1!! as RightValue).asRightValue()
-                val destination = instruction.destination as Operand
-                if (destination.type == Type.StringType) {
-                    cCode.add("strncpy(${dest}, ${value}, sizeof(${dest}));")
+
+                if ((instruction.destination as Operand).type.name == "String") {
+                    cCode.add("$dest = create_string($value, strlen($value));")
                 } else {
-                    cCode.add(
-                        "$dest = $value;"
-                    )
+                    cCode.add("$dest = $value;")
                 }
 
             }
@@ -104,12 +102,12 @@ class CTranspile {
             LLTACOperation.LLTAC_NOT -> {
                 val left = (instruction.destination as LeftValue).asLeftValue()
                 val arg1 = (instruction.arg1 as LeftValue).asLeftValue()
-                cCode.add("${left}=!{${arg1}}")
+                cCode.add("${left}!=${arg1};")
             }
             LLTACOperation.LLTAC_NEG -> {
                 val left = (instruction.destination as LeftValue).asLeftValue()
                 val arg1 = (instruction.arg1 as LeftValue).asLeftValue()
-                cCode.add("${left}=-{${arg1}}")
+                cCode.add("${left}=-${arg1};")
             }
             LLTACOperation.LLTAC_JMP_IF_NOT -> {
                 val destination = instruction.destination as Operand.Label
@@ -169,8 +167,14 @@ class CTranspile {
                 } else {
                     if (localTop.opcode != LLTACOperation.LLTAC_STX) {
                         destination.let {
-                            scalarVariables.computeIfAbsent(it.type) { mutableSetOf() }
-                            scalarVariables[it.type]!!.add(it.name)
+                            if (it.type.name == "Array") {
+//                                staticArrays.computeIfAbsent(it.type) { mutableSetOf() }
+//                                staticArrays[it.type]!!.add(it)
+                            } else {
+                                scalarVariables.computeIfAbsent(it.type) { mutableSetOf() }
+                                scalarVariables[it.type]!!.add(it.name)
+                            }
+
                         }
                     }
                 }
@@ -178,21 +182,24 @@ class CTranspile {
 
             pointer++
         }
+
         for (type in staticArrays.keys) {
                 val names = staticArrays[type]!!.map { variable -> "${variable.name}[${(variable.type as Type.StaticArrayType).count}]" }
                     .joinToString(", ")
-                cCode.add("${typeToStringInInitialization(type)} $names;")
+                cCode.add("${typeToStringInInitialization((type as Type.StaticArrayType).elementType)} $names;")
         }
 
         for (type in scalarVariables.keys) {
-            if (type is Type.StaticArrayType) {
-            } else if (type is Type.StringType) {
-                val names = scalarVariables[type]!!.joinToString(", ") { "${it}[${StringDefaultSize}]" }
-                val res = "char $names;"
-                cCode.add(res)
-            } else {
-                cCode.add("${typeToStringInInitialization(type)} ${scalarVariables[type]!!.joinToString(", ")};")
-            }
+            cCode.add("${typeToStringInInitialization(type)} ${scalarVariables[type]!!.joinToString(", ")};")
+            // TODO
+//            if (type is Type.StaticArrayType) {
+//            } else if (type is Type.StringType) {
+//                val names = scalarVariables[type]!!.joinToString(", ") { "${it}[${StringDefaultSize}]" }
+//                val res = "char $names;"
+//                cCode.add(res)
+//            } else {
+//
+//            }
         }
 
         firstFunctionWasProceeded = true
@@ -214,9 +221,14 @@ class CTranspile {
     }
 
     private fun generateSimpleOperation(instruction: LLTACInstruction): String {
+
         val left = (instruction.destination as LeftValue).asLeftValue()
         val arg1 = (instruction.arg1 as LeftValue).asLeftValue()
         val arg2 = (instruction.arg2 as LeftValue).asLeftValue()
+
+        if (instruction.destination!!.type.name == "String" && instruction.opcode == LLTACOperation.LLTAC_ADD) {
+            return "${left}=concat(${arg1},${arg2});"
+        }
 
         val command: String = when (instruction.opcode) {
             LLTACOperation.LLTAC_ADD -> "+"
@@ -256,7 +268,8 @@ class CTranspile {
         // TODO: добавить семантическую проверку, или воркэраунд для функции main
         if (isMainFunction(name)) {
             return listOf(
-                "int main(int size, char** arg) {"
+                "int main(int size, char** arg) {", "init_runtime();"
+
             )
         }
 
@@ -283,10 +296,10 @@ class CTranspile {
             Type.DoubleType -> "double"
             Type.IntType -> "int"
             is Type.StaticArrayType -> {
-                TODO()
+                TODO() // should not be there
             }
 
-            Type.StringType -> "char[]"
+            Type.StringType -> "String"
             Type.UnitType -> "void"
         }
     }
@@ -298,14 +311,13 @@ class CTranspile {
             Type.IntType -> "int"
             is Type.StaticArrayType -> {
                 if (type.elementType == Type.StringType) {
-                    "const char**"
+                    "${typeToStringInArguments(type.elementType)}*"
                 } else {
                     "${typeToStringInArguments(type.elementType)}*"
-//                    "const ${typeToStringInArguments(type.elementType)}*"
                 }
             }
 
-            Type.StringType -> "const char*"
+            Type.StringType -> "String"
             Type.UnitType -> "void"
         }
     }

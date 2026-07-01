@@ -1,23 +1,29 @@
-#include <stdio.h>
+fun main() {
+(1)    val helloWord: String = "Hello " (create_string)
+(2)    val name: String = readString() // read_string
+(3)    val greetings: String = helloWord + name // concat
+
+(4)    println(greetings) // alreadyexist
+(5)    val x: Boolean = name == greetings // string_eq
+(6)    val index: Int = indexOf(greetings, " ")
+(7)    val name = substring(greetings, index, length(greetings) - index)
+}
+
+(0)
+На уровне си создать структуру
 #include <stdlib.h>
-#include <stdbool.h>
-#include <time.h>
 #include <string.h>
-
-#ifdef _WIN32
-#include <sys/timeb.h>
-#else
-#include <sys/time.h>
-#endif
-
-char *STRING_POOL = NULL;
-size_t string_pool_offset = 0;
-const size_t POOL_SIZE = 1024 * 1024 * 16; // 16 МБ
+#include <stdio.h>
 
 typedef struct {
     const char* data;
     size_t length;
 } String;
+
+// Делаем пулу нормальный тип char*, чтобы арифметика работала человечески
+char *STRING_POOL = NULL;
+size_t string_pool_offset = 0;
+const size_t POOL_SIZE = 1024 * 1024 * 16; // 16 МБ
 
 void init_runtime() {
     STRING_POOL = (char*)malloc(POOL_SIZE);
@@ -45,6 +51,28 @@ String create_string(const char *origin, size_t len) {
     return s;
 }
 
+String read_string() {
+    const size_t max_size = 1024;
+    char buff[max_size];
+
+    if (fgets(buff, max_size, stdin) == NULL) {
+        String empty = { .data = "", .length = 0 };
+        return empty;
+    }
+    size_t len = strlen(buff);
+    if (len > 0 && buff[len - 1] == '\n') {
+        buff[len - 1] = '\0';
+        len--;
+    }
+
+    if (len == 0) {
+        String empty = { .data = "", .length = 0 };
+        return empty;
+    }
+
+    return create_string(buff, len);
+}
+
 String concat(String s1, String s2) {
 size_t new_len = s1.length + s2.length;
     size_t needed = new_len + 1;
@@ -66,32 +94,49 @@ size_t new_len = s1.length + s2.length;
     return s;
 }
 
-String readString() {
-    #define READ_STRING_MAX_SIZE 1024
-    char buff[READ_STRING_MAX_SIZE];
+int string_eq(String s1, String s2) {
+    if (s1.length != s2.length) return 0;
+    return memcmp(s1.data, s2.data, s1.length) == 0;
+}
 
-    if (fgets(buff, READ_STRING_MAX_SIZE, stdin) == NULL) {
+int index_of(String str, String substr) {
+    if (substr.length > str.length) {
+        return -1;
+    }
+    if (substr.length == 0) {
+        return 0;
+    }
+
+    size_t limit = str.length - substr.length;
+    for (size_t i = 0; i <= limit; ++i) {
+        if (memcmp(str.data + i, substr.data, substr.length) == 0) {
+            return (int)i;
+        }
+    }
+
+    return -1;
+}
+
+String substring(String str, size_t start, size_t length) {
+    if (start > str.length) {
         String empty = { .data = "", .length = 0 };
         return empty;
     }
-    size_t len = strlen(buff);
-    if (len > 0 && buff[len - 1] == '\n') {
-        buff[len - 1] = '\0';
-        len--;
-    }
-
-    if (len == 0) {
+    if (start + length > str.length) {
         String empty = { .data = "", .length = 0 };
         return empty;
     }
-    #undef READ_STRING_MAX_SIZE
-    return create_string(buff, len);
+
+    String result = {
+        .data = str.data + start,
+        .length = length
+    };
+    return result;
 }
 
-void println(String str) {
-    if (str.data) printf("%s\n", str.data);
-    else printf("\n");
-}
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 static size_t get_int_string_len(int val) {
     if (val == 0) return 1;
@@ -111,19 +156,7 @@ static size_t get_int_string_len(int val) {
     return len;
 }
 
-int readInt() {
-    int val = 0;
-#if defined(_MSC_VER)
-    if (scanf_s("%d", &val) != 1) {
-#else
-    if (scanf("%d", &val) != 1) {
-#endif
-        while (getchar() != '\n');
-    }
-    return val;
-}
-
-String intToString(int val) {
+String int_to_string(int val) {
     size_t len = get_int_string_len(val);
     size_t needed = len + 1;
 
@@ -161,9 +194,4 @@ String intToString(int val) {
 
     String s = { .data = result, .length = len };
     return s;
-}
-
-// 18. random(min, max) -> Int
-int random(int min, int max) {
-    return rand() % (max - min + 1) + min;
 }

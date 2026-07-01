@@ -342,15 +342,15 @@ The parser stores `for` as a desugared block:
 ```bred
 {
     var i: Int = <initial>
-    val $right_borderi: Int = <final>
-    while (i <= $right_borderi) {
+    val _right_borderi: Int = <final>
+    while (i <= _right_borderi) {
         <original body>
         i = i + 1
     }
 }
 ```
 
-The right-border variable name is `$right_border` plus the counter name. The
+The right-border variable name is `_right_border` plus the counter name. The
 counter and right-border declarations are both typed as `Int`.
 
 ## 8. Expressions
