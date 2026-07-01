@@ -136,6 +136,19 @@ class SemanticAnalyzerTest {
     }
 
     @Test
+    fun `self reference in scalar initializer is a semantic error`() {
+        assertSingleSemanticError(
+            """
+            fun main(): Unit {
+                val a: Int = a + 1
+            }
+            """.trimIndent(),
+            SemanticErrorType.UNKNOWN_VARIABLE,
+            VariableExpressionASTNode::class.java,
+        )
+    }
+
+    @Test
     fun `variable redeclaration in same block is a semantic error`() {
         assertSingleSemanticError(
             """
@@ -166,6 +179,22 @@ class SemanticAnalyzerTest {
     }
 
     @Test
+    fun `shadowing initializer cannot read the variable being declared`() {
+        assertSingleSemanticError(
+            """
+            fun main(): Unit {
+                val a: Int = 1
+                if (true) {
+                    val a: Int = a + 1
+                }
+            }
+            """.trimIndent(),
+            SemanticErrorType.UNKNOWN_VARIABLE,
+            VariableExpressionASTNode::class.java,
+        )
+    }
+
+    @Test
     fun `global variable is visible in function body`() {
         assertNoSemanticDiagnostics(
             """
@@ -174,6 +203,18 @@ class SemanticAnalyzerTest {
                 val n: Int = answer
             }
             """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `global variable initializer cannot read the variable being declared`() {
+        assertSingleSemanticError(
+            """
+            val answer: Int = answer + 1
+            fun main(): Unit { }
+            """.trimIndent(),
+            SemanticErrorType.UNKNOWN_VARIABLE,
+            VariableExpressionASTNode::class.java,
         )
     }
 
@@ -514,6 +555,19 @@ class SemanticAnalyzerTest {
             }
             """.trimIndent(),
             SemanticErrorType.ARRAY_IS_EXPECTED_BUT_GOT_SCALAR,
+            ArrayElementAccessASTNode::class.java,
+        )
+    }
+
+    @Test
+    fun `array initializer cannot read the array being declared`() {
+        assertSingleSemanticError(
+            """
+            fun main(): Unit {
+                val values: Int[1] = [values[0]]
+            }
+            """.trimIndent(),
+            SemanticErrorType.UNKNOWN_VARIABLE,
             ArrayElementAccessASTNode::class.java,
         )
     }

@@ -174,12 +174,16 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                     warnings.add(SemanticError.SemanticWarning(node, SemanticErrorType.VARIABLE_OVERSHADOW))
                 }
 
-                scope.put(node.name, node.type!!, node.isMutable)
                 node.expression?.let {
-                    visit(it, scope).fold(
-                        ifLeft = { return it.left() },
-                        ifRight = { warnings.addAll(it) }
-                    )
+                    scope.beginInitializing(node.name)
+                    try {
+                        visit(it, scope).fold(
+                            ifLeft = { return it.left() },
+                            ifRight = { warnings.addAll(it) }
+                        )
+                    } finally {
+                        scope.endInitializing(node.name)
+                    }
 
                     if (node.type != scope.get(it)) {
                         return singletonList(
@@ -192,6 +196,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
 
                 }
 
+                scope.put(node.name, node.type!!, node.isMutable)
                 return warnings.right()
             }
 
@@ -201,6 +206,15 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
             }
 
             is ArrayElementAccessASTNode -> {
+                if (scope.isInitializing(node.name)) {
+                    return singletonList(
+                        SemanticError.VariableScopeSemanticError(
+                            node,
+                            SemanticErrorType.UNKNOWN_VARIABLE
+                        )
+                    ).left()
+                }
+
                 val variable = scope.findVariable(node.name)?.first ?: return singletonList(
                     SemanticError.VariableScopeSemanticError(
                         node,
@@ -361,6 +375,15 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
             }
 
             is VariableExpressionASTNode -> {
+                if (scope.isInitializing(node.token.lexeme)) {
+                    return singletonList(
+                        SemanticError.VariableScopeSemanticError(
+                            node,
+                            SemanticErrorType.UNKNOWN_VARIABLE
+                        )
+                    ).left()
+                }
+
                 val type = scope.findVariable(node.token.lexeme)?.first
                 if (type == null) {
                     return singletonList(
@@ -431,35 +454,40 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
             is ArrayDeclarationASTNode -> {
                 val warnings = mutableListOf<SemanticError.SemanticWarning>()
                 node.expression?.let { initializer ->
-                    visit(initializer, scope).fold(
-                        ifLeft = { error -> return error.left() },
-                        ifRight = { initializerWarnings ->
-                            val expectedSize = node.size
-                            val actualSize = (node.expression as ArrayInitializationExpressionASTNode).args.size
+                    scope.beginInitializing(node.name)
+                    try {
+                        visit(initializer, scope).fold(
+                            ifLeft = { error -> return error.left() },
+                            ifRight = { initializerWarnings ->
+                                val expectedSize = node.size
+                                val actualSize = (node.expression as ArrayInitializationExpressionASTNode).args.size
 
-                            if (expectedSize != actualSize) {
-                                return singletonList(
-                                    SemanticError.TypeSemanticError(
-                                        node,
-                                        SemanticErrorType.INVALID_AMOUNT_OF_ARGUMENTS_IN_ARRAYS_INITIALIZATION
-                                    )
-                                ).left()
+                                if (expectedSize != actualSize) {
+                                    return singletonList(
+                                        SemanticError.TypeSemanticError(
+                                            node,
+                                            SemanticErrorType.INVALID_AMOUNT_OF_ARGUMENTS_IN_ARRAYS_INITIALIZATION
+                                        )
+                                    ).left()
+                                }
+
+                                val initializerElementType = scope.get(initializer)
+                                if (initializerElementType != null && initializerElementType != node.type) {
+                                    return singletonList(
+                                        SemanticError.TypeSemanticError(
+                                            node,
+                                            SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES
+                                        )
+                                    ).left()
+                                }
+
+
+                                warnings.addAll(initializerWarnings)
                             }
-
-                            val initializerElementType = scope.get(initializer)
-                            if (initializerElementType != null && initializerElementType != node.type) {
-                                return singletonList(
-                                    SemanticError.TypeSemanticError(
-                                        node,
-                                        SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES
-                                    )
-                                ).left()
-                            }
-
-
-                            warnings.addAll(initializerWarnings)
-                        }
-                    )
+                        )
+                    } finally {
+                        scope.endInitializing(node.name)
+                    }
                 }
                 scope.put(node.name, TypeSign("Array", listOf(node.type)), node.isMutable)
                 return warnings.right()
@@ -480,11 +508,15 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                     warnings.add(SemanticError.SemanticWarning(node, SemanticErrorType.VARIABLE_OVERSHADOW))
                 }
 
-                scope.put(node.name, node.type, node.isMutable)
-                visit(node.expression, scope).fold(
-                    ifLeft = { return it.left() },
-                    ifRight = { warnings.addAll(it) }
-                )
+                scope.beginInitializing(node.name)
+                try {
+                    visit(node.expression, scope).fold(
+                        ifLeft = { return it.left() },
+                        ifRight = { warnings.addAll(it) }
+                    )
+                } finally {
+                    scope.endInitializing(node.name)
+                }
 
                 if (node.type != scope.get(node.expression)) {
                     return singletonList(
@@ -494,6 +526,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                         )
                     ).left()
                 }
+                scope.put(node.name, node.type, node.isMutable)
                 return warnings.right()
             }
 
@@ -598,19 +631,31 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
         private val variablesType: MutableMap<String, Pair<TypeSign, Boolean>> = mutableMapOf(),
         private val expressionTypeTable: IdentityHashMap<ExpressionASTNode, TypeSign> = IdentityHashMap(),
         private val registeredFunctions: MutableList<FunctionSignature> = mutableListOf(),
+        private val initializingVariables: MutableSet<String> = mutableSetOf(),
         val expectedReturnType: TypeSign? = null,
         val checkControlFlow: Boolean = true
     ) {
 
         fun innerScope(expectedReturnType: TypeSign? = this.expectedReturnType) =
-            Scope(this, mutableMapOf(), expressionTypeTable, mutableListOf(), expectedReturnType, checkControlFlow)
+            Scope(this, mutableMapOf(), expressionTypeTable, mutableListOf(), mutableSetOf(), expectedReturnType, checkControlFlow)
 
         fun withControlFlowChecks(enabled: Boolean) =
-            Scope(parentScope, variablesType, expressionTypeTable, registeredFunctions, expectedReturnType, enabled)
+            Scope(parentScope, variablesType, expressionTypeTable, registeredFunctions, initializingVariables, expectedReturnType, enabled)
 
         fun put(variable: String, type: TypeSign, isMutable: Boolean) {
             variablesType[variable] = Pair(type, isMutable)
         }
+
+        fun beginInitializing(variable: String) {
+            initializingVariables.add(variable)
+        }
+
+        fun endInitializing(variable: String) {
+            initializingVariables.remove(variable)
+        }
+
+        fun isInitializing(variable: String): Boolean =
+            variable in initializingVariables || parentScope?.isInitializing(variable) == true
 
         fun put(expression: ExpressionASTNode, type: TypeSign) {
             expressionTypeTable[expression] = type

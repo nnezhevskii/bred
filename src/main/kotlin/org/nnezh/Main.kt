@@ -1,4 +1,4 @@
-package org.nnezh
+package org.nnezh.org.nnezh
 
 import org.nnezh.lexer.readSource
 import org.nnezh.org.nnezh.compiler.CTranspile
@@ -6,6 +6,7 @@ import org.nnezh.org.nnezh.compiler.TACCompilerImpl
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 import kotlin.system.exitProcess
 
 private const val DEFAULT_SOURCE_PATH = "examples/3ac.bred"
@@ -84,7 +85,7 @@ private fun compileWithMsvc(
 
     val producedExe = cFile.parent.resolve(exeFile.fileName)
     if (producedExe != exeFile && Files.exists(producedExe)) {
-        Files.move(producedExe, exeFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        Files.move(producedExe, exeFile, StandardCopyOption.REPLACE_EXISTING)
     }
     if (!Files.exists(exeFile)) {
         error("MSVC cl.exe finished successfully but executable was not found: $exeFile")

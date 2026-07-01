@@ -15,7 +15,6 @@ Item IDs use the stable `G-NN` format.
 | G-50 | Global initializers cannot call user functions | `SemanticAnalyzer.analyze` visits global variables before registering user functions; only built-ins are registered at that point | Decide whether global initializers may call user functions; if yes, register user signatures before global variable analysis |
 | G-51 | Context built-ins and semantic built-ins are split | `ProgramContextCollector` adds only `println`; `SemanticAnalyzer` registers the larger `common.BuiltInMethods.functions` list separately | Consolidate or document the ownership boundary so template instantiation and semantic analysis cannot diverge |
 | G-52 | Empty array initializer has no expression type | `ArrayInitializationExpressionASTNode([])` stores no type; declarations rely on size checks and skip element-type comparison when type is null | Decide whether empty array list type should be derived from declaration context; add tests for non-zero size and wrong target contexts |
-| G-58 | Self-reference in local initializer is accepted | `SemanticAnalyzer` puts a declared local into scope before analyzing its initializer, so `val a: Int = a + 1` compiles; TAC contract test documents the desired rejection and currently fails | Decide whether self-reference should be rejected; if yes, analyze initializer before binding the local name or track initializing variables explicitly |
 
 ## Later - language expansion
 
@@ -39,11 +38,17 @@ Item IDs use the stable `G-NN` format.
 | G-56 | Top-level declaration order is split by AST list | `ProgramRoot` stores functions, globals, typeclasses, and instances in separate lists | Confirm this is acceptable for later stages; add an ordered top-level list only if order-sensitive behavior appears |
 | G-57 | Documentation/test coverage for `to` and `in` keywords | Lexer supports `for`, `in`, `to`, but the keyword test string currently omits `for`, `in`, `to`, and `mut` | Add explicit lexer assertions for all keywords |
 
+## Resolved / obsolete
+
+| ID | Item | Resolution |
+|----|------|------------|
+| G-58 | Self-reference in local initializer is accepted | Resolved by tracking variables while their initializer is analyzed; self-reference now reports `UNKNOWN_VARIABLE`, including shadowing and array initializer cases |
+
 ## Priority snapshot
 
 | When | IDs |
 |------|-----|
 | Next pipeline | G-46, G-47 |
-| Semantic design decisions | G-48, G-49, G-50, G-51, G-52, G-58 |
+| Semantic design decisions | G-48, G-49, G-50, G-51, G-52 |
 | Language growth | G-03, G-05, G-12, G-13, G-53, G-54, G-55 |
 | Optional cleanup | G-14, G-16, G-25, G-56, G-57 |
