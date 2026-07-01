@@ -221,11 +221,7 @@ class LLTACGenerator(
     }
 
     private fun mangleFunctionName(function: FunctionDeclAstNode): String {
-        if (function.name == "main" && function.name !in BuiltInMethods.functions.map { it.name }) {
-            return "main"
-        }
-        val args = function.arguments.joinToString(separator = "_") { it.toManglePart() }
-        return "${function.name}_$args"
+        return function.name
     }
 
     private fun FunctionArgument.toManglePart(): String =

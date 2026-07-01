@@ -152,12 +152,15 @@ class CTranspile {
         val scalarVariables: MutableMap<Type, MutableSet<String>> = mutableMapOf()
         val staticArrays: MutableMap<Type, MutableSet<Operand.Variable>> = mutableMapOf()
         while (true) {
-            val localTop = context.top(pointer)
+            val localTop = context.top(pointer++)
             if (localTop == null || localTop is LLTACFunc) {
                 break
             }
             val destination = (localTop as? LLTACInstruction)?.destination as? Operand.Variable
             if (localTop is LLTACInstruction && destination != null) {
+                if (localTop.opcode == LLTACOperation.LLTAC_PARAM) {
+                    continue
+                }
                 if (localTop.opcode == LLTACOperation.LLTAC_ALLOC) {
                     destination.let {
                         val arrayType = it.type as Type.StaticArrayType
@@ -179,8 +182,6 @@ class CTranspile {
                     }
                 }
             }
-
-            pointer++
         }
 
         for (type in staticArrays.keys) {
@@ -282,13 +283,6 @@ class CTranspile {
         return lines
     }
 
-//    private fun initializationLine(type: Type, names: List<String>): String {
-//        return if (type is Type.StaticArrayType) {
-//            names.map {  }
-//        } else {
-//            "${type} ${names.joinToString(", ")};"
-//        }
-//    }
 
     private fun typeToStringInInitialization(type: Type): String {
         return when (type) {

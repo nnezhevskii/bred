@@ -1,6 +1,19 @@
+typeclass Printable<A> {
+    fun toString(a: A): String
+}
 
+instance Printable<Int> {
+    fun toString(value: Int): String {
+        return intToString(value)
+    }
+}
 
-fun arrayToString(arr: Array<Int>, size: Int): String {
+fun printValue<T: Printable>(value: T) {
+    println(toString(value))
+}
+
+/*
+fun arrayToString<T: Printable>(arr: Array<T>, size: Int): String {
     var buff: String = ""
 
     if (size == 0) {
@@ -18,8 +31,6 @@ fun arrayToString(arr: Array<Int>, size: Int): String {
     return buff
 }
 
-
-/*
 fun bubbleSort(a: Array<Int>, size: Int) {
     for (i in 0 to size) {
         for (j in 0 to size) {
@@ -34,6 +45,7 @@ fun bubbleSort(a: Array<Int>, size: Int) {
 */
 
 fun main(): Unit {
+
     val arrSize: Int = readInt()
     val arr: Array<Int>[1024]
 
@@ -41,11 +53,13 @@ fun main(): Unit {
          arr[i] = random(0, 50)
     }
 
-    println(arrayToString(arr, arrSize))
+    printValue(3)
+  //  println(arrayToString(arr, arrSize))
 
+/*
     bubbleSort(arr, arrSize)
     println("After sorting:")
     println(arrayToString(arr, arrSize))
-
+*/
     readInt()
 }
