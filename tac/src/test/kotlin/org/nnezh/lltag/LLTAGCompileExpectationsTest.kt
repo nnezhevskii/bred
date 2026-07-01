@@ -1,8 +1,10 @@
 package org.nnezh.lltag
 
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
+import org.nnezh.org.nnezh.ICGenerator.PrettyPrinter
 import org.nnezh.org.nnezh.compiler.TACCompilerImpl
 
 /**
@@ -33,6 +35,11 @@ class LLTAGCompileExpectationsTest {
     val tac = TACCompilerImpl().compile(src)
     assertTrue(tac.isNotEmpty(), "expected non-empty 3AC output")
   }
+
+  private fun formattedTac(src: String): List<String> =
+    TACCompilerImpl().compile(src)
+      .let { PrettyPrinter().format(it) }
+      .map { it.trim() }
 
   // region Expected failures — language / semantic rules
 
@@ -353,6 +360,74 @@ class LLTAGCompileExpectationsTest {
       }
       """.trimIndent(),
     )
+  }
+
+  @Test
+  fun `logical or expression emits OR opcode`() {
+    val tac = formattedTac(
+      """
+      fun main(): Unit {
+          val left: Boolean = true
+          val right: Boolean = false
+          val either: Boolean = left || right
+      }
+      """.trimIndent(),
+    )
+
+    assertTrue(
+      tac.any { it.startsWith("OR ") },
+      "expected OR opcode in 3AC output, got:\n${tac.joinToString("\n")}",
+    )
+  }
+
+  @Test
+  fun `unary expressions emit NEG and NOT opcodes`() {
+    val tac = formattedTac(
+      """
+      fun main(): Unit {
+          val flag: Boolean = true
+          val negated: Boolean = !flag
+          val value: Int = -1
+      }
+      """.trimIndent(),
+    )
+
+    assertTrue(tac.any { it.startsWith("NOT ") }, "expected NOT opcode, got:\n${tac.joinToString("\n")}")
+    assertTrue(tac.any { it.startsWith("NEG ") }, "expected NEG opcode, got:\n${tac.joinToString("\n")}")
+  }
+
+  @Test
+  fun `array initializer emits allocation and one store per element`() {
+    val tac = formattedTac(
+      """
+      fun main(): Unit {
+          val arr: Int[2] = [4, 5]
+      }
+      """.trimIndent(),
+    )
+
+    assertTrue(
+      tac.any { it.startsWith("ALLOC ") && it.contains("arr:Array") && it.contains("2:Int") },
+      "expected ALLOC for arr[2], got:\n${tac.joinToString("\n")}",
+    )
+    assertEquals(2, tac.count { it.startsWith("STORE ") })
+  }
+
+  @Test
+  fun `user function calls use mangled target name`() {
+    val tac = formattedTac(
+      """
+      fun id(value: Int): Int {
+          return value
+      }
+      fun main(): Unit {
+          val n: Int = id(1)
+      }
+      """.trimIndent(),
+    )
+
+    assertTrue(tac.any { it == "func id_Int:" }, "expected mangled function declaration, got:\n${tac.joinToString("\n")}")
+    assertTrue(tac.any { it.startsWith("CALL ") && it.contains("id_Int:Int") }, "expected call to id_Int, got:\n${tac.joinToString("\n")}")
   }
 
   // endregion

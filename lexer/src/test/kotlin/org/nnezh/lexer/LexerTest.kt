@@ -38,7 +38,7 @@ class LexerTest {
 
     @Test
     fun `keywords are recognized as keyword tokens`() {
-        val tokens = meaningfulTokens("fun val var if else return while true false typeclass instance")
+        val tokens = meaningfulTokens("fun val var if else return while for in to true false mut typeclass instance")
         val expected = listOf(
             Token.Keyword.Fun::class.java,
             Token.Keyword.Val::class.java,
@@ -47,8 +47,12 @@ class LexerTest {
             Token.Keyword.Else::class.java,
             Token.Keyword.Return::class.java,
             Token.Keyword.While::class.java,
+            Token.Keyword.For::class.java,
+            Token.Keyword.In::class.java,
+            Token.Keyword.To::class.java,
             Token.Keyword.True::class.java,
             Token.Keyword.False::class.java,
+            Token.Keyword.Mut::class.java,
             Token.Keyword.Typeclass::class.java,
             Token.Keyword.Instance::class.java,
         )
@@ -71,6 +75,14 @@ class LexerTest {
         val tokens = meaningfulTokens("Typeclass Instance TYPECLASS INSTANCE")
         assertTrue(tokens.all { it is Token.Identifier })
         assertEquals(listOf("Typeclass", "Instance", "TYPECLASS", "INSTANCE"), tokens.map { it.lexeme })
+    }
+
+    @Test
+    fun `unicode letters are accepted in identifiers`() {
+        val tokens = meaningfulTokens("значение π _счётчик a变量")
+
+        assertTrue(tokens.all { it is Token.Identifier })
+        assertEquals(listOf("значение", "π", "_счётчик", "a变量"), tokens.map { it.lexeme })
     }
 
     @Test
@@ -327,6 +339,14 @@ class LexerTest {
     fun `unknown character is reported with position`() {
         val error = assertInstanceOf(LexerError.UnexpectedCharacter::class.java, errorOf("val x = @"))
         assertEquals(Position(1, 9), error.position)
+        assertEquals('@', error.char)
+    }
+
+    @Test
+    fun `lexer reports the first error and stops scanning`() {
+        val error = assertInstanceOf(LexerError.UnexpectedCharacter::class.java, errorOf("val ok: Int = 1 @ ;"))
+
+        assertEquals(Position(1, 17), error.position)
         assertEquals('@', error.char)
     }
 

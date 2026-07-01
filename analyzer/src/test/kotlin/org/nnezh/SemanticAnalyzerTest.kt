@@ -230,6 +230,32 @@ class SemanticAnalyzerTest {
     }
 
     @Test
+    fun `global variable redeclaration is a semantic error`() {
+        assertSingleSemanticError(
+            """
+            val answer: Int = 1
+            val answer: Int = 2
+            fun main(): Unit { }
+            """.trimIndent(),
+            SemanticErrorType.VARIABLE_REDECLARATION,
+        )
+    }
+
+    @Test
+    fun `assignment to immutable global val is a semantic error`() {
+        assertSingleSemanticError(
+            """
+            val answer: Int = 1
+            fun main(): Unit {
+                answer = 2
+            }
+            """.trimIndent(),
+            SemanticErrorType.VARIABLE_CHANGING_IMMUTABLE,
+            AssignmentStatementAstNode::class.java,
+        )
+    }
+
+    @Test
     fun `mutable variable assignment with matching type is valid`() {
         assertNoSemanticDiagnostics(
             """
@@ -335,6 +361,17 @@ class SemanticAnalyzerTest {
     }
 
     @Test
+    fun `user function cannot redefine builtin signature`() {
+        assertSingleSemanticError(
+            """
+            fun println(value: String): Unit { }
+            """.trimIndent(),
+            SemanticErrorType.REDEFINE_FUNCTION,
+            FunctionDeclAstNode::class.java,
+        )
+    }
+
+    @Test
     fun `function name used as value is not a first class function`() {
         assertSemanticError(
             """
@@ -372,6 +409,45 @@ class SemanticAnalyzerTest {
             """
             fun main(): Unit {
                 val n: Int = 1 + 2.0
+            }
+            """.trimIndent(),
+            SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
+            BinaryExpressionASTNode::class.java,
+        )
+    }
+
+    @Test
+    fun `string concatenation and string comparisons are valid`() {
+        assertNoSemanticDiagnostics(
+            """
+            fun main(): Unit {
+                val word: String = "br" + "ed"
+                val same: Boolean = word == "bred"
+                val ordered: Boolean = "a" <= "b"
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `equality requires operands of the same type`() {
+        assertSemanticError(
+            """
+            fun main(): Unit {
+                val same: Boolean = 1 == "1"
+            }
+            """.trimIndent(),
+            SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
+            BinaryExpressionASTNode::class.java,
+        )
+    }
+
+    @Test
+    fun `modulo requires integer operands`() {
+        assertSemanticError(
+            """
+            fun main(): Unit {
+                val bad: Double = 5.0 % 2.0
             }
             """.trimIndent(),
             SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
@@ -787,6 +863,17 @@ class SemanticAnalyzerTest {
     }
 
     @Test
+    fun `unit function accepts bare explicit return`() {
+        assertNoSemanticDiagnostics(
+            """
+            fun log(): Unit {
+                return
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
     fun `wrong return type inside else branch is reported on return statement`() {
         assertSingleSemanticError(
             """
@@ -832,6 +919,24 @@ class SemanticAnalyzerTest {
                     return 2
                 }
                 val unreachable: Int = 3
+            }
+            """.trimIndent(),
+            SemanticErrorType.BLOCK_CONTAINS_CODE_AFTER_RETURN,
+            BlockAstNode::class.java,
+        )
+    }
+
+    @Test
+    fun `ordinary code after return inside nested branch is unreachable code`() {
+        assertSingleSemanticError(
+            """
+            fun choose(flag: Boolean): Int {
+                if (flag) {
+                    return 1
+                    val unreachable: Int = 2
+                } else {
+                    return 3
+                }
             }
             """.trimIndent(),
             SemanticErrorType.BLOCK_CONTAINS_CODE_AFTER_RETURN,

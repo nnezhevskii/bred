@@ -54,7 +54,7 @@ enum class LLTACOperation {
         override fun toString() = "AND"
     },
     LLTAC_OR {
-        override fun toString() = "AND"
+        override fun toString() = "OR"
     },
     LLTAC_CALL {
         override fun toString() = "CALL"

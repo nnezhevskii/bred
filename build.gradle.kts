@@ -18,6 +18,7 @@ dependencies {
     implementation(project(":analyzer"))
     implementation(project(":tac"))
     implementation(project(":c-backend"))
+    implementation("io.arrow-kt:arrow-core:2.2.2.1")
 
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
@@ -34,10 +35,10 @@ application {
 sourceSets {
     main {
         kotlin.setSrcDirs(listOf("src/main/kotlin"))
-        kotlin.include("Main.kt")
     }
     test {
-        kotlin.setSrcDirs(emptyList<String>())
+        kotlin.setSrcDirs(listOf("src/test/kotlin"))
+        kotlin.include("org/nnezh/root/**/*.kt")
         resources.setSrcDirs(emptyList<String>())
     }
 }

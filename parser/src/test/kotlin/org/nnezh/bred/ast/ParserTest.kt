@@ -139,6 +139,41 @@ class ParserTest {
     }
 
     @Test
+    fun `parentheses override arithmetic precedence`() {
+        val root = parse("fun main(): Unit { val n: Int = (1 + 2) * 3 }")
+
+        val declaration = assertInstanceOf(ScalarVariableInitializationASTNode::class.java, root.functions.single().body.statements.first())
+        val multiply = assertInstanceOf(BinaryExpressionASTNode::class.java, declaration.expression)
+        val groupedAddition = assertInstanceOf(BinaryExpressionASTNode::class.java, multiply.left)
+
+        assertEquals(BinaryOperator.Star, multiply.operator.kind)
+        assertEquals(BinaryOperator.Plus, groupedAddition.operator.kind)
+    }
+
+    @Test
+    fun `binary operators at same precedence are left associative`() {
+        val root = parse(
+            """
+            fun main(): Unit {
+                val arithmetic: Int = 1 - 2 - 3
+                val logical: Boolean = a || b || c
+            }
+            """.trimIndent()
+        )
+        val declarations = root.functions.single().body.statements.filterIsInstance<ScalarVariableInitializationASTNode>()
+
+        val outerMinus = assertInstanceOf(BinaryExpressionASTNode::class.java, declarations[0].expression)
+        val innerMinus = assertInstanceOf(BinaryExpressionASTNode::class.java, outerMinus.left)
+        assertEquals(BinaryOperator.Minus, outerMinus.operator.kind)
+        assertEquals(BinaryOperator.Minus, innerMinus.operator.kind)
+
+        val outerOr = assertInstanceOf(BinaryExpressionASTNode::class.java, declarations[1].expression)
+        val innerOr = assertInstanceOf(BinaryExpressionASTNode::class.java, outerOr.left)
+        assertEquals(BinaryOperator.Or, outerOr.operator.kind)
+        assertEquals(BinaryOperator.Or, innerOr.operator.kind)
+    }
+
+    @Test
     fun `typeclass proposal sample parses valid declarations`() {
         val root = parse(
             """
@@ -247,6 +282,17 @@ class ParserTest {
     }
 
     @Test
+    fun `bare return before closing brace is explicit unit and suppresses synthetic return`() {
+        val root = parse("fun main(): Unit { return }")
+        val statements = root.functions.single().body.statements
+
+        assertEquals(1, statements.size)
+        val returnStatement = assertInstanceOf(ReturnFunctionStatementAstNode::class.java, statements.single())
+        assertTrue(returnStatement.explicit)
+        assertNull(returnStatement.expression)
+    }
+
+    @Test
     fun `nested return does not suppress top-level synthetic return`() {
         val root = parse("fun main(): Unit { if (true) { return Unit } }")
         val statements = root.functions.single().body.statements
@@ -320,6 +366,11 @@ class ParserTest {
     }
 
     @Test
+    fun `type sign rejects trailing comma in generic argument list`() {
+        assertTrue(parseFails("fun broken(a: Pair<A,>): Unit { }"))
+    }
+
+    @Test
     fun `typeclass requires generic parameter list`() {
         assertTrue(parseFails("typeclass Printable { fun print(a: Int) }"))
     }
@@ -352,6 +403,11 @@ class ParserTest {
     }
 
     @Test
+    fun `mutable static array declaration syntax is rejected`() {
+        assertTrue(parseFails("fun main(): Unit { var xs: Int[3] = [1, 2, 3] }"))
+    }
+
+    @Test
     fun `array initializer rejects scalar rhs for array declaration`() {
         assertTrue(parseFails("val xs: Int[3] = 1"))
     }
@@ -370,6 +426,45 @@ class ParserTest {
     @Test
     fun `indirect call statement is rejected`() {
         assertTrue(parseFails("fun main(): Unit { (f)() }"))
+    }
+
+    @Test
+    fun `literal starting statement is rejected`() {
+        assertTrue(parseFails("fun main(): Unit { 1 }"))
+    }
+
+    @Test
+    fun `bare return at end of file is rejected`() {
+        assertTrue(parseFails("fun broken(): Unit { return"))
+    }
+
+    @Test
+    fun `for desugaring keeps counter right border and increment shape`() {
+        val root = parse("fun main(): Unit { for (i in from to end) { total = total + i } }")
+        val forStatement = assertInstanceOf(ForStatementAstNode::class.java, root.functions.single().body.statements.first())
+        val desugared = forStatement.desugaredContent.statements
+
+        val counter = assertInstanceOf(ScalarVariableInitializationASTNode::class.java, desugared[0])
+        assertEquals("i", counter.name)
+        assertEquals(TypeSign("Int"), counter.type)
+        assertTrue(counter.isMutable)
+
+        val rightBorder = assertInstanceOf(ScalarVariableInitializationASTNode::class.java, desugared[1])
+        assertEquals("\$right_borderi", rightBorder.name)
+        assertEquals(TypeSign("Int"), rightBorder.type)
+        assertFalse(rightBorder.isMutable)
+
+        val loop = assertInstanceOf(WhileStatementAstNode::class.java, desugared[2])
+        val condition = assertInstanceOf(BinaryExpressionASTNode::class.java, loop.condition)
+        assertEquals(BinaryOperator.Le, condition.operator.kind)
+        assertEquals("i", assertInstanceOf(VariableExpressionASTNode::class.java, condition.left).token.lexeme)
+        assertEquals("\$right_borderi", assertInstanceOf(VariableExpressionASTNode::class.java, condition.right).token.lexeme)
+
+        val increment = assertInstanceOf(AssignmentStatementAstNode::class.java, loop.bodyBlock.statements.last())
+        assertEquals("i", assertInstanceOf(VariableExpressionASTNode::class.java, increment.lValue).token.lexeme)
+        val plus = assertInstanceOf(BinaryExpressionASTNode::class.java, increment.rValue)
+        assertEquals(BinaryOperator.Plus, plus.operator.kind)
+        assertEquals(1, assertInstanceOf(IntLiteralExpressionASTNode::class.java, plus.right).value)
     }
 
     @Test
