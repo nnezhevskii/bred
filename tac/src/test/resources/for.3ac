@@ -3,7 +3,7 @@ func main:
   ASSIGN i:Int 1:Int
   ASSIGN $right_borderi:Int 5:Int
 lbl1:
-  LE var1:Boolean i:Int $right_borderi:Int
+  LT var1:Boolean i:Int $right_borderi:Int
   JMP_IF_NOT lbl2 var1:Boolean
   ADD sum:Int sum:Int i:Int
   ASSIGN var7:Int 1:Int

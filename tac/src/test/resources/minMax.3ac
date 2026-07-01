@@ -16,7 +16,7 @@ lbl1:
   ASSIGN i:Int 1:Int
   ASSIGN $right_borderi:Int size:Int
 lbl2:
-  LE var8:Boolean i:Int $right_borderi:Int
+  LT var8:Boolean i:Int $right_borderi:Int
   JMP_IF_NOT lbl3 var8:Boolean
   ASSIGN var14:Int 0:Int
   LOAD var14:Int arr:Array i:Int
@@ -50,7 +50,7 @@ lbl5:
   ASSIGN i:Int 1:Int
   ASSIGN $right_borderi:Int size:Int
 lbl6:
-  LE var28:Boolean i:Int $right_borderi:Int
+  LT var28:Boolean i:Int $right_borderi:Int
   JMP_IF_NOT lbl7 var28:Boolean
   ASSIGN var34:Int 0:Int
   LOAD var34:Int arr:Array i:Int
@@ -79,7 +79,7 @@ lbl9:
   ASSIGN i:Int 0:Int
   ASSIGN $right_borderi:Int size:Int
 lbl10:
-  LE var45:Boolean i:Int $right_borderi:Int
+  LT var45:Boolean i:Int $right_borderi:Int
   JMP_IF_NOT lbl11 var45:Boolean
   ASSIGN var51:Int 0:Int
   LOAD var51:Int arr:Array i:Int
@@ -109,7 +109,7 @@ lbl13:
   ASSIGN i:Int 0:Int
   ASSIGN $right_borderi:Int size:Int
 lbl14:
-  LE var63:Boolean i:Int $right_borderi:Int
+  LT var63:Boolean i:Int $right_borderi:Int
   JMP_IF_NOT lbl15 var63:Boolean
   ASSIGN var66:Int i:Int
   ASSIGN var70:Int 3:Int

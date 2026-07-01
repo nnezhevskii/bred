@@ -48,7 +48,7 @@ class ForParser(
             WhileStatementAstNode(
                 BinaryExpressionASTNode(
                     counter,
-                    LocatedBinaryOperator(BinaryOperator.Le, syntheticOpPosition),
+                    LocatedBinaryOperator(BinaryOperator.Lt, syntheticOpPosition),
                     VariableExpressionNode(limitToken),
                 ),
                 bodyBlock = BlockAstNode(

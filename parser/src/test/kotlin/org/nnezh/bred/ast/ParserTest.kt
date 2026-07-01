@@ -456,7 +456,7 @@ class ParserTest {
 
         val loop = assertInstanceOf(WhileStatementAstNode::class.java, desugared[2])
         val condition = assertInstanceOf(BinaryExpressionASTNode::class.java, loop.condition)
-        assertEquals(BinaryOperator.Le, condition.operator.kind)
+        assertEquals(BinaryOperator.Lt, condition.operator.kind)
         assertEquals("i", assertInstanceOf(VariableExpressionASTNode::class.java, condition.left).token.lexeme)
         assertEquals("\$right_borderi", assertInstanceOf(VariableExpressionASTNode::class.java, condition.right).token.lexeme)
 

@@ -18,7 +18,7 @@ lbl2:
   ASSIGN i:Int 0:Int
   ASSIGN $right_borderi:Int size:Int
 lbl3:
-  LE var11:Boolean i:Int $right_borderi:Int
+  LT var11:Boolean i:Int $right_borderi:Int
   JMP_IF_NOT lbl4 var11:Boolean
   ASSIGN var17:Int 0:Int
   LOAD var17:Int arr:Array i:Int

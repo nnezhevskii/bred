@@ -6,7 +6,7 @@ func sumRange_Array_Int_Int:
   ASSIGN i:Int start:Int
   ASSIGN $right_borderi:Int end:Int
 lbl1:
-  LE var1:Boolean i:Int $right_borderi:Int
+  LT var1:Boolean i:Int $right_borderi:Int
   JMP_IF_NOT lbl2 var1:Boolean
   ASSIGN var7:Int 0:Int
   LOAD var7:Int arr:Array i:Int

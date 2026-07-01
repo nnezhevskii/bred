@@ -14,7 +14,7 @@ lbl1:
   ASSIGN var7:Int 1:Int
   SUB $right_borderi:Int size:Int var7:Int
 lbl2:
-  LE var8:Boolean i:Int $right_borderi:Int
+  LT var8:Boolean i:Int $right_borderi:Int
   JMP_IF_NOT lbl3 var8:Boolean
   ASSIGN var12:Int 1:Int
   ADD next:Int i:Int var12:Int
