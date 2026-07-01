@@ -30,7 +30,7 @@ gradle.properties.local
 out/
 !**/src/main/**/out/
 !**/src/test/**/out/
-
+\.cursor/
 main.exe
 main.obj
 
