@@ -98,8 +98,9 @@ class CTranspile {
                 val dest = (instruction.destination as LeftValue).asLeftValue()
                 val value = (instruction.arg1!! as RightValue).asRightValue()
 
+
                 if ((instruction.destination as Operand).type.name == "String") {
-                    cCode.add("$dest = create_string($value, strlen($value));")
+                    cCode.add("$dest = create_string(\"$value\", strlen(\"$value\"));")
                 } else {
                     cCode.add("$dest = $value;")
                 }

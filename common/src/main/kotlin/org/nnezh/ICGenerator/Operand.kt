@@ -46,7 +46,7 @@ sealed class Operand {
     ) : Operand(), RightValue {
         override val type: Type = Type.StringType
         override fun toString() = "${value}:String"
-        override fun asRightValue(): String = "\"${value}\""
+        override fun asRightValue(): String = value
     }
 
     data class DoubleConst(

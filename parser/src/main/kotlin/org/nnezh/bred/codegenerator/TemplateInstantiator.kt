@@ -33,6 +33,7 @@ import org.nnezh.bred.ast.cloneSubtree
 import org.nnezh.bred.common.TypeSign
 import org.nnezh.bred.context.BuiltInFunctionMeta
 import org.nnezh.bred.context.DeclaredFunctionMeta
+import org.nnezh.bred.context.InstanceMeta
 import org.nnezh.bred.context.ProgramGlobalContext
 import org.nnezh.bred.context.mangleFunctionName
 import org.nnezh.bred.context.toManglePart
@@ -228,7 +229,11 @@ class TemplateInstantiator(
 
         if (expression.name in typeClassMethods) {
             val argumentTypes = expression.arguments.map { inferType(it, scope, rewriteContext) }
-            resolveTypeClassMethod(expression.name, argumentTypes.firstOrNull(), rewriteContext)?.let { method ->
+            var receiverType = argumentTypes.firstOrNull()
+            if (receiverType?.name == "Array") {
+                receiverType = receiverType.args.firstOrNull()
+            }
+            resolveTypeClassMethod(expression.name, receiverType, rewriteContext)?.let { method ->
                 return FunctionCallExpressionASTNode(
                     name = mangleFunctionName(method.name, method.arguments, method.result),
                     arguments = transformedArguments,
@@ -259,8 +264,11 @@ class TemplateInstantiator(
         }
         val owner = candidates.singleOrNull()
             ?: fail("Ambiguous typeclass method $methodName for type ${receiverType.name}")
-        val instance = context.findInstance(owner.typeClass.name, receiverType)
-            ?: fail("Missing instance ${owner.typeClass.name}<${receiverType.name}> for method $methodName")
+        val instance: InstanceMeta = if (receiverType.name == "Array") {
+            context.findInstance(owner.typeClass.name, receiverType.args.first())
+        } else {
+            context.findInstance(owner.typeClass.name, receiverType)
+        } ?: fail("Missing instance ${owner.typeClass.name}<${receiverType.name}> for method $methodName")
         return instance.methods[methodName]
             ?: fail("Instance ${owner.typeClass.name}<${receiverType.name}> does not implement $methodName")
     }
@@ -311,7 +319,10 @@ class TemplateInstantiator(
         val mapping = mutableMapOf<String, TypeSign>()
         template.arguments.zip(argumentTypes).forEach { (parameter, argumentType) ->
             val parameterType = parameter.type
-            if (parameterType.args.isEmpty() && parameterType.name in genericNames) {
+            if (parameterType.name == "Array" && genericNames.contains(parameterType.args.first().name)) {
+                val previous = mapping.putIfAbsent(parameterType.args.first().name, argumentType.args.first())
+            }
+            else if (parameterType.args.isEmpty() && parameterType.name in genericNames) {
                 val previous = mapping.putIfAbsent(parameterType.name, argumentType)
                 if (previous != null && previous != argumentType) {
                     fail("Conflicting concrete types for ${parameterType.name}: ${previous.name} and ${argumentType.name}")

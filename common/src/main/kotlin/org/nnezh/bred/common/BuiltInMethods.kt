@@ -24,7 +24,9 @@ object BuiltInMethods {
 
         FunctionSignature(name = "readString", args = listOf(), StringType),
         FunctionSignature(name = "intToString", args = listOf(IntType), StringType),
+        FunctionSignature(name = "doubleToString", args = listOf(DoubleType), StringType),
         FunctionSignature(name = "random", args = listOf(IntType, IntType), IntType),
+
 
 //        FunctionSignature(name = "stringLength", args = listOf(StringType), IntType),
 //        FunctionSignature(name = "stringConcat", args = listOf(StringType, StringType, StringType, IntType), UnitType),

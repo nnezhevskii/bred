@@ -8,45 +8,31 @@ instance Printable<Int> {
     }
 }
 
+instance Printable<String> {
+    fun toString(value: String): String {
+        return "#" + value + "#"
+    }
+}
+
 fun printValue<T: Printable>(value: T) {
     println(toString(value))
 }
 
-fun printArray<T: Printable>(arr: Array<T>) {
-
-}
-
-/*
-fun arrayToString<T: Printable>(arr: Array<T>, size: Int): String {
+fun printArray<T: Printable>(arr: Array<T>, size: Int): String {
     var buff: String = ""
-
     if (size == 0) {
         return ""
     }
     if (size == 1) {
-        return intToString(arr[0])
+        return toString(arr[0])
     }
 
     for (i in 0 to size - 1) {
-        buff = buff + intToString(arr[i]) + " "
+        buff = buff + toString(arr[i]) + " "
     }
-    buff = buff + intToString(arr[size - 1])
-
+    buff = buff + toString(arr[size - 1])
     return buff
 }
-
-fun bubbleSort(a: Array<Int>, size: Int) {
-    for (i in 0 to size) {
-        for (j in 0 to size) {
-            if (a[i] < a[j]) {
-                val temp: Int = a[j]
-                a[j] = a[i]
-                a[i] = temp
-            }
-        }
-    }
-}
-*/
 
 fun main(): Unit {
 
@@ -56,17 +42,16 @@ fun main(): Unit {
     for (i in 0 to arrSize) {
          arr[i] = random(0, 50)
     }
+    println("it's working for ints: ")
+    println(printArray(arr, arrSize))
 
-    printArray(arr)
-    printValue(3)
-    // printArray(arr)
-  //  println(arrayToString(arr, arrSize))
+    val stringArray: Array<String>[1024]
+    for (i in 0 to arrSize) {
+         stringArray[i] = intToString(random(0, 50))
+    }
 
-/*
-    bubbleSort(arr, arrSize)
-    println("After sorting:")
-    println(arrayToString(arr, arrSize))
-
-*/
+    println("... and for strings as well: ")
+    printValue("Hello")
+    println(printArray(stringArray, arrSize))
     readInt()
 }

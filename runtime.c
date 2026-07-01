@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <time.h>
 #include <string.h>
+#include <math.h>
 
 #ifdef _WIN32
 #include <sys/timeb.h>
@@ -12,7 +13,7 @@
 
 char *STRING_POOL = NULL;
 size_t string_pool_offset = 0;
-const size_t POOL_SIZE = 1024 * 1024 * 16; // 16 МБ
+const size_t POOL_SIZE = 1024 * 1024 * 64; // 16 МБ
 
 typedef struct {
     const char* data;
@@ -161,6 +162,72 @@ String intToString(int val) {
 
     String s = { .data = result, .length = len };
     return s;
+}
+
+String doubleToString(double val) {
+    const int precision = 6;
+
+    if (isnan(val)) {
+        return create_string("NaN", 3);
+    }
+    if (isinf(val)) {
+        return val < 0 ? create_string("-Inf", 4) : create_string("Inf", 3);
+    }
+
+    char buff[512];
+
+    int is_negative = 0;
+    if (val < 0) {
+        is_negative = 1;
+        val = -val;
+    }
+
+    double multiplier = 1.0;
+    for (int i = 0; i < precision; i++) multiplier *= 10.0;
+    val = round(val * multiplier) / multiplier;
+
+    long long integral_part = (long long)val;
+    double fractional_part_raw = val - (double)integral_part;
+    long long fractional_part = (long long)round(fractional_part_raw * multiplier);
+
+    if (fractional_part >= multiplier) {
+        integral_part += 1;
+        fractional_part = 0;
+    }
+
+    size_t i = 511;
+    buff[i] = '\0';
+
+    if (precision > 0) {
+        long long temp_frac = fractional_part;
+        for (int j = 0; j < precision; j++) {
+            i--;
+            buff[i] = '0' + (temp_frac % 10);
+            temp_frac /= 10;
+        }
+        i--;
+        buff[i] = '.'; // Поставили точку
+    }
+
+    if (integral_part == 0) {
+        i--;
+        buff[i] = '0';
+    } else {
+        long long temp_int = integral_part;
+        while (temp_int > 0) {
+            i--;
+            buff[i] = '0' + (temp_int % 10);
+            temp_int /= 10;
+        }
+    }
+
+    if (is_negative) {
+        i--;
+        buff[i] = '-';
+    }
+
+    size_t final_len = 511 - i;
+    return create_string(&buff[i], final_len);
 }
 
 // 18. random(min, max) -> Int
