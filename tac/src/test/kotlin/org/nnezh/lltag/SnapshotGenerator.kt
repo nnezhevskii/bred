@@ -8,7 +8,7 @@ import java.nio.file.Paths
 fun main() {
     val only = System.getenv("SNAPSHOT_ONLY")?.split(",")?.filter { it.isNotBlank() }
     val programs = listOf(
-        "factorial",
+        //"factorial",
         "for",
         "sortThree",
         "isEven",

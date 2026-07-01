@@ -20,8 +20,9 @@ object BuiltInMethods {
         FunctionSignature(name = "readBoolean", args = listOf(), BooleanType),
         FunctionSignature(name = "doubleToInt", args = listOf(DoubleType), IntType),
         FunctionSignature(name = "booleanToString", args = listOf(BooleanType, StringType, IntType), UnitType),
-        FunctionSignature(name = "random", args = listOf(IntType, IntType), IntType),
 
+
+        FunctionSignature(name = "stringEquals", args = listOf(StringType, StringType), BooleanType),
         FunctionSignature(name = "readString", args = listOf(), StringType),
         FunctionSignature(name = "intToString", args = listOf(IntType), StringType),
         FunctionSignature(name = "doubleToString", args = listOf(DoubleType), StringType),
@@ -33,7 +34,7 @@ object BuiltInMethods {
 //        FunctionSignature(name = "intToString", args = listOf(IntType, StringType, IntType), UnitType),
 //        FunctionSignature(name = "substring", args = listOf(StringType, IntType, IntType, StringType, IntType), UnitType),
 
-        //        FunctionSignature(name = "stringEquals", args = listOf(StringType, StringType), BooleanType),
+        //
 //        FunctionSignature(name = "currentTimeMillis", args = listOf(), IntType),
     )
 }

@@ -493,7 +493,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                         scope.endInitializing(node.name)
                     }
                 }
-                scope.put(node.name, node.type, node.isMutable)
+                scope.put(node.name, TypeSign("Array", listOf(node.type)) , node.isMutable)
                 return warnings.right()
             }
 
