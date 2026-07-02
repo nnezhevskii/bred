@@ -1,18 +1,11 @@
-fun factorial(n: Int): Int {
-    var result: Int = 1
-    var i: Int = 1
-    while (i <= n) {
-        result = result * i
-        i = i + 1
+fun factorialRecursion(n: Int): Int {
+    if (n < 1) {
+        return 1
     }
-    return result
+    return n * factorialRecursion(n - 1)
 }
 
-fun main(): Unit {
-    var x: Int = readInt()
-    var factStr: String = ""
-    intToString(factorial(x), factStr, 1024)
-    var msg: String = ""
-    stringConcat("factorial: ", factStr, msg, 1024)
-    println(msg)
+fun main() {
+    val n: Int = readInt()
+    println(intToString(factorialRecursion(n)))
 }

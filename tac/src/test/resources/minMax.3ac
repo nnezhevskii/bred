@@ -1,270 +1,93 @@
-func findMaxIndex_Array_Int:
+func minIndex:
   GET_PARAM arr:Array
   GET_PARAM size:Int
   ASSIGN var3:Int 0:Int
-  LE var1:Boolean size:Int var3:Int
+  EQ var1:Boolean size:Int var3:Int
   JMP_IF_NOT lbl1 var1:Boolean
   ASSIGN var5:Int 1:Int
   NEG var4:Int var5:Int
   RET var4:Int
 lbl1:
-  ASSIGN var6:Int 0:Int
-  ASSIGN var7:Int 0:Int
-  LOAD var7:Int arr:Array var6:Int
-  ASSIGN maxVal:Int var7:Int
-  ASSIGN maxIdx:Int 0:Int
+  ASSIGN result:Int 0:Int
   ASSIGN i:Int 1:Int
   ASSIGN _right_borderi:Int size:Int
 lbl2:
-  LT var8:Boolean i:Int _right_borderi:Int
-  JMP_IF_NOT lbl3 var8:Boolean
-  ASSIGN var14:Int 0:Int
-  LOAD var14:Int arr:Array i:Int
-  GT var11:Boolean var14:Int maxVal:Int
-  JMP_IF_NOT lbl4 var11:Boolean
-  ASSIGN var17:Int 0:Int
-  LOAD var17:Int arr:Array i:Int
-  ASSIGN maxVal:Int var17:Int
-  ASSIGN maxIdx:Int i:Int
+  LT var6:Boolean i:Int _right_borderi:Int
+  JMP_IF_NOT lbl3 var6:Boolean
+  ASSIGN var12:Int 0:Int
+  LOAD var12:Int arr:Array i:Int
+  ASSIGN var15:Int 0:Int
+  LOAD var15:Int arr:Array result:Int
+  LT var9:Boolean var12:Int var15:Int
+  JMP_IF_NOT lbl4 var9:Boolean
+  ASSIGN result:Int i:Int
 lbl4:
-  ASSIGN var19:Int 1:Int
-  ADD i:Int i:Int var19:Int
+  ASSIGN var17:Int 1:Int
+  ADD i:Int i:Int var17:Int
   JMP lbl2
 lbl3:
-  RET maxIdx:Int
-func findMinIndex_Array_Int:
+  RET result:Int
+func maxIndex:
   GET_PARAM arr:Array
   GET_PARAM size:Int
-  ASSIGN var23:Int 0:Int
-  LE var21:Boolean size:Int var23:Int
-  JMP_IF_NOT lbl5 var21:Boolean
-  ASSIGN var25:Int 1:Int
-  NEG var24:Int var25:Int
-  RET var24:Int
+  ASSIGN var21:Int 0:Int
+  EQ var19:Boolean size:Int var21:Int
+  JMP_IF_NOT lbl5 var19:Boolean
+  ASSIGN var23:Int 1:Int
+  NEG var22:Int var23:Int
+  RET var22:Int
 lbl5:
-  ASSIGN var26:Int 0:Int
-  ASSIGN var27:Int 0:Int
-  LOAD var27:Int arr:Array var26:Int
-  ASSIGN minVal:Int var27:Int
-  ASSIGN minIdx:Int 0:Int
+  ASSIGN result:Int 0:Int
   ASSIGN i:Int 1:Int
-  ASSIGN $right_borderi:Int size:Int
+  ASSIGN _right_borderi:Int size:Int
 lbl6:
-  LT var28:Boolean i:Int $right_borderi:Int
-  JMP_IF_NOT lbl7 var28:Boolean
-  ASSIGN var34:Int 0:Int
-  LOAD var34:Int arr:Array i:Int
-  LT var31:Boolean var34:Int minVal:Int
-  JMP_IF_NOT lbl8 var31:Boolean
-  ASSIGN var37:Int 0:Int
-  LOAD var37:Int arr:Array i:Int
-  ASSIGN minVal:Int var37:Int
-  ASSIGN minIdx:Int i:Int
+  LT var24:Boolean i:Int _right_borderi:Int
+  JMP_IF_NOT lbl7 var24:Boolean
+  ASSIGN var30:Int 0:Int
+  LOAD var30:Int arr:Array i:Int
+  ASSIGN var33:Int 0:Int
+  LOAD var33:Int arr:Array result:Int
+  GT var27:Boolean var30:Int var33:Int
+  JMP_IF_NOT lbl8 var27:Boolean
+  ASSIGN result:Int i:Int
 lbl8:
-  ASSIGN var39:Int 1:Int
-  ADD i:Int i:Int var39:Int
+  ASSIGN var35:Int 1:Int
+  ADD i:Int i:Int var35:Int
   JMP lbl6
 lbl7:
-  RET minIdx:Int
-func computeSum_Array_Int:
-  GET_PARAM arr:Array
-  GET_PARAM size:Int
-  ASSIGN var43:Int 0:Int
-  LE var41:Boolean size:Int var43:Int
-  JMP_IF_NOT lbl9 var41:Boolean
-  ASSIGN var44:Int 0:Int
-  RET var44:Int
-lbl9:
-  ASSIGN sum:Int 0:Int
-  ASSIGN i:Int 0:Int
-  ASSIGN $right_borderi:Int size:Int
-lbl10:
-  LT var45:Boolean i:Int $right_borderi:Int
-  JMP_IF_NOT lbl11 var45:Boolean
-  ASSIGN var51:Int 0:Int
-  LOAD var51:Int arr:Array i:Int
-  ADD sum:Int sum:Int var51:Int
-  ASSIGN var53:Int 1:Int
-  ADD i:Int i:Int var53:Int
-  JMP lbl10
-lbl11:
-  RET sum:Int
+  RET result:Int
 func main:
-  ALLOC arr:Array Int 50:Int
-  CALL size:Int readInt:Int 0:Int
-  ASSIGN var57:Int 0:Int
-  LT var55:Boolean size:Int var57:Int
-  JMP_IF_NOT lbl12 var55:Boolean
-  ASSIGN var58:String negative size not allowed:String
-  PARAM var58:String
-  CALL  println:Unit 1:Int
-lbl12:
-  ASSIGN var61:Int 50:Int
-  GT var59:Boolean size:Int var61:Int
-  JMP_IF_NOT lbl13 var59:Boolean
-  ASSIGN var62:String technical restrictions: size too large:String
-  PARAM var62:String
-  CALL  println:Unit 1:Int
-lbl13:
+  ASSIGN arraySize:Int 50:Int
+  ALLOC arr:Array Int 1024:Int
   ASSIGN i:Int 0:Int
-  ASSIGN $right_borderi:Int size:Int
-lbl14:
-  LT var63:Boolean i:Int $right_borderi:Int
-  JMP_IF_NOT lbl15 var63:Boolean
-  ASSIGN var66:Int i:Int
-  ASSIGN var70:Int 3:Int
-  MUL var68:Int i:Int var70:Int
-  ASSIGN var71:Int 7:Int
-  ADD var67:Int var68:Int var71:Int
-  STORE arr:Int var66:Int var67:Int
-  ASSIGN var73:Int 1:Int
-  ADD i:Int i:Int var73:Int
-  JMP lbl14
-lbl15:
+  ASSIGN _right_borderi:Int arraySize:Int
+lbl9:
+  LT var37:Boolean i:Int _right_borderi:Int
+  JMP_IF_NOT lbl10 var37:Boolean
+  ASSIGN var40:Int i:Int
+  ASSIGN var43:Int 1000:Int
+  NEG var42:Int var43:Int
+  ASSIGN var44:Int 1000:Int
+  PARAM var42:Int
+  PARAM var44:Int
+  CALL var41:Int random:Int 2:Int
+  STORE arr:Int var40:Int var41:Int
+  ASSIGN var46:Int 1:Int
+  ADD i:Int i:Int var46:Int
+  JMP lbl9
+lbl10:
   PARAM arr:Array
-  PARAM size:Int
-  CALL maxIdx:Int findMaxIndex_Array_Int:Int 2:Int
+  PARAM arraySize:Int
+  CALL var48:Int minIndex:Int 2:Int
+  PARAM var48:Int
+  CALL var47:String intToString:String 1:Int
+  PARAM var47:String
+  CALL  println:Unit 1:Int
   PARAM arr:Array
-  PARAM size:Int
-  CALL minIdx:Int findMinIndex_Array_Int:Int 2:Int
-  PARAM arr:Array
-  PARAM size:Int
-  CALL total:Int computeSum_Array_Int:Int 2:Int
-  ASSIGN var83:Int 1:Int
-  NEG var82:Int var83:Int
-  EQ var80:Boolean maxIdx:Int var82:Int
-  JMP_IF_NOT lbl16 var80:Boolean
-  ASSIGN var84:String array is empty:String
-  PARAM var84:String
+  PARAM arraySize:Int
+  CALL var52:Int maxIndex:Int 2:Int
+  PARAM var52:Int
+  CALL var51:String intToString:String 1:Int
+  PARAM var51:String
   CALL  println:Unit 1:Int
-  JMP lbl17
-lbl16:
-  ASSIGN var86:Int 0:Int
-  LOAD var86:Int arr:Array maxIdx:Int
-  ASSIGN maxVal:Int var86:Int
-  ASSIGN var88:Int 0:Int
-  LOAD var88:Int arr:Array minIdx:Int
-  ASSIGN minVal:Int var88:Int
-  SUB rangeVal:Int maxVal:Int minVal:Int
-  ASSIGN idxStr:String :String
-  ASSIGN var93:Int 1024:Int
-  PARAM maxIdx:Int
-  PARAM idxStr:String
-  PARAM var93:Int
-  CALL  intToString:Unit 3:Int
-  ASSIGN part1:String :String
-  ASSIGN var94:String max at index :String
-  ASSIGN var97:Int 1024:Int
-  PARAM var94:String
-  PARAM idxStr:String
-  PARAM part1:String
-  PARAM var97:Int
-  CALL  stringConcat:Unit 4:Int
-  ASSIGN part2:String :String
-  ASSIGN var99:String  value :String
-  ASSIGN var101:Int 1024:Int
-  PARAM part1:String
-  PARAM var99:String
-  PARAM part2:String
-  PARAM var101:Int
-  CALL  stringConcat:Unit 4:Int
-  ASSIGN valStr:String :String
-  ASSIGN var104:Int 1024:Int
-  PARAM maxVal:Int
-  PARAM valStr:String
-  PARAM var104:Int
-  CALL  intToString:Unit 3:Int
-  ASSIGN msg1:String :String
-  ASSIGN var108:Int 1024:Int
-  PARAM part2:String
-  PARAM valStr:String
-  PARAM msg1:String
-  PARAM var108:Int
-  CALL  stringConcat:Unit 4:Int
-  PARAM msg1:String
-  CALL  println:Unit 1:Int
-  ASSIGN minIdxStr:String :String
-  ASSIGN var112:Int 1024:Int
-  PARAM minIdx:Int
-  PARAM minIdxStr:String
-  PARAM var112:Int
-  CALL  intToString:Unit 3:Int
-  ASSIGN minPart1:String :String
-  ASSIGN var113:String min at index :String
-  ASSIGN var116:Int 1024:Int
-  PARAM var113:String
-  PARAM minIdxStr:String
-  PARAM minPart1:String
-  PARAM var116:Int
-  CALL  stringConcat:Unit 4:Int
-  ASSIGN minPart2:String :String
-  ASSIGN var118:String  value :String
-  ASSIGN var120:Int 1024:Int
-  PARAM minPart1:String
-  PARAM var118:String
-  PARAM minPart2:String
-  PARAM var120:Int
-  CALL  stringConcat:Unit 4:Int
-  ASSIGN minValStr:String :String
-  ASSIGN var123:Int 1024:Int
-  PARAM minVal:Int
-  PARAM minValStr:String
-  PARAM var123:Int
-  CALL  intToString:Unit 3:Int
-  ASSIGN msg2:String :String
-  ASSIGN var127:Int 1024:Int
-  PARAM minPart2:String
-  PARAM minValStr:String
-  PARAM msg2:String
-  PARAM var127:Int
-  CALL  stringConcat:Unit 4:Int
-  PARAM msg2:String
-  CALL  println:Unit 1:Int
-  ASSIGN totalStr:String :String
-  ASSIGN var131:Int 1024:Int
-  PARAM total:Int
-  PARAM totalStr:String
-  PARAM var131:Int
-  CALL  intToString:Unit 3:Int
-  ASSIGN msg3:String :String
-  ASSIGN var132:String sum is :String
-  ASSIGN var135:Int 1024:Int
-  PARAM var132:String
-  PARAM totalStr:String
-  PARAM msg3:String
-  PARAM var135:Int
-  CALL  stringConcat:Unit 4:Int
-  PARAM msg3:String
-  CALL  println:Unit 1:Int
-  ASSIGN rangeStr:String :String
-  ASSIGN var139:Int 1024:Int
-  PARAM rangeVal:Int
-  PARAM rangeStr:String
-  PARAM var139:Int
-  CALL  intToString:Unit 3:Int
-  ASSIGN msg4:String :String
-  ASSIGN var140:String range is :String
-  ASSIGN var143:Int 1024:Int
-  PARAM var140:String
-  PARAM rangeStr:String
-  PARAM msg4:String
-  PARAM var143:Int
-  CALL  stringConcat:Unit 4:Int
-  PARAM msg4:String
-  CALL  println:Unit 1:Int
-  ASSIGN var147:Int 0:Int
-  EQ var145:Boolean rangeVal:Int var147:Int
-  JMP_IF_NOT lbl18 var145:Boolean
-  ASSIGN var148:String all elements are equal:String
-  PARAM var148:String
-  CALL  println:Unit 1:Int
-lbl18:
-  ASSIGN var151:Int 1:Int
-  EQ var149:Boolean size:Int var151:Int
-  JMP_IF_NOT lbl19 var149:Boolean
-  ASSIGN var152:String single element case:String
-  PARAM var152:String
-  CALL  println:Unit 1:Int
-lbl19:
-lbl17:
   RET Unit

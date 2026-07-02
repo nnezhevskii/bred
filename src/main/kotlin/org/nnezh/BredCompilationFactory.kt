@@ -11,6 +11,7 @@ import org.nnezh.lexer.Lexer
 import org.nnezh.lexer.LexerError
 import org.nnezh.lexer.readSource
 import org.nnezh.org.nnezh.ICGenerator.LLTACGenerator
+import org.nnezh.org.nnezh.ICGenerator.PrettyPrinter
 import org.nnezh.org.nnezh.compiler.CTranspile
 import java.nio.file.Path
 
@@ -78,6 +79,9 @@ class BredToCCompiler(
 
         Either.catch {
             val tac = LLTACGenerator(typeTable = analysis.expressionTypes).build(instantiatedRoot)
+            PrettyPrinter().format(tac).forEach {
+                println(it)
+            }
             cTranspiler.compile(tac)
         }.mapLeft { error ->
             listOf("C generation failed: ${error.message ?: error::class.qualifiedName}")

@@ -1,25 +1,10 @@
 typeclass Printable<A> {
     fun toString(a: A): String
 }
-
-fun printValue<T: Printable>(value: T) {
-    println(toString(value))
-}
-
-fun printArray<T: Printable>(arr: Array<T>, size: Int): String {
-    var buff: String = ""
-    if (size == 0) {
-        return ""
-    }
-    if (size == 1) {
-        return toString(arr[0])
-    }
-
-    for (i in 0 to size - 1) {
-        buff = buff + toString(arr[i]) + " "
-    }
-    buff = buff + toString(arr[size - 1])
-    return buff
+typeclass Comparability<A> {
+    fun equals(a: A, b: A): Boolean
+    fun less(a: A, b: A): Boolean
+    fun greater(a: A, b: A): Boolean
 }
 
 instance Printable<Int> {
@@ -28,29 +13,74 @@ instance Printable<Int> {
     }
 }
 
-instance Printable<String> {
-    fun toString(value: String): String {
-        return "#" + value + "#"
+instance Equality<Int> {
+    fun equals(a: Int, b: Int): Boolean {
+        return a == b
+    }
+    fun less(a: Int, b: Int): Boolean {
+        return a < b
     }
 }
 
+
+
+fun printValue<T: Printable>(value: T) {
+    println(toString(value))
+}
+
+fun arrayToString<T: Printable>(arr: Array<T>, size: Int): String {
+    var buff: String = ""
+
+    if (size == 0) {
+        return ""
+    }
+    if (size == 1) {
+        return intToString(arr[0])
+    }
+
+    for (i in 0 to size - 1) {
+        buff = buff + intToString(arr[i]) + " "
+    }
+    buff = buff + intToString(arr[size - 1])
+
+    return buff
+}
+
+fun binarySearch<T: Equality>(arr: Array<T>, size: Int, element: T): Int {
+    if (size == 0) {
+        return -1
+    }
+    var left: Int = 0
+    var right: Int = size - 1
+
+    while (left <= right) {
+        var mid: Int = (left + right) / 2
+        if (equals(arr[mid], element)) {
+            return mid
+        }
+        if (less(element, arr[mid])) {
+            right = mid - 1
+        } else {
+            left = mid + 1
+        }
+    }
+    return -1
+}
+
 fun main(): Unit {
+
     val arrSize: Int = readInt()
     val arr: Array<Int>[1024]
 
     for (i in 0 to arrSize) {
-       arr[i] = random(0, 50)
+        arr[i] = i * 2
     }
-    println("it's working for ints: ")
-    println(printArray(arr, arrSize))
+    arr[arrSize - 1] = arr[arrSize - 1] * 11
 
-    val stringArray: Array<String>[1024]
-    for (i in 0 to arrSize) {
-         stringArray[i] = intToString(random(0, 50))
-    }
+    println(arrayToString(arr, arrSize))
 
-    println("... and for strings as well: ")
-    printValue("Hello")
-    println(printArray(stringArray, arrSize))
+    val elementToSeek: Int = readInt()
+    println("index = " + intToString(binarySearch(arr, arrSize, elementToSeek)))
+
     readInt()
 }

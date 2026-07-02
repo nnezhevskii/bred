@@ -167,7 +167,7 @@ class LLTACGenerator(
             }
 
             is ArrayDeclarationASTNode -> {
-                val elementType = node.type.toTacType()
+                val elementType = node.type.args[0].toTacType()
                 val arrayType = Type.StaticArrayType(elementType, node.size)
                 instructions.add(LLTACElement.alloc(node.name, arrayType, node.size))
 

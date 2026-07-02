@@ -1,111 +1,40 @@
-fun findMaxIndex(arr: Int[], size: Int): Int {
-    if (size <= 0) {
+fun minIndex(arr: Array<Int>, size: Int): Int {
+    if (size == 0) {
         return -1
     }
-    var maxVal: Int = arr[0]
-    var maxIdx: Int = 0
+    var result: Int = 0
     for (i in 1 to size) {
-        if (arr[i] > maxVal) {
-            maxVal = arr[i]
-            maxIdx = i
+        if (arr[i] < arr[result]) {
+            result = i
         }
     }
-    return maxIdx
+
+    return result
 }
 
-fun findMinIndex(arr: Int[], size: Int): Int {
-    if (size <= 0) {
+fun maxIndex(arr: Array<Int>, size: Int): Int {
+    if (size == 0) {
         return -1
     }
-    var minVal: Int = arr[0]
-    var minIdx: Int = 0
+    var result: Int = 0
     for (i in 1 to size) {
-        if (arr[i] < minVal) {
-            minVal = arr[i]
-            minIdx = i
+        if (arr[i] > arr[result]) {
+            result = i
         }
     }
-    return minIdx
+
+    return result
 }
 
-fun computeSum(arr: Int[], size: Int): Int {
-    if (size <= 0) {
-        return 0
-    }
-    var sum: Int = 0
-    for (i in 0 to size) {
-        sum = sum + arr[i]
-    }
-    return sum
-}
 
-fun main() {
-    val arr: Int[50]
-    val size: Int = readInt()
+fun main(): Unit {
+    val arraySize: Int = 50
+    val arr: Array<Int>[1024]
 
-    if (size < 0) {
-        println("negative size not allowed")
-    }
-    if (size > 50) {
-        println("technical restrictions: size too large")
+    for (i in 0 to arraySize) {
+        arr[i] = random(-1000, 1000)
     }
 
-    for (i in 0 to size) {
-        arr[i] = i * 3 + 7
-    }
-
-    val maxIdx: Int = findMaxIndex(arr, size)
-    val minIdx: Int = findMinIndex(arr, size)
-    val total: Int = computeSum(arr, size)
-
-    if (maxIdx == -1) {
-        println("array is empty")
-    } else {
-        val maxVal: Int = arr[maxIdx]
-        val minVal: Int = arr[minIdx]
-        val rangeVal: Int = maxVal - minVal
-
-        var idxStr: String = ""
-        intToString(maxIdx, idxStr, 1024)
-        var part1: String = ""
-        stringConcat("max at index ", idxStr, part1, 1024)
-        var part2: String = ""
-        stringConcat(part1, " value ", part2, 1024)
-        var valStr: String = ""
-        intToString(maxVal, valStr, 1024)
-        var msg1: String = ""
-        stringConcat(part2, valStr, msg1, 1024)
-        println(msg1)
-
-        var minIdxStr: String = ""
-        intToString(minIdx, minIdxStr, 1024)
-        var minPart1: String = ""
-        stringConcat("min at index ", minIdxStr, minPart1, 1024)
-        var minPart2: String = ""
-        stringConcat(minPart1, " value ", minPart2, 1024)
-        var minValStr: String = ""
-        intToString(minVal, minValStr, 1024)
-        var msg2: String = ""
-        stringConcat(minPart2, minValStr, msg2, 1024)
-        println(msg2)
-
-        var totalStr: String = ""
-        intToString(total, totalStr, 1024)
-        var msg3: String = ""
-        stringConcat("sum is ", totalStr, msg3, 1024)
-        println(msg3)
-
-        var rangeStr: String = ""
-        intToString(rangeVal, rangeStr, 1024)
-        var msg4: String = ""
-        stringConcat("range is ", rangeStr, msg4, 1024)
-        println(msg4)
-
-        if (rangeVal == 0) {
-            println("all elements are equal")
-        }
-        if (size == 1) {
-            println("single element case")
-        }
-    }
+    println(intToString(minIndex(arr, arraySize)))
+    println(intToString(maxIndex(arr, arraySize)))
 }

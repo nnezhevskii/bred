@@ -1,0 +1,79 @@
+typeclass Printable<A> {
+    fun toString(a: A): String
+}
+typeclass Equality<A> {
+    fun equals(a: A, b: A): Boolean
+}
+
+instance Printable<Int> {
+    fun toString(value: Int): String {
+        return intToString(value)
+    }
+}
+
+instance Equality<Int> {
+    fun equals(a: Int, b: Int): Boolean {
+        return a == b
+    }
+}
+
+fun printValue<T: Printable>(value: T) {
+    println(toString(value))
+}
+
+fun arrayToString<T: Printable>(arr: Array<T>, size: Int): String {
+    var buff: String = ""
+
+    if (size == 0) {
+        return ""
+    }
+    if (size == 1) {
+        return intToString(arr[0])
+    }
+
+    for (i in 0 to size - 1) {
+        buff = buff + intToString(arr[i]) + " "
+    }
+    buff = buff + intToString(arr[size - 1])
+
+    return buff
+}
+
+fun binarySearch<T: Equality>(arr: Array<T>, size: Int, element: T): Int {
+    if (size == 0) {
+        return -1
+    }
+    var left: Int = 0
+    var right: Int = size - 1
+
+    while (left <= right) {
+        var mid: Int = (left + right) / 2
+        if (arr[mid] == element) {
+            return mid
+        }
+        if (element < arr[mid]) {
+            right = mid - 1
+        } else {
+            left = mid + 1
+        }
+    }
+    return -1
+}
+
+fun main(): Unit {
+
+    val arrSize: Int = readInt()
+    val arr: Array<Int>[1024]
+
+    for (i in 0 to arrSize) {
+        arr[i] = i * 2
+    }
+    arr[arrSize - 1] = arr[arrSize - 1] * 11
+
+    println(arrayToString(arr, arrSize))
+
+    val elementToSeek: Int = readInt()
+    println("index = " + intToString(binarySearch(arr, arrSize, elementToSeek)))
+
+    readInt()
+}

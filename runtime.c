@@ -13,7 +13,7 @@
 
 char *STRING_POOL = NULL;
 size_t string_pool_offset = 0;
-const size_t POOL_SIZE = 1024 * 1024 * 64; // 16 МБ
+const size_t POOL_SIZE = 1024 * 1024 * 16; // 16 МБ
 
 typedef struct {
     const char* data;

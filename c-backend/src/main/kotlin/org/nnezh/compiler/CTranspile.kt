@@ -211,8 +211,6 @@ class CTranspile {
                     if (localTop.opcode != LLTACOperation.LLTAC_STX) {
                         destination.let {
                             if (it.type.name == "Array") {
-//                                staticArrays.computeIfAbsent(it.type) { mutableSetOf() }
-//                                staticArrays[it.type]!!.add(it)
                             } else {
                                 scalarVariables.computeIfAbsent(it.type) { mutableSetOf() }
                                 scalarVariables[it.type]!!.add(it.name)
@@ -227,7 +225,7 @@ class CTranspile {
         for (type in staticArrays.keys) {
                 val names = staticArrays[type]!!.map { variable -> "${variable.name}[${(variable.type as Type.StaticArrayType).count}]" }
                     .joinToString(", ")
-                cCode.add("${typeToStringInInitialization((type as Type.StaticArrayType).elementType)} $names;")
+                cCode.add("${typeToStringInInitialization(type)} $names;")
         }
 
         for (type in scalarVariables.keys) {

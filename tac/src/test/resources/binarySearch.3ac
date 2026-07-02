@@ -1,0 +1,135 @@
+func binarySearch:
+  GET_PARAM arr:Array
+  GET_PARAM size:Int
+  GET_PARAM element:Int
+  ASSIGN var3:Int 0:Int
+  EQ var1:Boolean size:Int var3:Int
+  JMP_IF_NOT lbl1 var1:Boolean
+  ASSIGN var5:Int 1:Int
+  NEG var4:Int var5:Int
+  RET var4:Int
+lbl1:
+  ASSIGN left:Int 0:Int
+  ASSIGN var7:Int 1:Int
+  SUB right:Int size:Int var7:Int
+lbl2:
+  LE var8:Boolean left:Int right:Int
+  JMP_IF_NOT lbl3 var8:Boolean
+  ADD var11:Int left:Int right:Int
+  ASSIGN var14:Int 2:Int
+  DIV mid:Int var11:Int var14:Int
+  ASSIGN var18:Int 0:Int
+  LOAD var18:Int arr:Array mid:Int
+  EQ var15:Boolean var18:Int element:Int
+  JMP_IF_NOT lbl4 var15:Boolean
+  RET mid:Int
+lbl4:
+  ASSIGN var25:Int 0:Int
+  LOAD var25:Int arr:Array mid:Int
+  LT var21:Boolean element:Int var25:Int
+  JMP_IF_NOT lbl5 var21:Boolean
+  ASSIGN var27:Int 1:Int
+  SUB right:Int mid:Int var27:Int
+  JMP lbl6
+lbl5:
+  ASSIGN var29:Int 1:Int
+  ADD left:Int mid:Int var29:Int
+lbl6:
+  JMP lbl2
+lbl3:
+  ASSIGN var31:Int 1:Int
+  NEG var30:Int var31:Int
+  RET var30:Int
+func main:
+  CALL arrSize:Int readInt:Int 0:Int
+  ALLOC arr:Array Int 1024:Int
+  ASSIGN i:Int 0:Int
+  ASSIGN _right_borderi:Int arrSize:Int
+lbl7:
+  LT var32:Boolean i:Int _right_borderi:Int
+  JMP_IF_NOT lbl8 var32:Boolean
+  ASSIGN var35:Int i:Int
+  ASSIGN var38:Int 2:Int
+  MUL var36:Int i:Int var38:Int
+  STORE arr:Int var35:Int var36:Int
+  ASSIGN var40:Int 1:Int
+  ADD i:Int i:Int var40:Int
+  JMP lbl7
+lbl8:
+  ASSIGN var43:Int 1:Int
+  SUB var41:Int arrSize:Int var43:Int
+  ASSIGN var48:Int 1:Int
+  SUB var46:Int arrSize:Int var48:Int
+  ASSIGN var49:Int 0:Int
+  LOAD var49:Int arr:Array var46:Int
+  ASSIGN var50:Int 11:Int
+  MUL var44:Int var49:Int var50:Int
+  STORE arr:Int var41:Int var44:Int
+  PARAM arr:Array
+  PARAM arrSize:Int
+  CALL var51:String arrayToString_Array_Int_Int_String:String 2:Int
+  PARAM var51:String
+  CALL  println:Unit 1:Int
+  CALL elementToSeek:Int readInt:Int 0:Int
+  ASSIGN var55:String index = :String
+  PARAM arr:Array
+  PARAM arrSize:Int
+  PARAM elementToSeek:Int
+  CALL var57:Int binarySearch:Int 3:Int
+  PARAM var57:Int
+  CALL var56:String intToString:String 1:Int
+  ADD var54:String var55:String var56:String
+  PARAM var54:String
+  CALL  println:Unit 1:Int
+  CALL  readInt:Unit 0:Int
+  RET Unit
+func toString_Int_String:
+  GET_PARAM value:Int
+  PARAM value:Int
+  CALL var61:String intToString:String 1:Int
+  RET var61:String
+func arrayToString_Array_Int_Int_String:
+  GET_PARAM arr:Array
+  GET_PARAM size:Int
+  ASSIGN buff:String :String
+  ASSIGN var65:Int 0:Int
+  EQ var63:Boolean size:Int var65:Int
+  JMP_IF_NOT lbl9 var63:Boolean
+  ASSIGN var66:String :String
+  RET var66:String
+lbl9:
+  ASSIGN var69:Int 1:Int
+  EQ var67:Boolean size:Int var69:Int
+  JMP_IF_NOT lbl10 var67:Boolean
+  ASSIGN var72:Int 0:Int
+  ASSIGN var73:Int 0:Int
+  LOAD var73:Int arr:Array var72:Int
+  PARAM var73:Int
+  CALL var70:String intToString:String 1:Int
+  RET var70:String
+lbl10:
+  ASSIGN i:Int 0:Int
+  ASSIGN var75:Int 1:Int
+  SUB _right_borderi:Int size:Int var75:Int
+lbl11:
+  LT var76:Boolean i:Int _right_borderi:Int
+  JMP_IF_NOT lbl12 var76:Boolean
+  ASSIGN var84:Int 0:Int
+  LOAD var84:Int arr:Array i:Int
+  PARAM var84:Int
+  CALL var81:String intToString:String 1:Int
+  ADD var79:String buff:String var81:String
+  ASSIGN var85:String  :String
+  ADD buff:String var79:String var85:String
+  ASSIGN var87:Int 1:Int
+  ADD i:Int i:Int var87:Int
+  JMP lbl11
+lbl12:
+  ASSIGN var93:Int 1:Int
+  SUB var91:Int size:Int var93:Int
+  ASSIGN var94:Int 0:Int
+  LOAD var94:Int arr:Array var91:Int
+  PARAM var94:Int
+  CALL var89:String intToString:String 1:Int
+  ADD buff:String buff:String var89:String
+  RET buff:String

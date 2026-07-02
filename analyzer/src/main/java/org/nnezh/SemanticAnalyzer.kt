@@ -38,6 +38,7 @@ import org.nnezh.bred.common.FunctionSignature
 import org.nnezh.bred.common.TypeSign
 import org.nnezh.bred.context.DeclaredFunctionMeta
 import org.nnezh.bred.context.ProgramGlobalContext
+import sun.reflect.generics.tree.TypeSignature
 import java.lang.classfile.Attributes.signature
 import java.util.Collections.singletonList
 import java.util.IdentityHashMap
@@ -493,7 +494,8 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                         scope.endInitializing(node.name)
                     }
                 }
-                scope.put(node.name, TypeSign("Array", listOf(node.type)) , node.isMutable)
+                val type = if (node.type.name == "Array") node.type else TypeSign("Array", listOf(node.type))
+                scope.put(node.name, type , node.isMutable)
                 return warnings.right()
             }
 

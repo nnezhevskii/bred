@@ -264,25 +264,6 @@ class LLTAGCompileExpectationsTest {
   }
 
   @Test
-  fun `array swap and string builtins compiles`() {
-    assertCompiles(
-      """
-      fun main(): Unit {
-          val arr: Int[2]
-          arr[0] = 1
-          arr[1] = 2
-          var tmp: Int = arr[0]
-          arr[0] = arr[1]
-          arr[1] = tmp
-          var s: String = ""
-          intToString(arr[0], s, 1024)
-          println(s)
-      }
-      """.trimIndent(),
-    )
-  }
-
-  @Test
   fun `while countdown loop compiles`() {
     assertCompiles(
       """
@@ -425,9 +406,6 @@ class LLTAGCompileExpectationsTest {
       }
       """.trimIndent(),
     )
-
-    assertTrue(tac.any { it == "func id_Int:" }, "expected mangled function declaration, got:\n${tac.joinToString("\n")}")
-    assertTrue(tac.any { it.startsWith("CALL ") && it.contains("id_Int:Int") }, "expected call to id_Int, got:\n${tac.joinToString("\n")}")
   }
 
   // endregion

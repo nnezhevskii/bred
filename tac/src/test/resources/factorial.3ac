@@ -1,34 +1,23 @@
-func factorial_Int:
+func factorialRecursion:
   GET_PARAM n:Int
-  ASSIGN result:Int 1:Int
-  ASSIGN i:Int 1:Int
+  ASSIGN var3:Int 1:Int
+  LT var1:Boolean n:Int var3:Int
+  JMP_IF_NOT lbl1 var1:Boolean
+  ASSIGN var4:Int 1:Int
+  RET var4:Int
 lbl1:
-  LE var1:Boolean i:Int n:Int
-  JMP_IF_NOT lbl2 var1:Boolean
-  MUL result:Int result:Int i:Int
-  ASSIGN var7:Int 1:Int
-  ADD i:Int i:Int var7:Int
-  JMP lbl1
-lbl2:
-  RET result:Int
+  ASSIGN var10:Int 1:Int
+  SUB var8:Int n:Int var10:Int
+  PARAM var8:Int
+  CALL var7:Int factorialRecursion:Int 1:Int
+  MUL var5:Int n:Int var7:Int
+  RET var5:Int
 func main:
-  CALL x:Int readInt:Int 0:Int
-  ASSIGN factStr:String :String
-  PARAM x:Int
-  CALL var9:Int factorial_Int:Int 1:Int
-  ASSIGN var12:Int 1024:Int
-  PARAM var9:Int
-  PARAM factStr:String
+  CALL n:Int readInt:Int 0:Int
+  PARAM n:Int
+  CALL var12:Int factorialRecursion:Int 1:Int
   PARAM var12:Int
-  CALL  intToString:Unit 3:Int
-  ASSIGN msg:String :String
-  ASSIGN var13:String factorial: :String
-  ASSIGN var16:Int 1024:Int
-  PARAM var13:String
-  PARAM factStr:String
-  PARAM msg:String
-  PARAM var16:Int
-  CALL  stringConcat:Unit 4:Int
-  PARAM msg:String
+  CALL var11:String intToString:String 1:Int
+  PARAM var11:String
   CALL  println:Unit 1:Int
   RET Unit
