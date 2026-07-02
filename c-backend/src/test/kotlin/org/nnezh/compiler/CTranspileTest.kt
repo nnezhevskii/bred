@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.nnezh.org.nnezh.ICGenerator.LLTACElement
 import org.nnezh.org.nnezh.ICGenerator.LLTACOperation
+import org.nnezh.org.nnezh.ICGenerator.Operand
 import org.nnezh.org.nnezh.base.Type
 
 class CTranspileTest {
@@ -127,6 +128,61 @@ class CTranspileTest {
     }
 
     @Test
+    fun `emits global static array before function prototypes`() {
+        val tac = listOf(
+            LLTACElement.globalArray(
+                name = "values",
+                type = Type.StaticArrayType(Type.IntType, 3),
+                initialValues = listOf(Operand.IntConst(1), Operand.IntConst(2), Operand.IntConst(3)),
+            ),
+            LLTACElement.function("main", Type.UnitType),
+            LLTACElement.assign("i", Type.IntType, 1),
+            LLTACElement.load("values", "read", "i", Type.IntType),
+            LLTACElement.ret(),
+        )
+
+        assertEquals(
+            listOf(
+                "int values[3] = {1, 2, 3};",
+                "int main(int size, char** arg);",
+                "int main(int size, char** arg) {",
+                "init_runtime();",
+                "int i, read;",
+                "i = 1;",
+                "read=values[i];",
+                "return;",
+                "}",
+            ),
+            CTranspile().compile(tac),
+        )
+    }
+
+    @Test
+    fun `emits global static array without initializer`() {
+        val tac = listOf(
+            LLTACElement.globalArray(
+                name = "values",
+                type = Type.StaticArrayType(Type.IntType, 2),
+                initialValues = null,
+            ),
+            LLTACElement.function("main", Type.UnitType),
+            LLTACElement.ret(),
+        )
+
+        assertEquals(
+            listOf(
+                "int values[2];",
+                "int main(int size, char** arg);",
+                "int main(int size, char** arg) {",
+                "init_runtime();",
+                "return;",
+                "}",
+            ),
+            CTranspile().compile(tac),
+        )
+    }
+
+    @Test
     fun `string addition emits runtime concat call`() {
         val tac = listOf(
             LLTACElement.function("main", Type.UnitType),
@@ -153,6 +209,28 @@ class CTranspileTest {
                 "prefix = create_string(\"checksum = \", strlen(\"checksum = \"));",
                 "value = create_string(\"215\", strlen(\"215\"));",
                 "line=concat(prefix,value);",
+                "return;",
+                "}",
+            ),
+            CTranspile().compile(tac),
+        )
+    }
+
+    @Test
+    fun `string assignment escapes c string literal contents`() {
+        val tac = listOf(
+            LLTACElement.function("main", Type.UnitType),
+            LLTACElement.assign("msg", Type.StringType, "line1\n\"quoted\"\\"),
+            LLTACElement.ret(),
+        )
+
+        assertEquals(
+            listOf(
+                "int main(int size, char** arg);",
+                "int main(int size, char** arg) {",
+                "init_runtime();",
+                "String msg;",
+                """msg = create_string("line1\n\"quoted\"\\", strlen("line1\n\"quoted\"\\"));""",
                 "return;",
                 "}",
             ),

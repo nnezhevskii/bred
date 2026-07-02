@@ -395,6 +395,44 @@ class LLTAGCompileExpectationsTest {
   }
 
   @Test
+  fun `global static array emits global declaration and can be read`() {
+    val tac = formattedTac(
+      """
+      val values: Int[2] = [4, 5]
+
+      fun main(): Unit {
+          val item: Int = values[1]
+      }
+      """.trimIndent(),
+    )
+
+    assertTrue(
+      tac.any { it.startsWith("global values:Array[2]") && it.contains("4:Int") && it.contains("5:Int") },
+      "expected global array declaration in 3AC output, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(tac.any { it.startsWith("LOAD ") }, "expected LOAD from global array, got:\n${tac.joinToString("\n")}")
+  }
+
+  @Test
+  fun `global static array without initializer emits global declaration`() {
+    val tac = formattedTac(
+      """
+      val values: Int[2]
+
+      fun main(): Unit {
+          val item: Int = values[0]
+      }
+      """.trimIndent(),
+    )
+
+    assertTrue(
+      tac.any { it == "global values:Array[2]" },
+      "expected uninitialized global array declaration in 3AC output, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(tac.any { it.startsWith("LOAD ") }, "expected LOAD from global array, got:\n${tac.joinToString("\n")}")
+  }
+
+  @Test
   fun `generic typeclass sort with generic local temp compiles`() {
     assertCompiles(
       """

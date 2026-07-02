@@ -248,6 +248,7 @@ Examples:
 val answer: Int = 42
 val values: Int[3]
 val values: Int[3] = [1, 2, 3]
+val values: Array<Int>[3]
 
 fun main(): Unit {
     val n: Int = 1
@@ -255,9 +256,18 @@ fun main(): Unit {
 }
 ```
 
+`Array<T>[n]` is accepted as the explicit array type form used by generic
+helpers. `T[n]` is the compact element-type form. Both denote a static array
+binding whose value type in semantic analysis is `Array<T>`. The same forms are
+accepted for top-level immutable globals, for example `val values: Int[3]`.
+
 Array sizes in declarations must be integer literals. `val xs: Int[n]` and
 `val xs: Int[]` are invalid. Array initializers reject scalar right-hand sides,
 trailing commas, and consecutive commas.
+
+Global static arrays are emitted as C global storage. The current TAC/C lowering
+supports absent global array initializers and initializer lists made of literal
+elements; richer compile-time expressions are tracked in `docs/TODO.md`.
 
 ## 7. Blocks and Statements
 
@@ -343,12 +353,15 @@ The parser stores `for` as a desugared block:
 {
     var i: Int = <initial>
     val _right_borderi: Int = <final>
-    while (i <= _right_borderi) {
+    while (i < _right_borderi) {
         <original body>
         i = i + 1
     }
 }
 ```
+
+The right boundary is exclusive. For example, `for (i in 0 to size)` visits
+indexes `0` through `size - 1`.
 
 The right-border variable name is `_right_border` plus the counter name. The
 counter and right-border declarations are both typed as `Int`.

@@ -28,6 +28,66 @@ class BredCompilationFactoryTest {
     }
 
     @Test
+    fun `bred compiler emits global static arrays`(@TempDir dir: Path) {
+        val source = dir.resolve("global-array.bred")
+        source.writeText(
+            """
+            val values: Int[3] = [1, 2, 3]
+
+            fun sum(arr: Int[], size: Int): Int {
+                return arr[0] + arr[1] + arr[2]
+            }
+
+            fun main(): Unit {
+                val total: Int = sum(values, 3)
+            }
+            """.trimIndent(),
+        )
+
+        val result = BredToCCompilerFactory().create().compile(source)
+
+        result.fold(
+            ifLeft = { errors -> error("expected C code, got: $errors") },
+            ifRight = { cLines ->
+                assertTrue(
+                    cLines.any { it == "int values[3] = {1, 2, 3};" },
+                    "expected global array declaration in C output: $cLines",
+                )
+                assertTrue(
+                    cLines.indexOf("int values[3] = {1, 2, 3};") < cLines.indexOfFirst { it.contains("int main") },
+                    "expected global array declaration before main: $cLines",
+                )
+            },
+        )
+    }
+
+    @Test
+    fun `bred compiler emits uninitialized global static arrays`(@TempDir dir: Path) {
+        val source = dir.resolve("global-array-empty.bred")
+        source.writeText(
+            """
+            val values: Int[2]
+
+            fun main(): Unit {
+                val first: Int = values[0]
+            }
+            """.trimIndent(),
+        )
+
+        val result = BredToCCompilerFactory().create().compile(source)
+
+        result.fold(
+            ifLeft = { errors -> error("expected C code, got: $errors") },
+            ifRight = { cLines ->
+                assertTrue(
+                    cLines.any { it == "int values[2];" },
+                    "expected uninitialized global array declaration in C output: $cLines",
+                )
+            },
+        )
+    }
+
+    @Test
     fun `bred compiler returns parser errors on the left`(@TempDir dir: Path) {
         val source = dir.resolve("broken.bred")
         source.writeText("fun main(: Unit { }")

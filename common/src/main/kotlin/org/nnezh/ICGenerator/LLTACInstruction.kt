@@ -28,6 +28,14 @@ sealed interface LLTACElement {
             )
         }
 
+        fun globalArray(name: String, type: Type.StaticArrayType, initialValues: List<Operand>?): LLTACElement {
+            return LLTACGlobalStaticArray(
+                name = name,
+                type = type,
+                initialValues = initialValues,
+            )
+        }
+
         fun param(name: String, type: Type): LLTACElement {
             return LLTACInstruction(
                 opcode = LLTACOperation.LLTAC_PARAM,
@@ -194,4 +202,15 @@ data class LLTACFunc(val name: String, val type: Type): LLTACElement {
 
 data class LLTACLabel(val name: String): LLTACElement {
     override fun toString() = "$name"
+}
+
+data class LLTACGlobalStaticArray(
+    val name: String,
+    val type: Type.StaticArrayType,
+    val initialValues: List<Operand>?,
+) : LLTACElement {
+    override fun toString(): String {
+        val initializer = initialValues?.joinToString(prefix = " [", postfix = "]") { it.toString() }.orEmpty()
+        return "global $name:${type.name}[${type.count}]$initializer"
+    }
 }

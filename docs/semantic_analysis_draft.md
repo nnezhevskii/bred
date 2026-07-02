@@ -30,10 +30,17 @@ expected result.
 
 ## 2. Setup Before Traversal
 
-The test pipeline is:
+The ordinary analyzer test pipeline is:
 
 ```text
 source -> Lexer -> AbstractSyntaxTreeBuilder -> ProgramContextCollector -> SemanticAnalyzer
+```
+
+Template/typeclass integration tests use the full front half of the compiler:
+
+```text
+source -> Lexer -> AbstractSyntaxTreeBuilder -> ProgramContextCollector
+       -> TemplateInstantiator -> ProgramContextCollector -> SemanticAnalyzer
 ```
 
 `ProgramContextCollector` builds a `ProgramGlobalContext` and currently records:
@@ -81,7 +88,9 @@ TypeSign("Array", listOf(elementType))
 ```
 
 Array parameters are converted to the same representation during function
-signature registration and when function arguments are put into scope.
+signature registration and when function arguments are put into scope. Top-level
+static array declarations (`val name: T[n]`) are also bound as `Array<T>`; their
+initializer, when present, is checked for exact size and element type.
 
 ## 4. Diagnostics
 
@@ -281,7 +290,22 @@ scope.
 
 Empty initializer lists are valid only when the declared size is `0`.
 
-### 8.2 Array Initialization Expressions
+### 8.2 Global Static Arrays
+
+Top-level immutable static arrays use the same scope representation as local
+arrays:
+
+```bred
+val values: Int[3] = [1, 2, 3]
+```
+
+The analyzer binds `values` as `Array<Int>`, so `values[0]` and calls expecting
+`Int[]` work from function bodies. Global array initializers are checked for
+exact size, homogeneous element type, and declared element compatibility.
+The array name is hidden while its own initializer is analyzed, so
+`val values: Int[1] = [values[0]]` reports `UNKNOWN_VARIABLE`.
+
+### 8.3 Array Initialization Expressions
 
 Each element is analyzed. If the set of element types has more than one member,
 the analyzer emits `TYPE_CHECKER_INCONSISTENT_ARRAY_TYPE`.
@@ -290,7 +314,7 @@ For a non-empty homogeneous list, the expression type is the element type.
 For an empty list, no element type is stored; size checking still happens at
 the declaration node.
 
-### 8.3 Array Access
+### 8.4 Array Access
 
 For `values[index]`, the analyzer:
 
@@ -347,6 +371,8 @@ This component:
 - clones instance methods using mangled names;
 - instantiates generic function calls when concrete argument types can be
   inferred;
+- replaces generic parameter types in generated function arguments, return
+  types, local scalar declarations, and local static array declarations;
 - rewrites typeclass method calls to mangled instance method calls when an
   instance is available;
 - returns `ASTError` on missing constrained instances, missing instance
@@ -360,10 +386,8 @@ raw typeclass and instance declarations remains incomplete.
 `common.BuiltInMethods` defines semantic signatures for:
 
 ```text
-readString(String, Int): Unit
 println(String): Unit
 stringToInt(String): Int
-intToString(Int, String, Int): Unit
 doubleToString(Double, String, Int): Unit
 stringToDouble(String): Double
 intToDouble(Int): Double
@@ -372,11 +396,10 @@ readDouble(): Double
 readBoolean(): Boolean
 doubleToInt(Double): Int
 booleanToString(Boolean, String, Int): Unit
-stringLength(String): Int
-stringConcat(String, String, String, Int): Unit
 stringEquals(String, String): Boolean
-substring(String, Int, Int, String, Int): Unit
-currentTimeMillis(): Int
+readString(): String
+intToString(Int): String
+doubleToString(Double): String
 random(Int, Int): Int
 ```
 
@@ -390,8 +413,6 @@ entries are maintained in `docs/TODO.md`.
 
 Important known gaps:
 
-- global static arrays are parsed but are not handled as arrays by the current
-  global-variable branch in `SemanticAnalyzer`;
 - semantic validation for typeclasses and instances is incomplete;
 - `mut` is lexed but unused by the parser;
 - parser-level type names are not validated;

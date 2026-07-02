@@ -78,6 +78,17 @@ class ParserTest {
     }
 
     @Test
+    fun `global static array accepts explicit Array type form`() {
+        val root = parse("val values: Array<Int>[2] = [1, 2]")
+
+        val values = root.globalVariables.single()
+        assertEquals("values", values.name)
+        assertEquals(TypeSign("Array", listOf(TypeSign("Int"))), values.type)
+        assertEquals(2, values.size)
+        assertInstanceOf(ArrayInitializationExpressionASTNode::class.java, values.expression)
+    }
+
+    @Test
     fun `top level var is rejected`() {
         assertTrue(parseFails("var n: Int = 1"))
     }
@@ -426,6 +437,16 @@ class ParserTest {
     @Test
     fun `typeclass requires generic parameter list`() {
         assertTrue(parseFails("typeclass Printable { fun print(a: Int) }"))
+    }
+
+    @Test
+    fun `typeclass generic parameter cannot have constraints`() {
+        assertTrue(parseFails("typeclass Printable<A: Show> { fun print(a: A) }"))
+    }
+
+    @Test
+    fun `typeclass requires exactly one generic parameter`() {
+        assertTrue(parseFails("typeclass PairPrintable<A, B> { fun print(a: A, b: B) }"))
     }
 
     @Test

@@ -45,6 +45,7 @@ class LLTACGenerator(
         val instructions = mutableListOf<LLTACElement>()
         when (node) {
             is ProgramRoot -> {
+                node.globalVariables.forEach { instructions.addAll(visit(it)) }
                 node.functions.forEach { instructions.addAll(visit(it)) }
             }
 
@@ -215,7 +216,13 @@ class LLTACGenerator(
             }
 
             is DeclareGlobalVariableASTNode -> {
-                // Global storage is not represented in the current TAC format.
+                node.size?.let { size ->
+                    val elementType = node.arrayElementType().toTacType()
+                    val initializer = (node.expression as? ArrayInitializationExpressionASTNode)
+                        ?.args
+                        ?.map { it.toGlobalInitializerOperand(elementType) }
+                    instructions.add(LLTACElement.globalArray(node.name, Type.StaticArrayType(elementType, size), initializer))
+                }
             }
 
             is ExpressionASTNode -> error("bare expression is not a TAC statement: $node")
@@ -235,8 +242,26 @@ class LLTACGenerator(
     private fun FunctionArgument.toTacType(): Type =
         if (isArray) Type.StaticArrayType(type.toTacType(), 0) else type.toTacType()
 
+    private fun DeclareGlobalVariableASTNode.arrayElementType(): TypeSign {
+        val declaredType = requireNotNull(type) { "global array element type is required" }
+        return if (declaredType.name == "Array") {
+            declaredType.args.single()
+        } else {
+            declaredType
+        }
+    }
+
     private fun ExpressionASTNode.tacType(): Type =
         typeTable[this]?.toTacType() ?: inferLiteralTacType(this)
+
+    private fun ExpressionASTNode.toGlobalInitializerOperand(expectedType: Type): Operand =
+        when (this) {
+            is BooleanLiteralExpressionASTNode -> Operand.BoolConst(value)
+            is DoubleLiteralExpressionASTNode -> Operand.DoubleConst(value)
+            is IntLiteralExpressionASTNode -> Operand.IntConst(value.toLong())
+            is StringLiteralExpressionASTNode -> Operand.StringConst(value)
+            else -> error("unsupported global $expectedType array initializer expression: $this")
+        }
 
     private fun inferLiteralTacType(expression: ExpressionASTNode): Type =
         when (expression) {

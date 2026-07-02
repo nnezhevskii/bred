@@ -1,6 +1,6 @@
-# bred - Grammar / Parser / Analyzer TODO
+# bred - Compiler TODO
 
-Follow-ups for lexer, parser, analyzer, tests, and documentation.
+Follow-ups for lexer, parser, analyzer, TAC, C backend, tests, and documentation.
 
 Item IDs use the stable `G-NN` format.
 
@@ -8,7 +8,6 @@ Item IDs use the stable `G-NN` format.
 
 | ID | Item | Current state | Action |
 |----|------|---------------|--------|
-| G-46 | Global static arrays are parsed but analyzed as scalar globals | `ProgramParser` converts top-level array `val` to `DeclareGlobalVariableASTNode(size = n)`, while `SemanticAnalyzer` global-variable handling puts `node.type!!` directly into scope and ignores `size` | Handle global arrays as `Array<elementType>`; add tests for global array read, pass, size mismatch, and incompatible initializer |
 | G-47 | Typeclass and instance semantic validation is incomplete | `SemanticAnalyzer` does not visit `ProgramRoot.typeClasses` or `ProgramRoot.instances`; direct visit branches are `TODO()` | Decide which checks belong in analyzer versus `TemplateInstantiator`; validate duplicate typeclasses, missing methods, method signatures, and instance target types |
 | G-48 | Parser accepts unknown type names | `TypeSignParser` accepts any identifier/generic type sign; analyzer primarily relies on context and exact `TypeSign` equality | Decide whether unknown concrete types should be rejected before/inside semantic analysis; keep generic parameters valid in generic scopes |
 | G-49 | Mixed numeric comparison behavior is unclear | `TypeValidator.produceBinaryType` allows relational operators when both operands are numeric, including `Int < Double`; docs/tests otherwise emphasize no numeric promotion for arithmetic | Decide whether mixed numeric comparison is allowed; add tests and update docs/implementation accordingly |
@@ -20,7 +19,7 @@ Item IDs use the stable `G-NN` format.
 
 | ID | Item | Current state | Action |
 |----|------|---------------|--------|
-| G-59 | C backend emits invalid logical NOT | `CTranspile` currently renders `LLTAC_NOT` as `left!=arg;`, which is a comparison statement and does not assign the negated value | Render logical NOT as an assignment such as `left=!arg;`; keep the c-backend regression test red until fixed |
+| G-61 | Global static array initializers only lower literal elements | `LLTACGenerator` can emit global C storage for top-level static arrays with absent initializer or literal elements; non-literal element expressions are still not lowered as compile-time C initializers | Decide whether global array initializers should be literals-only at semantic level or support a compile-time expression renderer; add tests for the chosen rule |
 
 ## Later - language expansion
 
@@ -48,13 +47,16 @@ Item IDs use the stable `G-NN` format.
 
 | ID | Item | Resolution |
 |----|------|------------|
+| G-46 | Global static arrays are parsed but analyzed as scalar globals | Resolved by binding top-level `val name: T[n]` as `Array<T>` in semantic scope, validating initializer size/type, emitting `LLTACGlobalStaticArray`, and rendering global C storage before function prototypes |
+| G-60 | C backend does not escape string literals | Resolved by escaping newline, carriage return, tab, quote, and backslash before emitting C string literals for `create_string(...)` / `strlen(...)`; covered by `string assignment escapes c string literal contents` |
 | G-58 | Self-reference in local initializer is accepted | Resolved by tracking variables while their initializer is analyzed; self-reference now reports `UNKNOWN_VARIABLE`, including shadowing and array initializer cases |
 
 ## Priority snapshot
 
 | When | IDs |
 |------|-----|
-| Next pipeline | G-46, G-47 |
+| Next pipeline | G-47 |
+| Backend correctness | G-61 |
 | Semantic design decisions | G-48, G-49, G-50, G-51, G-52 |
 | Language growth | G-03, G-05, G-12, G-13, G-53, G-54, G-55 |
 | Optional cleanup | G-14, G-16, G-25, G-56, G-57 |

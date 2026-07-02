@@ -118,6 +118,21 @@ class SemanticAnalyzerTest {
         )
     }
 
+    @Test
+    fun `runtime string conversion builtins return string values`() {
+        assertNoSemanticDiagnostics(
+            """
+            fun main(): Unit {
+                val input: String = readString()
+                val n: Int = stringToInt("42")
+                val intText: String = intToString(n)
+                val doubleText: String = doubleToString(1.5)
+                println(input + intText + doubleText)
+            }
+            """.trimIndent(),
+        )
+    }
+
     // endregion
 
     // region Scope and variables
@@ -226,6 +241,106 @@ class SemanticAnalyzerTest {
             fun main(): Unit { }
             """.trimIndent(),
             SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
+        )
+    }
+
+    @Test
+    fun `global static array can be passed to array parameter`() {
+        assertNoSemanticDiagnostics(
+            """
+            val values: Int[2] = [1, 2]
+
+            fun sum(arr: Int[], size: Int): Int {
+                return arr[0] + arr[1]
+            }
+
+            fun main(): Unit {
+                val total: Int = sum(values, 2)
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `global static array without initializer can be read and passed`() {
+        assertNoSemanticDiagnostics(
+            """
+            val values: Int[2]
+
+            fun first(arr: Int[]): Int {
+                return arr[0]
+            }
+
+            fun main(): Unit {
+                val a: Int = values[0]
+                val b: Int = first(values)
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `global static array accepts explicit Array type form`() {
+        assertNoSemanticDiagnostics(
+            """
+            val values: Array<Int>[2] = [1, 2]
+
+            fun main(): Unit {
+                val first: Int = values[0]
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `global static array cannot initialize scalar variable`() {
+        assertSingleSemanticError(
+            """
+            val values: Int[2] = [1, 2]
+
+            fun main(): Unit {
+                val scalar: Int = values
+            }
+            """.trimIndent(),
+            SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
+            ScalarVariableInitializationASTNode::class.java,
+        )
+    }
+
+    @Test
+    fun `global static array initializer size must match declaration`() {
+        assertSingleSemanticError(
+            """
+            val values: Int[2] = [1, 2, 3]
+
+            fun main(): Unit { }
+            """.trimIndent(),
+            SemanticErrorType.INVALID_AMOUNT_OF_ARGUMENTS_IN_ARRAYS_INITIALIZATION,
+        )
+    }
+
+    @Test
+    fun `global static array initializer element type must match declaration`() {
+        assertSingleSemanticError(
+            """
+            val values: Int[2] = [true, false]
+
+            fun main(): Unit { }
+            """.trimIndent(),
+            SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
+        )
+    }
+
+    @Test
+    fun `global static array initializer cannot read the array being declared`() {
+        assertSingleSemanticError(
+            """
+            val values: Int[1] = [values[0]]
+
+            fun main(): Unit { }
+            """.trimIndent(),
+            SemanticErrorType.UNKNOWN_VARIABLE,
+            ArrayElementAccessASTNode::class.java,
         )
     }
 
@@ -564,6 +679,18 @@ class SemanticAnalyzerTest {
             """
             fun main(): Unit {
                 val values: Int[3] = [1, 2, 3]
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `static array declaration accepts explicit Array type form`() {
+        assertNoSemanticDiagnostics(
+            """
+            fun main(): Unit {
+                val values: Array<Int>[2] = [1, 2]
+                val first: Int = values[0]
             }
             """.trimIndent(),
         )
@@ -1097,6 +1224,19 @@ class SemanticAnalyzerTest {
         )
     }
 
+    @Test
+    fun `global static array can be read in function body`() {
+        assertNoSemanticDiagnostics(
+            """
+            val values: Int[2] = [1, 2]
+
+            fun main(): Unit {
+                val first: Int = values[0]
+            }
+            """.trimIndent(),
+        )
+    }
+
     // endregion
 
     // region Template instantiation integration
@@ -1189,6 +1329,22 @@ class SemanticAnalyzerTest {
                 bubbleSort(arr, size)
                 val index: Int = binarySearch(arr, size, target)
                 return "index = " + intToString(index) + " data = " + arrayToString(arr, size)
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `generic local static array declaration is specialized before semantic analysis`() {
+        assertNoSemanticDiagnosticsAfterTemplateInstantiation(
+            """
+            fun firstCopy<T>(value: T): T {
+                val scratch: T[1] = [value]
+                return scratch[0]
+            }
+
+            fun main(): Unit {
+                val result: Int = firstCopy(7)
             }
             """.trimIndent(),
         )

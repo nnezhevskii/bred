@@ -175,10 +175,13 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                     warnings.add(SemanticError.SemanticWarning(node, SemanticErrorType.VARIABLE_OVERSHADOW))
                 }
 
-                node.expression?.let {
+                val declaredType = requireNotNull(node.type) { "global variable type is required" }
+                val arraySize = node.size
+
+                node.expression?.let { initializer ->
                     scope.beginInitializing(node.name)
                     try {
-                        visit(it, scope).fold(
+                        visit(initializer, scope).fold(
                             ifLeft = { return it.left() },
                             ifRight = { warnings.addAll(it) }
                         )
@@ -186,18 +189,41 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                         scope.endInitializing(node.name)
                     }
 
-                    if (node.type != scope.get(it)) {
-                        return singletonList(
-                            SemanticError.TypeSemanticError(
-                                node,
-                                SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES
-                            )
-                        ).left()
+                    if (arraySize != null) {
+                        val declaredElementType = declaredType.arrayElementType()
+                        val arrayInitializer = initializer as? ArrayInitializationExpressionASTNode
+                        if (arrayInitializer != null && arraySize != arrayInitializer.args.size) {
+                            return singletonList(
+                                SemanticError.TypeSemanticError(
+                                    node,
+                                    SemanticErrorType.INVALID_AMOUNT_OF_ARGUMENTS_IN_ARRAYS_INITIALIZATION
+                                )
+                            ).left()
+                        }
+
+                        val initializerElementType = scope.get(initializer)
+                        if (initializerElementType != null && initializerElementType != declaredElementType) {
+                            return singletonList(
+                                SemanticError.TypeSemanticError(
+                                    node,
+                                    SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES
+                                )
+                            ).left()
+                        }
+                    } else {
+                        if (declaredType != scope.get(initializer)) {
+                            return singletonList(
+                                SemanticError.TypeSemanticError(
+                                    node,
+                                    SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES
+                                )
+                            ).left()
+                        }
                     }
 
                 }
 
-                scope.put(node.name, node.type!!, node.isMutable)
+                scope.put(node.name, node.scopeType(), node.isMutable)
                 return warnings.right()
             }
 
@@ -437,8 +463,6 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                         ).left()
                     }
 //                    VARIABLE_CHANGING_IMMUTABLE
-                } else if (node is ArrayElementAccessASTNode) {
-
                 }
 
                 if (lValueType != rValueType) {
@@ -477,7 +501,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                                 }
 
                                 val initializerElementType = scope.get(initializer)
-                                if (initializerElementType != null && initializerElementType != node.type) {
+                                if (initializerElementType != null && initializerElementType != node.type.arrayElementType()) {
                                     return singletonList(
                                         SemanticError.TypeSemanticError(
                                             node,
@@ -714,6 +738,17 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
     private fun getPrimitiveType(type: String): TypeSign? {
         return globalContext.types[type]?.let { TypeSign(it.name) }
     }
+
+    private fun DeclareGlobalVariableASTNode.scopeType(): TypeSign {
+        val declaredType = requireNotNull(type) { "global variable type is required" }
+        return if (size == null) declaredType else declaredType.asArrayType()
+    }
+
+    private fun TypeSign.asArrayType(): TypeSign =
+        if (name == "Array") this else TypeSign("Array", listOf(this))
+
+    private fun TypeSign.arrayElementType(): TypeSign =
+        if (name == "Array") args.single() else this
 
     private fun unitType(): TypeSign = getPrimitiveType("Unit") ?: TypeSign("Unit")
 

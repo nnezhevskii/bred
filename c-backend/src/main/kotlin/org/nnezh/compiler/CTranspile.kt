@@ -2,6 +2,7 @@ package org.nnezh.org.nnezh.compiler
 
 import org.nnezh.org.nnezh.ICGenerator.LLTACElement
 import org.nnezh.org.nnezh.ICGenerator.LLTACFunc
+import org.nnezh.org.nnezh.ICGenerator.LLTACGlobalStaticArray
 import org.nnezh.org.nnezh.ICGenerator.LLTACInstruction
 import org.nnezh.org.nnezh.ICGenerator.LLTACLabel
 import org.nnezh.org.nnezh.ICGenerator.LLTACOperation
@@ -25,9 +26,12 @@ class CTranspile {
     fun compile(instructions: List<LLTACElement>): List<String> {
         firstFunctionWasProceeded = false
         val context = Context(instructions)
-        val cCode = collectFunctionHeaders(instructions)
-            .map { renderPrototype(it) }
+        val cCode = collectGlobalStaticArrays(instructions)
+            .map { renderGlobalStaticArray(it) }
             .toMutableList()
+        cCode.addAll(collectFunctionHeaders(instructions)
+            .map { renderPrototype(it) }
+        )
         while (!context.eof) {
             cCode.addAll(
                 when (context.top) {
@@ -35,6 +39,7 @@ class CTranspile {
                         parseFunction(context)
                     }
 
+                    is LLTACGlobalStaticArray -> skipGlobalStaticArray(context)
                     is LLTACRetInstruction -> parseReturnInstruction(context)
                     is LLTACInstruction -> parseInstruction(context)
                     is LLTACLabel -> parseLabel(context)
@@ -70,6 +75,24 @@ class CTranspile {
         return headers
     }
 
+    private fun collectGlobalStaticArrays(instructions: List<LLTACElement>): List<LLTACGlobalStaticArray> =
+        instructions.filterIsInstance<LLTACGlobalStaticArray>()
+
+    private fun skipGlobalStaticArray(context: Context): List<String> {
+        context.consume()
+        return emptyList()
+    }
+
+    private fun renderGlobalStaticArray(array: LLTACGlobalStaticArray): String {
+        val elementType = typeToStringInInitialization(array.type.elementType)
+        val initializer = array.initialValues
+            ?.takeIf { it.isNotEmpty() }
+            ?.joinToString(prefix = " = {", postfix = "}") { renderGlobalInitializer(it, array.type.elementType) }
+            .orEmpty()
+
+        return "$elementType ${array.name}[${array.type.count}]$initializer;"
+    }
+
     private fun renderPrototype(header: FunctionHeader): String =
         "${renderFunctionSignature(header)};"
 
@@ -100,7 +123,8 @@ class CTranspile {
 
 
                 if ((instruction.destination as Operand).type.name == "String") {
-                    cCode.add("$dest = create_string(\"$value\", strlen(\"$value\"));")
+                    val escaped = escapeCString(value)
+                    cCode.add("$dest = create_string(\"$escaped\", strlen(\"$escaped\"));")
                 } else {
                     cCode.add("$dest = $value;")
                 }
@@ -289,6 +313,28 @@ class CTranspile {
 
         return "${left}=${arg1}${command}${arg2};"
     }
+
+    private fun renderGlobalInitializer(operand: Operand, elementType: Type): String =
+        if (elementType == Type.StringType && operand is Operand.StringConst) {
+            val escaped = escapeCString(operand.value)
+            """{"$escaped", ${operand.value.length}}"""
+        } else {
+            (operand as RightValue).asRightValue()
+        }
+
+    private fun escapeCString(value: String): String =
+        buildString {
+            value.forEach { char ->
+                when (char) {
+                    '\\' -> append("\\\\")
+                    '"' -> append("\\\"")
+                    '\n' -> append("\\n")
+                    '\r' -> append("\\r")
+                    '\t' -> append("\\t")
+                    else -> append(char)
+                }
+            }
+        }
 
     private fun isMainFunction(name: String): Boolean {
         return name == "main"

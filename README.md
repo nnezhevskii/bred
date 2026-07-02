@@ -29,6 +29,12 @@ $env:JAVA_HOME = "C:\Users\Nikita\.jdks\azul-25.0.3"
 
 Stack: Kotlin 2.3, Gradle, JUnit 5, arrow-kt, Kover.
 
+Documented follow-ups live in `docs/TODO.md`. A green module smoke test is:
+
+```powershell
+.\gradlew :parser:test :analyzer:test :tac:test :c-backend:test :test
+```
+
 ## Run From CLI
 
 Default input is `examples/3ac.bred`; default output is `main.exe`.
@@ -56,6 +62,10 @@ Example:
 ```
 
 The CLI prints build messages from the executable builder. It exits with a non-zero code when the Bred compile step returns errors or the executable build messages contain an error/failure.
+
+Generated root-level artifacts such as `main.c`, `main.obj`, and `main.exe`
+are ignored. If they were tracked in an older checkout, remove them from the
+index once with `git rm --cached -- main.c main.obj`.
 
 ## MSVC Setup
 
@@ -118,7 +128,7 @@ The builder reports ordinary build problems in the returned message list: missin
 
 ## Language Status
 
-**Implemented:** functions, `val`/`var`, `if`/`while`/`for`, assignments, calls, operators, built-in functions, static arrays (`val arr: Int[n]`, `arr[i]`, `fun f(a: Int[])`), typeclass/instance parsing and template instantiation.
+**Implemented:** functions, `val`/`var`, `if`/`while`/`for`, assignments, calls, operators, built-in functions, static arrays (`val arr: Int[n]`, `arr[i]`, `fun f(a: Int[])`), immutable global static arrays (`val arr: Int[n]` at top level), typeclass/instance parsing and template instantiation.
 
 **Not implemented / restricted:** global `var`, `else if`, member access, user-defined type declarations, type inference for `val x = expr`, mutable static array declarations.
 
@@ -147,5 +157,5 @@ Known gaps and follow-ups: [`docs/TODO.md`](docs/TODO.md).
 
 - **Lexer/parser/analyzer:** module tests under `lexer/`, `parser/`, and `analyzer/`.
 - **Root API:** `org.nnezh.root.BredCompilationFactoryTest`.
-- **C backend:** `c-backend/src/test/kotlin`.
+- **C backend:** `c-backend/src/test/kotlin`; covers array pointers, local/global static arrays, string concat, C string literal escaping, and logical `!`.
 - **TAC snapshots:** `LLTAGSnapshotTester` - `.bred` vs expected `.3ac` in `tac/src/test/resources/`.
