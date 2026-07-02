@@ -1,32 +1,168 @@
-fun complexShock(n: Int, limit: Int): Int {
+// Full feature demo for bred: arrays, functions, globals, loops,
+// typeclasses, instances, generics, strings, numbers and reports.
+
+val ProgramName: String = "Bred data analyzer"
+val ProgramVersion: Double = 1.0
+val DefaultLimit: Int = 32
+val DiagnosticsEnabled: Boolean = true
+
+typeclass Printable<A> {
+    fun toString(value: A): String
+}
+
+typeclass Ordered<A> {
+    fun equals(a: A, b: A): Boolean
+    fun less(a: A, b: A): Boolean
+}
+
+instance Printable<Int> {
+    fun toString(value: Int): String {
+        return intToString(value)
+    }
+}
+
+instance Ordered<Int> {
+    fun equals(a: Int, b: Int): Boolean {
+        return a == b
+    }
+
+    fun less(a: Int, b: Int): Boolean {
+        return a < b
+    }
+}
+
+fun printValue<T: Printable>(value: T): Unit {
+    println(toString(value))
+}
+
+fun arrayToString<T: Printable>(arr: Array<T>, size: Int): String {
+    var text: String = ""
+
+    for (i in 0 to size) {
+        if (i == 0) {
+            text = text + toString(arr[i])
+        } else {
+            text = text + ", " + toString(arr[i])
+        }
+    }
+
+    return text
+}
+
+fun isSorted<T: Ordered>(arr: Array<T>, size: Int): Boolean {
     var i: Int = 1
-    var result: Int = 0
 
-    while (i <= n) {
-        var temp: Int = i * 2
+    while (i < size) {
+        if (less(arr[i], arr[i - 1])) {
+            return false
+        }
+        i = i + 1
+    }
 
-        // Edge case 1: Вложенный цикл использует переменную с тем же именем 'limit'
-        // Проверим, не поплывёт ли генерация меток и имён во вложенных структурах
-        var innerLimit: Int = limit
-        while (innerLimit > 0) {
+    return true
+}
 
-            // Edge case 2: Сложное ветвление.
-            // Если i чётное и temp перешагнул локальный лимит ИЛИ result всё ещё 0
-            // Проверяем приоритеты операторов и генерацию цепочек JMP_IF_NOT
-            if (temp > innerLimit) {
-                result = result + temp
-            } else {
-                result = result - 1
+fun bubbleSort<T: Ordered>(arr: Array<T>, size: Int): Unit {
+    var pass: Int = 0
+
+    while (pass < size) {
+        var j: Int = 1
+
+        while (j < size - pass) {
+            if (less(arr[j], arr[j - 1])) {
+                var tmp: T = arr[j]
+                arr[j] = arr[j - 1]
+                arr[j - 1] = tmp
             }
 
-            innerLimit = innerLimit - 1
+            j = j + 1
         }
 
-        // Edge case 3: Переиспользование имени 'temp', но уже в другом типе/контексте
-        // (если твой язык позволяет переобъявлять в разных блоках, или просто присваиваем)
-        temp = result + i
-        if (temp > 100) {
-            return result
+        pass = pass + 1
+    }
+}
+
+fun binarySearch<T: Ordered>(arr: Array<T>, size: Int, target: T): Int {
+    if (size == 0) {
+        return -1
+    }
+
+    var left: Int = 0
+    var right: Int = size - 1
+
+    while (left <= right) {
+        var middle: Int = (left + right) / 2
+
+        if (equals(arr[middle], target)) {
+            return middle
+        }
+
+        if (less(target, arr[middle])) {
+            right = middle - 1
+        } else {
+            left = middle + 1
+        }
+    }
+
+    return -1
+}
+
+fun clampSize(value: Int, maxValue: Int): Int {
+    if (value < 0) {
+        return 0
+    }
+
+    if (value > maxValue) {
+        return maxValue
+    }
+
+    return value
+}
+
+fun positiveSeed(seed: Int): Int {
+    if (seed < 0) {
+        return -seed
+    }
+
+    return seed
+}
+
+fun fillData(arr: Array<Int>, size: Int, seed: Int): Unit {
+    var state: Int = positiveSeed(seed) + 17
+
+    for (i in 0 to size) {
+        state = (state * 37 + 23) % 101
+        arr[i] = state - 50
+    }
+}
+
+fun copyArray(source: Array<Int>, target: Array<Int>, size: Int): Unit {
+    for (i in 0 to size) {
+        target[i] = source[i]
+    }
+}
+
+fun sumArray(arr: Array<Int>, size: Int): Int {
+    var total: Int = 0
+
+    for (i in 0 to size) {
+        total = total + arr[i]
+    }
+
+    return total
+}
+
+fun minArray(arr: Array<Int>, size: Int): Int {
+    if (size == 0) {
+        return 0
+    }
+
+    var result: Int = arr[0]
+    var i: Int = 1
+
+    while (i < size) {
+        if (arr[i] < result) {
+            result = arr[i]
         }
 
         i = i + 1
@@ -35,11 +171,184 @@ fun complexShock(n: Int, limit: Int): Int {
     return result
 }
 
+fun maxArray(arr: Array<Int>, size: Int): Int {
+    if (size == 0) {
+        return 0
+    }
+
+    var result: Int = arr[0]
+    var i: Int = 1
+
+    while (i < size) {
+        if (arr[i] > result) {
+            result = arr[i]
+        }
+
+        i = i + 1
+    }
+
+    return result
+}
+
+fun countLessThan(arr: Array<Int>, size: Int, threshold: Int): Int {
+    var count: Int = 0
+
+    for (i in 0 to size) {
+        if (arr[i] < threshold) {
+            count = count + 1
+        }
+    }
+
+    return count
+}
+
+fun countGreaterOrEqual(arr: Array<Int>, size: Int, threshold: Int): Int {
+    var count: Int = 0
+
+    for (i in 0 to size) {
+        if (arr[i] >= threshold) {
+            count = count + 1
+        }
+    }
+
+    return count
+}
+
+fun countEven(arr: Array<Int>, size: Int): Int {
+    var count: Int = 0
+
+    for (i in 0 to size) {
+        if (arr[i] % 2 == 0) {
+            count = count + 1
+        }
+    }
+
+    return count
+}
+
+fun checksum(arr: Array<Int>, size: Int): Int {
+    var result: Int = 0
+
+    for (i in 0 to size) {
+        result = result + arr[i] * (i + 1)
+    }
+
+    return result
+}
+
+fun pad2(value: Int): String {
+    if (value < 10) {
+        return "0" + intToString(value)
+    }
+
+    return intToString(value)
+}
+
+fun averageText(sum: Int, size: Int): String {
+    if (size == 0) {
+        return "n/a"
+    }
+
+    var scaled: Int = (sum * 100) / size
+    var negative: Boolean = false
+
+    if (scaled < 0) {
+        negative = true
+        scaled = -scaled
+    }
+
+    var whole: Int = scaled / 100
+    var fraction: Int = scaled % 100
+    var text: String = intToString(whole) + "." + pad2(fraction)
+
+    if (negative) {
+        return "-" + text
+    }
+
+    return text
+}
+
+fun qualityScore(sorted: Boolean, hasSpread: Boolean, evenCount: Int): Double {
+    var score: Double = 0.0
+
+    if (sorted) {
+        score = score + 1.25
+    }
+
+    if (hasSpread) {
+        score = score + 0.75
+    }
+
+    if (evenCount > 0) {
+        score = score + 0.50
+    }
+
+    return score * 2.0
+}
+
+fun printBoolean(label: String, value: Boolean): Unit {
+    if (value) {
+        println(label + "true")
+    } else {
+        println(label + "false")
+    }
+}
+
 fun main(): Unit {
-    var res: Int = complexShock(5, 2)
-    var resStr: String = ""
-    intToString(res, resStr, 1024)
-    var msg: String = ""
-    stringConcat("Result is: ", resStr, msg, 1024)
-    println(msg)
+    println("Bred data analyzer")
+    println("Enter array size, seed, value to search, threshold:")
+
+    var requestedSize: Int = readInt()
+    var seed: Int = readInt()
+    var target: Int = readInt()
+    var threshold: Int = readInt()
+
+    var arrSize: Int = clampSize(requestedSize, 32)
+
+    val raw: Array<Int>[64]
+    val sorted: Array<Int>[64]
+
+    fillData(raw, arrSize, seed)
+    copyArray(raw, sorted, arrSize)
+
+    println("normalized size = " + intToString(arrSize))
+    println("raw data = " + arrayToString(raw, arrSize))
+
+    bubbleSort(sorted, arrSize)
+
+    var total: Int = sumArray(sorted, arrSize)
+    var minValue: Int = minArray(sorted, arrSize)
+    var maxValue: Int = maxArray(sorted, arrSize)
+    var below: Int = countLessThan(sorted, arrSize, threshold)
+    var aboveOrEqual: Int = countGreaterOrEqual(sorted, arrSize, threshold)
+    var evenCount: Int = countEven(sorted, arrSize)
+    var foundIndex: Int = binarySearch(sorted, arrSize, target)
+    var sortedOk: Boolean = isSorted(sorted, arrSize)
+    var hasSpread: Boolean = maxValue > minValue
+    var healthy: Boolean = (arrSize == 0) || (sortedOk && minValue <= maxValue)
+
+    println("sorted data = " + arrayToString(sorted, arrSize))
+    println("sum = " + intToString(total))
+    println("min = " + intToString(minValue))
+    println("max = " + intToString(maxValue))
+    println("average = " + averageText(total, arrSize))
+    println("threshold = " + intToString(threshold))
+    println("below threshold = " + intToString(below))
+    println("above or equal threshold = " + intToString(aboveOrEqual))
+    println("even count = " + intToString(evenCount))
+    println("checksum = " + intToString(checksum(sorted, arrSize)))
+    println("search target = " + intToString(target))
+    println("binary search index = " + intToString(foundIndex))
+
+    printBoolean("sorted = ", sortedOk)
+    printBoolean("has spread = ", hasSpread)
+    printBoolean("healthy report = ", healthy)
+
+    var score: Double = qualityScore(sortedOk, hasSpread, evenCount)
+    println("quality score = " + doubleToString(score))
+
+    println("generic print of checksum:")
+    printValue(checksum(sorted, arrSize))
+
+    readInt()
 }

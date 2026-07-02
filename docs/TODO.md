@@ -16,6 +16,12 @@ Item IDs use the stable `G-NN` format.
 | G-51 | Context built-ins and semantic built-ins are split | `ProgramContextCollector` adds only `println`; `SemanticAnalyzer` registers the larger `common.BuiltInMethods.functions` list separately | Consolidate or document the ownership boundary so template instantiation and semantic analysis cannot diverge |
 | G-52 | Empty array initializer has no expression type | `ArrayInitializationExpressionASTNode([])` stores no type; declarations rely on size checks and skip element-type comparison when type is null | Decide whether empty array list type should be derived from declaration context; add tests for non-zero size and wrong target contexts |
 
+## Later - TAC and C backend
+
+| ID | Item | Current state | Action |
+|----|------|---------------|--------|
+| G-59 | C backend emits invalid logical NOT | `CTranspile` currently renders `LLTAC_NOT` as `left!=arg;`, which is a comparison statement and does not assign the negated value | Render logical NOT as an assignment such as `left=!arg;`; keep the c-backend regression test red until fixed |
+
 ## Later - language expansion
 
 | ID | Item | Current state | Action |

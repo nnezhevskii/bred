@@ -142,7 +142,7 @@ class CTranspile {
             LLTACOperation.LLTAC_NOT -> {
                 val left = (instruction.destination as LeftValue).asLeftValue()
                 val arg1 = (instruction.arg1 as LeftValue).asLeftValue()
-                cCode.add("${left}!=${arg1};")
+                cCode.add("${left}=!${arg1};")
             }
             LLTACOperation.LLTAC_NEG -> {
                 val left = (instruction.destination as LeftValue).asLeftValue()

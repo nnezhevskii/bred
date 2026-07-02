@@ -1099,6 +1099,103 @@ class SemanticAnalyzerTest {
 
     // endregion
 
+    // region Template instantiation integration
+
+    @Test
+    fun `data analyzer generic helpers are valid after template instantiation`() {
+        assertNoSemanticDiagnosticsAfterTemplateInstantiation(
+            """
+            typeclass Printable<T> {
+                fun toString(value: T): String
+            }
+
+            typeclass Ordered<T> {
+                fun equals(a: T, b: T): Boolean
+                fun less(a: T, b: T): Boolean
+            }
+
+            instance Printable<Int> {
+                fun toString(value: Int): String {
+                    return intToString(value)
+                }
+            }
+
+            instance Ordered<Int> {
+                fun equals(a: Int, b: Int): Boolean {
+                    return a == b
+                }
+
+                fun less(a: Int, b: Int): Boolean {
+                    return a < b
+                }
+            }
+
+            fun arrayToString<T: Printable>(arr: Array<T>, size: Int): String {
+                var text: String = ""
+
+                for (i in 0 to size) {
+                    if (i == 0) {
+                        text = text + toString(arr[i])
+                    } else {
+                        text = text + ", " + toString(arr[i])
+                    }
+                }
+
+                return text
+            }
+
+            fun bubbleSort<T: Ordered>(arr: Array<T>, size: Int): Unit {
+                var pass: Int = 0
+
+                while (pass < size) {
+                    var j: Int = 1
+
+                    while (j < size - pass) {
+                        if (less(arr[j], arr[j - 1])) {
+                            var tmp: T = arr[j]
+                            arr[j] = arr[j - 1]
+                            arr[j - 1] = tmp
+                        }
+
+                        j = j + 1
+                    }
+
+                    pass = pass + 1
+                }
+            }
+
+            fun binarySearch<T: Ordered>(arr: Array<T>, size: Int, target: T): Int {
+                var left: Int = 0
+                var right: Int = size - 1
+
+                while (left <= right) {
+                    var middle: Int = (left + right) / 2
+
+                    if (equals(arr[middle], target)) {
+                        return middle
+                    }
+
+                    if (less(target, arr[middle])) {
+                        right = middle - 1
+                    } else {
+                        left = middle + 1
+                    }
+                }
+
+                return -1
+            }
+
+            fun report(arr: Array<Int>, size: Int, target: Int): String {
+                bubbleSort(arr, size)
+                val index: Int = binarySearch(arr, size, target)
+                return "index = " + intToString(index) + " data = " + arrayToString(arr, size)
+            }
+            """.trimIndent(),
+        )
+    }
+
+    // endregion
+
     // region Public pipeline and TODO regression coverage
 
     @Test

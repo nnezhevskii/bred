@@ -205,6 +205,59 @@ class ParserTest {
     }
 
     @Test
+    fun `data analyzer entrypoint parses globals typeclass instance arrays and report call`() {
+        val root = parse(
+            """
+            val ProgramName: String = "Bred data analyzer"
+            val DiagnosticsEnabled: Boolean = true
+
+            typeclass Printable<A> {
+                fun toString(value: A): String
+            }
+
+            instance Printable<Int> {
+                fun toString(value: Int): String {
+                    return intToString(value)
+                }
+            }
+
+            fun main(): Unit {
+                var requestedSize: Int = readInt()
+                var seed: Int = readInt()
+                var target: Int = readInt()
+                var threshold: Int = readInt()
+
+                val raw: Array<Int>[64]
+                val sorted: Array<Int>[64]
+
+                println("size = " + intToString(requestedSize))
+            }
+            """.trimIndent()
+        )
+
+        assertEquals(listOf("ProgramName", "DiagnosticsEnabled"), root.globalVariables.map { it.name })
+        assertEquals(listOf("Printable"), root.typeClasses.map { it.name })
+        assertEquals(listOf("Printable"), root.instances.map { it.typeClassName })
+
+        val main = root.functions.single { it.name == "main" }
+        val declarations = main.body.statements.filterIsInstance<ScalarVariableInitializationASTNode>()
+        assertEquals(listOf("requestedSize", "seed", "target", "threshold"), declarations.map { it.name })
+        assertEquals(listOf(TypeSign("Int"), TypeSign("Int"), TypeSign("Int"), TypeSign("Int")), declarations.map { it.type })
+
+        val arrays = main.body.statements.filterIsInstance<ArrayDeclarationASTNode>()
+        assertEquals(listOf("raw", "sorted"), arrays.map { it.name })
+        assertEquals(listOf(64, 64), arrays.map { it.size })
+        assertEquals(
+            listOf(TypeSign("Array", listOf(TypeSign("Int"))), TypeSign("Array", listOf(TypeSign("Int")))),
+            arrays.map { it.type },
+        )
+
+        val printStatement = assertInstanceOf(CallFunctionStatementAstNode::class.java, main.body.statements[6])
+        val printCall = assertInstanceOf(FunctionCallExpressionASTNode::class.java, printStatement.expression)
+        assertEquals("println", printCall.name)
+    }
+
+    @Test
     fun `program preserves declarations in their own top-level lists`() {
         val root = parse(
             """

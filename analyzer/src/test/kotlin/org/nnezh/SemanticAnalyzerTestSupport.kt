@@ -10,6 +10,7 @@ import org.nnezh.bred.ast.ASTError
 import org.nnezh.bred.ast.ASTNode
 import org.nnezh.bred.ast.AbstractSyntaxTreeBuilder
 import org.nnezh.bred.ast.ProgramRoot
+import org.nnezh.bred.codegenerator.TemplateInstantiator
 import org.nnezh.bred.context.ProgramContextCollector
 import org.nnezh.lexer.Lexer
 
@@ -36,10 +37,35 @@ internal fun analyze(source: String): Either<List<SemanticError>, List<SemanticE
     return result ?: error("SemanticAnalyzer did not return a result")
 }
 
+internal fun analyzeAfterTemplateInstantiation(source: String): Either<List<SemanticError>, SemanticAnalysisResult> {
+    val root = parseProgram(source)
+    val context = ProgramContextCollector().collect(root)
+    val instantiatedRoot = TemplateInstantiator(context)
+        .instantiate(root)
+        .getOrElse { error("unexpected template instantiation error: $it") }
+    val instantiatedContext = ProgramContextCollector().collect(instantiatedRoot)
+    var result: Either<List<SemanticError>, SemanticAnalysisResult>? = null
+
+    assertDoesNotThrow {
+        result = SemanticAnalyzer(instantiatedContext).analyzeWithResult(instantiatedRoot)
+    }
+
+    return result ?: error("SemanticAnalyzer did not return a result")
+}
+
 internal fun assertNoSemanticDiagnostics(source: String) {
     analyze(source).fold(
         ifLeft = { errors -> error("expected no semantic errors, got: ${errors.describeErrors()}") },
         ifRight = { warnings -> assertTrue(warnings.isEmpty(), "expected no warnings, got: ${warnings.describeWarnings()}") },
+    )
+}
+
+internal fun assertNoSemanticDiagnosticsAfterTemplateInstantiation(source: String) {
+    analyzeAfterTemplateInstantiation(source).fold(
+        ifLeft = { errors -> error("expected no semantic errors, got: ${errors.describeErrors()}") },
+        ifRight = { result ->
+            assertTrue(result.warnings.isEmpty(), "expected no warnings, got: ${result.warnings.describeWarnings()}")
+        },
     )
 }
 

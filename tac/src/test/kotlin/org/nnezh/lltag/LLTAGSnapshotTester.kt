@@ -22,9 +22,9 @@ class LLTAGSnapshotTester {
         "isPositive",
         "arrayBubble",
         "binarySearch",
+        "complexShock",
 //        "sortThree",
 //        "isEven",
-//        "complexShock",
 //
 //        "minValue",
 //        "random_case_failed_for_no_reason",
