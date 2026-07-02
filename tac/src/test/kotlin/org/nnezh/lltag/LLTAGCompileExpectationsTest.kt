@@ -395,6 +395,49 @@ class LLTAGCompileExpectationsTest {
   }
 
   @Test
+  fun `generic typeclass sort with generic local temp compiles`() {
+    assertCompiles(
+      """
+      typeclass Ordered<T> {
+          fun less(a: T, b: T): Boolean
+      }
+
+      instance Ordered<Int> {
+          fun less(a: Int, b: Int): Boolean {
+              return a < b
+          }
+      }
+
+      fun bubbleSort<T: Ordered>(arr: Array<T>, size: Int): Unit {
+          var pass: Int = 0
+
+          while (pass < size) {
+              var j: Int = 1
+
+              while (j < size - pass) {
+                  if (less(arr[j], arr[j - 1])) {
+                      var tmp: T = arr[j]
+                      arr[j] = arr[j - 1]
+                      arr[j - 1] = tmp
+                  }
+
+                  j = j + 1
+              }
+
+              pass = pass + 1
+          }
+      }
+
+      fun run(arr: Array<Int>, size: Int): Unit {
+          bubbleSort(arr, size)
+      }
+
+      fun main(): Unit { }
+      """.trimIndent(),
+    )
+  }
+
+  @Test
   fun `user function calls use mangled target name`() {
     val tac = formattedTac(
       """

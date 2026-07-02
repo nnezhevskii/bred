@@ -590,6 +590,59 @@ class ParserTest {
     }
 
     @Test
+    fun `template instantiator replaces generic local variable declaration types`() {
+        val root = parse(
+            """
+            typeclass Ordered<T> {
+                fun less(a: T, b: T): Boolean
+            }
+
+            instance Ordered<Int> {
+                fun less(a: Int, b: Int): Boolean {
+                    return a < b
+                }
+            }
+
+            fun bubbleSort<T: Ordered>(arr: Array<T>, size: Int): Unit {
+                var pass: Int = 0
+
+                while (pass < size) {
+                    var j: Int = 1
+
+                    while (j < size - pass) {
+                        if (less(arr[j], arr[j - 1])) {
+                            var tmp: T = arr[j]
+                            arr[j] = arr[j - 1]
+                            arr[j - 1] = tmp
+                        }
+
+                        j = j + 1
+                    }
+
+                    pass = pass + 1
+                }
+            }
+
+            fun run(arr: Array<Int>, size: Int): Unit {
+                bubbleSort(arr, size)
+            }
+            """.trimIndent()
+        )
+        val instantiated = TemplateInstantiator(ProgramContextCollector().collect(root))
+            .instantiate(root)
+            .getOrElse { error("unexpected instantiation error: $it") }
+
+        val bubbleSort = instantiated.functions.single { it.name.startsWith("bubbleSort_") }
+        val outerWhile = assertInstanceOf(WhileStatementAstNode::class.java, bubbleSort.body.statements[1])
+        val innerWhile = assertInstanceOf(WhileStatementAstNode::class.java, outerWhile.bodyBlock.statements[1])
+        val swapIf = assertInstanceOf(IfStatementAstNode::class.java, innerWhile.bodyBlock.statements.first())
+        val tmp = assertInstanceOf(ScalarVariableInitializationASTNode::class.java, swapIf.thenBlock.statements.first())
+
+        assertEquals("tmp", tmp.name)
+        assertEquals(TypeSign("Int"), tmp.type)
+    }
+
+    @Test
     fun `template instantiator returns error when constrained instance is missing`() {
         val root = parse(
             """

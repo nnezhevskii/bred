@@ -88,7 +88,7 @@ class TemplateInstantiator(
 
     private fun transformConcreteFunction(function: FunctionDeclAstNode): FunctionDeclAstNode {
         val scope = Scope()
-        function.arguments.forEach { scope.bind(it.name, it.type) }
+        function.arguments.forEach { scope.bind(it.name, it.scopeType()) }
 
         return function.copy(
             body = transformBlock(function.body, scope, TemplateRewriteContext.empty()),
@@ -119,7 +119,7 @@ class TemplateInstantiator(
 
         templatesInProgress.add(key)
         val scope = Scope()
-        replacedArguments.forEach { scope.bind(it.name, it.type) }
+        replacedArguments.forEach { scope.bind(it.name, it.scopeType()) }
         val rewriteContext = TemplateRewriteContext.from(template.genericParams, mapping)
         val body = transformBlock(template.body, scope, rewriteContext)
         templatesInProgress.remove(key)
@@ -152,15 +152,20 @@ class TemplateInstantiator(
         when (statement) {
             is ScalarVariableInitializationASTNode -> {
                 val expression = transformExpression(statement.expression, scope, rewriteContext)
-                val transformed = statement.copy(expression = expression)
+                val transformed = statement.copy(
+                    type = replaceType(statement.type, rewriteContext.typeMapping),
+                    expression = expression,
+                )
                 scope.bind(transformed.name, transformed.type)
                 transformed
             }
             is ArrayDeclarationASTNode -> {
+                val transformedType = replaceType(statement.type, rewriteContext.typeMapping)
                 val transformed = statement.copy(
+                    type = transformedType,
                     expression = statement.expression?.let { transformExpression(it, scope, rewriteContext) },
                 )
-                scope.bind(transformed.name, transformed.type)
+                scope.bind(transformed.name, transformed.arrayScopeType())
                 transformed
             }
             is AssignmentStatementAstNode -> statement.copy(
@@ -286,6 +291,7 @@ class TemplateInstantiator(
             is VariableExpressionASTNode -> scope.lookup(expression.token.lexeme)
                 ?: fail("Cannot infer type for variable ${expression.token.lexeme}")
             is ArrayElementAccessASTNode -> scope.lookup(expression.name)
+                ?.arrayElementType()
                 ?: fail("Cannot infer type for array ${expression.name}")
             is UnaryExpressionASTNode -> inferType(expression.operand, scope, rewriteContext)
             is BinaryExpressionASTNode -> inferType(expression.left, scope, rewriteContext)
@@ -318,9 +324,14 @@ class TemplateInstantiator(
         val genericNames = template.genericParams.map { it.name }.toSet()
         val mapping = mutableMapOf<String, TypeSign>()
         template.arguments.zip(argumentTypes).forEach { (parameter, argumentType) ->
-            val parameterType = parameter.type
+            val parameterType = parameter.scopeType()
             if (parameterType.name == "Array" && genericNames.contains(parameterType.args.first().name)) {
-                val previous = mapping.putIfAbsent(parameterType.args.first().name, argumentType.args.first())
+                val argumentElementType = argumentType.arrayElementType()
+                    ?: fail("Cannot infer generic array parameter ${parameter.name} from ${argumentType.name}")
+                val previous = mapping.putIfAbsent(parameterType.args.first().name, argumentElementType)
+                if (previous != null && previous != argumentElementType) {
+                    fail("Conflicting concrete types for ${parameterType.args.first().name}: ${previous.name} and ${argumentElementType.name}")
+                }
             }
             else if (parameterType.args.isEmpty() && parameterType.name in genericNames) {
                 val previous = mapping.putIfAbsent(parameterType.name, argumentType)
@@ -347,6 +358,15 @@ class TemplateInstantiator(
 
     private fun FunctionArgument.replaceTypes(mapping: Map<String, TypeSign>): FunctionArgument =
         copy(type = replaceType(type, mapping))
+
+    private fun FunctionArgument.scopeType(): TypeSign =
+        if (isArray) TypeSign("Array", listOf(type)) else type
+
+    private fun ArrayDeclarationASTNode.arrayScopeType(): TypeSign =
+        if (type.name == "Array") type else TypeSign("Array", listOf(type))
+
+    private fun TypeSign.arrayElementType(): TypeSign? =
+        if (name == "Array") args.singleOrNull() else null
 
     private fun containsGeneric(type: TypeSign, genericNames: Set<String>): Boolean =
         type.name in genericNames || type.args.any { containsGeneric(it, genericNames) }
@@ -387,17 +407,19 @@ class TemplateInstantiator(
     }
 
     private data class TemplateRewriteContext(
+        val typeMapping: Map<String, TypeSign>,
         val constraintsByConcreteType: Map<String, Set<String>>,
     ) {
         companion object {
-            fun empty(): TemplateRewriteContext = TemplateRewriteContext(emptyMap())
+            fun empty(): TemplateRewriteContext = TemplateRewriteContext(emptyMap(), emptyMap())
 
             fun from(
                 genericParams: List<GenericParam>,
                 mapping: Map<String, TypeSign>,
             ): TemplateRewriteContext =
                 TemplateRewriteContext(
-                    genericParams.mapNotNull { generic ->
+                    typeMapping = mapping,
+                    constraintsByConcreteType = genericParams.mapNotNull { generic ->
                         val concreteType = mapping[generic.name] ?: return@mapNotNull null
                         concreteType.toManglePart() to generic.constraints.toSet()
                     }.toMap(),
