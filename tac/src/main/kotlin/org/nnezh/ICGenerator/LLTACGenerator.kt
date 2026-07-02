@@ -103,7 +103,7 @@ class LLTACGenerator(
                         }
                     }
 
-                    else -> error("unexpected lvalue for TAC generation: $lValue")
+                    else -> lltacError("unexpected lvalue for TAC generation", node)
                 }
             }
 
@@ -225,7 +225,7 @@ class LLTACGenerator(
                 }
             }
 
-            is ExpressionASTNode -> error("bare expression is not a TAC statement: $node")
+            is ExpressionASTNode -> lltacError("bare expression is not a TAC statement", node)
             is EmptyNode -> {}
             else -> {}
         }
@@ -260,7 +260,7 @@ class LLTACGenerator(
             is DoubleLiteralExpressionASTNode -> Operand.DoubleConst(value)
             is IntLiteralExpressionASTNode -> Operand.IntConst(value.toLong())
             is StringLiteralExpressionASTNode -> Operand.StringConst(value)
-            else -> error("unsupported global $expectedType array initializer expression: $this")
+            else -> lltacError("unsupported global $expectedType array initializer expression", this)
         }
 
     private fun inferLiteralTacType(expression: ExpressionASTNode): Type =
@@ -269,7 +269,7 @@ class LLTACGenerator(
             is DoubleLiteralExpressionASTNode -> Type.DoubleType
             is IntLiteralExpressionASTNode -> Type.IntType
             is StringLiteralExpressionASTNode -> Type.StringType
-            else -> error("missing semantic type for expression: $expression")
+            else -> lltacError("missing semantic type for expression", expression)
         }
 }
 
@@ -281,7 +281,7 @@ fun TypeSign.toTacType(): Type =
         "Boolean" -> Type.BoolType
         "Unit" -> Type.UnitType
         "Array" -> Type.StaticArrayType(args.singleOrNull()?.toTacType() ?: Type.UnitType, 0)
-        else -> error("unsupported TAC type: $this")
+        else -> lltacError("unsupported TAC type: $this")
     }
 
 fun Type.toManglePart(): String =

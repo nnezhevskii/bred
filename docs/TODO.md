@@ -59,4 +59,4 @@ Item IDs use the stable `G-NN` format.
 | Backend correctness | G-61 |
 | Semantic design decisions | G-48, G-49, G-50, G-51, G-52 |
 | Language growth | G-03, G-05, G-12, G-13, G-53, G-54, G-55 |
-| Optional cleanup | G-14, G-16, G-25, G-56, G-57 |
+| Optional cleanup | G-14, G-16, G-25, G-56, G-57, G-62 |

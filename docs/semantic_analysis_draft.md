@@ -129,6 +129,28 @@ Current emitted wrappers:
 | `ControlFlowSemanticError` | value supplied at creation; current errors are critical |
 | `SemanticWarning` | no |
 
+Each wrapper can carry an optional `SemanticDiagnosticDetail`. The detail does
+not change semantic behavior; it only gives the formatter enough context to
+produce human-readable diagnostics. Existing wrapper constructors remain
+compatible because the detail parameter has a default value.
+
+`SemanticDiagnosticFormatter` is the shared user-facing formatter for the active
+pipeline. `BredToCCompiler` and `TACCompilerImpl` use it when reporting semantic
+failures. The formatter prefers exact detail data such as variable names,
+expected/actual types, call argument types, overload candidates, and array
+sizes. If a diagnostic has no detail, it falls back to the error type plus an AST
+node summary. Source positions are best-effort: variable and operator based
+nodes use existing token/operator positions, while statement-level nodes without
+stored spans are described by subject.
+
+Example formatted diagnostics:
+
+```text
+Semantic error UNKNOWN_VARIABLE at 2:18: unknown variable 'missing'.
+Semantic error TYPE_CHECKER_INCOMPATIBLE_TYPES: cannot initialize 'n: Int': expected Int, got String.
+Semantic error FUNCTION_EXISTS_BUT_WRONG_ARGUMENTS: no overload of 'takeInt' accepts (String); candidates: takeInt(Int): Unit.
+```
+
 `VARIABLE_OVERSHADOW` is emitted as a warning, not as a critical error.
 
 Some enum values exist but are not covered by current tests or are not normally

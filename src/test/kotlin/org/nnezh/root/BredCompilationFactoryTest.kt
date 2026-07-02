@@ -102,6 +102,30 @@ class BredCompilationFactoryTest {
             ifRight = { cLines -> error("expected parser errors, got C code: $cLines") },
         )
     }
+
+    @Test
+    fun `bred compiler returns readable semantic errors on the left`(@TempDir dir: Path) {
+        val source = dir.resolve("semantic-broken.bred")
+        source.writeText(
+            """
+            fun main(): Unit {
+                val n: Int = "wrong"
+            }
+            """.trimIndent(),
+        )
+
+        val result = BredToCCompilerFactory().create().compile(source)
+
+        result.fold(
+            ifLeft = { errors ->
+                val message = errors.joinToString("\n")
+                assertTrue(message.contains("Semantic error TYPE_CHECKER_INCOMPATIBLE_TYPES"), message)
+                assertTrue(message.contains("initialize 'n: Int'"), message)
+                assertTrue(message.contains("expected Int, got String"), message)
+            },
+            ifRight = { cLines -> error("expected semantic errors, got C code: $cLines") },
+        )
+    }
 }
 
 class CExecutableBuilderTest {

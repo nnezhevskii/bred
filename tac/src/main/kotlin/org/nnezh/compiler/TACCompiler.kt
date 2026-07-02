@@ -2,6 +2,7 @@ package org.nnezh.org.nnezh.compiler
 
 import arrow.core.getOrElse
 import org.nnezh.SemanticAnalyzer
+import org.nnezh.SemanticDiagnosticFormatter
 import org.nnezh.bred.ast.AbstractSyntaxTreeBuilder
 import org.nnezh.bred.ast.ProgramRoot
 import org.nnezh.bred.codegenerator.TemplateInstantiator
@@ -15,6 +16,8 @@ interface TACCompiler {
 }
 
 class TACCompilerImpl : TACCompiler {
+    private val semanticFormatter = SemanticDiagnosticFormatter()
+
     override fun compile(src: String): List<LLTACElement> {
         val tokens = Lexer(src).tokenize().getOrElse { error("unexpected lexer error: $it") }
         val ast = AbstractSyntaxTreeBuilder().build(tokens).getOrElse { error("unexpected parse error: $it") }
@@ -28,7 +31,9 @@ class TACCompilerImpl : TACCompiler {
         val instantiatedContext = ProgramContextCollector().collect(instantiatedRoot)
         val analysis = SemanticAnalyzer(instantiatedContext)
             .analyzeWithResult(instantiatedRoot)
-            .getOrElse { error("semantic analysis failed: $it") }
+            .getOrElse { errors ->
+                error("semantic analysis failed:\n${errors.joinToString("\n") { semanticFormatter.format(it) }}")
+            }
 
         return LLTACGenerator(typeTable = analysis.expressionTypes).build(instantiatedRoot)
     }

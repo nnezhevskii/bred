@@ -114,15 +114,17 @@ class CTranspile {
     private fun parseInstruction(context: Context): List<String> {
         val cCode = mutableListOf<String>()
 
+        val instructionIndex = context.position
         val instruction = (context.consume() as LLTACInstruction)
+        try {
         when (instruction.opcode) {
             LLTACOperation.LLTAC_ASSIGN -> {
-                val destination = instruction.destination as Operand
-                val dest = (instruction.destination as LeftValue).asLeftValue()
-                val value = (instruction.arg1!! as RightValue).asRightValue()
+                val destination = instruction.expectOperand(instruction.destination, "destination")
+                val dest = instruction.expectLeftValue(instruction.destination, "destination").asLeftValue()
+                val value = instruction.expectRightValue(instruction.arg1, "arg1").asRightValue()
 
 
-                if ((instruction.destination as Operand).type.name == "String") {
+                if (destination.type.name == "String") {
                     val escaped = escapeCString(value)
                     cCode.add("$dest = create_string(\"$escaped\", strlen(\"$escaped\"));")
                 } else {
@@ -143,9 +145,9 @@ class CTranspile {
                 cCode.add(generateSimpleOperation(instruction))
             }
             LLTACOperation.LLTAC_CALL -> {
-                val callingFunctionName = (instruction.arg1 as Operand.FunctionCall).name
+                val callingFunctionName = instruction.expectFunctionCall(instruction.arg1, "arg1").name
                 val destination = instruction.destination as? LeftValue
-                val amountOfArgs: Int = (instruction.arg2 as Operand.IntConst).value.toInt()
+                val amountOfArgs: Int = instruction.expectIntConst(instruction.arg2, "arg2").value.toInt()
                 val paramInstructions = (1.until(amountOfArgs + 1))
                     .map { i ->
                         (((context.top(-i - 1) as LLTACInstruction).destination) as Operand.Variable).name
@@ -164,23 +166,23 @@ class CTranspile {
 
             LLTACOperation.LLTAC_RET -> { /* Do nothing */ }
             LLTACOperation.LLTAC_NOT -> {
-                val left = (instruction.destination as LeftValue).asLeftValue()
-                val arg1 = (instruction.arg1 as LeftValue).asLeftValue()
+                val left = instruction.expectLeftValue(instruction.destination, "destination").asLeftValue()
+                val arg1 = instruction.expectLeftValue(instruction.arg1, "arg1").asLeftValue()
                 cCode.add("${left}=!${arg1};")
             }
             LLTACOperation.LLTAC_NEG -> {
-                val left = (instruction.destination as LeftValue).asLeftValue()
-                val arg1 = (instruction.arg1 as LeftValue).asLeftValue()
+                val left = instruction.expectLeftValue(instruction.destination, "destination").asLeftValue()
+                val arg1 = instruction.expectLeftValue(instruction.arg1, "arg1").asLeftValue()
                 cCode.add("${left}=-${arg1};")
             }
             LLTACOperation.LLTAC_JMP_IF_NOT -> {
-                val destination = instruction.destination as Operand.Label
-                val condition = (instruction.arg1 as LeftValue).asLeftValue()
+                val destination = instruction.expectLabel(instruction.destination, "destination")
+                val condition = instruction.expectLeftValue(instruction.arg1, "arg1").asLeftValue()
                 cCode.add("if (!${condition})goto ${destination};")
             }
 
             LLTACOperation.LLTAC_JMP -> {
-                val destination = instruction.destination as Operand.Label
+                val destination = instruction.expectLabel(instruction.destination, "destination")
                 cCode.add("goto ${destination};")
             }
 
@@ -188,18 +190,27 @@ class CTranspile {
             LLTACOperation.LLTAC_ALLOC -> { /* Do nothing */ }
 
             LLTACOperation.LLTAC_LDX -> {
-                val left = (instruction.destination as LeftValue).asLeftValue()
-                val index = (instruction.arg1 as RightValue).asRightValue()
-                val value = (instruction.arg2 as RightValue).asRightValue()
+                val left = instruction.expectLeftValue(instruction.destination, "destination").asLeftValue()
+                val index = instruction.expectRightValue(instruction.arg1, "arg1").asRightValue()
+                val value = instruction.expectRightValue(instruction.arg2, "arg2").asRightValue()
                 cCode.add("${left}=${index}[$value];")
             }
             LLTACOperation.LLTAC_STX -> {
-                val left = (instruction.destination as LeftValue).asLeftValue()
-                val index = (instruction.arg1 as RightValue).asRightValue()
-                val value = (instruction.arg2 as RightValue).asRightValue()
+                val left = instruction.expectLeftValue(instruction.destination, "destination").asLeftValue()
+                val index = instruction.expectRightValue(instruction.arg1, "arg1").asRightValue()
+                val value = instruction.expectRightValue(instruction.arg2, "arg2").asRightValue()
                 cCode.add("${left}[$index]=${value};")
 
             }
+        }
+        } catch (error: CTranspileException) {
+            throw CTranspileException(
+                "Malformed TAC at instruction #$instructionIndex (${instruction.opcode}): $instruction. ${error.message}"
+            )
+        } catch (error: Throwable) {
+            throw CTranspileException(
+                "Malformed TAC at instruction #$instructionIndex (${instruction.opcode}): $instruction. ${error.message ?: error::class.qualifiedName}"
+            )
         }
 
         return cCode
@@ -285,9 +296,9 @@ class CTranspile {
 
     private fun generateSimpleOperation(instruction: LLTACInstruction): String {
 
-        val left = (instruction.destination as LeftValue).asLeftValue()
-        val arg1 = (instruction.arg1 as LeftValue).asLeftValue()
-        val arg2 = (instruction.arg2 as LeftValue).asLeftValue()
+        val left = instruction.expectLeftValue(instruction.destination, "destination").asLeftValue()
+        val arg1 = instruction.expectLeftValue(instruction.arg1, "arg1").asLeftValue()
+        val arg2 = instruction.expectLeftValue(instruction.arg2, "arg2").asLeftValue()
 
         if (instruction.destination!!.type.name == "String" && instruction.opcode == LLTACOperation.LLTAC_ADD) {
             return "${left}=concat(${arg1},${arg2});"
@@ -308,11 +319,37 @@ class CTranspile {
             LLTACOperation.LLTAC_AND -> "&&"
             LLTACOperation.LLTAC_OR  -> "||"
 
-            else -> TODO()
+            else -> throw CTranspileException("Unsupported simple TAC opcode ${instruction.opcode} in instruction: $instruction")
         }
 
         return "${left}=${arg1}${command}${arg2};"
     }
+
+    private fun LLTACInstruction.expectOperand(operand: Operand?, role: String): Operand =
+        operand ?: throw CTranspileException("expected $role to be an operand, got <missing>")
+
+    private fun LLTACInstruction.expectLeftValue(operand: Operand?, role: String): LeftValue =
+        operand as? LeftValue
+            ?: throw CTranspileException("expected $role to be a left-value operand, got ${operand.describe()}")
+
+    private fun LLTACInstruction.expectRightValue(operand: Operand?, role: String): RightValue =
+        operand as? RightValue
+            ?: throw CTranspileException("expected $role to be a right-value operand, got ${operand.describe()}")
+
+    private fun LLTACInstruction.expectFunctionCall(operand: Operand?, role: String): Operand.FunctionCall =
+        operand as? Operand.FunctionCall
+            ?: throw CTranspileException("expected $role to be a function call operand, got ${operand.describe()}")
+
+    private fun LLTACInstruction.expectIntConst(operand: Operand?, role: String): Operand.IntConst =
+        operand as? Operand.IntConst
+            ?: throw CTranspileException("expected $role to be an Int constant operand, got ${operand.describe()}")
+
+    private fun LLTACInstruction.expectLabel(operand: Operand?, role: String): Operand.Label =
+        operand as? Operand.Label
+            ?: throw CTranspileException("expected $role to be a label operand, got ${operand.describe()}")
+
+    private fun Operand?.describe(): String =
+        this?.let { "${it::class.simpleName}($it)" } ?: "<missing>"
 
     private fun renderGlobalInitializer(operand: Operand, elementType: Type): String =
         if (elementType == Type.StringType && operand is Operand.StringConst) {
@@ -368,7 +405,7 @@ class CTranspile {
             Type.DoubleType -> "double"
             Type.IntType -> "int"
             is Type.StaticArrayType -> {
-                TODO() // should not be there
+                throw CTranspileException("Cannot render static array type as scalar C declaration: $type")
             }
 
             Type.StringType -> "String"
@@ -421,5 +458,8 @@ class CTranspile {
         fun consume(): LLTACElement {
             return tacLines[counter++]
         }
+
+        val position: Int
+            get() = counter
     }
 }

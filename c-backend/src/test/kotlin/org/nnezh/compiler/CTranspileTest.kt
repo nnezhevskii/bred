@@ -1,8 +1,11 @@
 package org.nnezh.org.nnezh.compiler
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.nnezh.org.nnezh.ICGenerator.LLTACElement
+import org.nnezh.org.nnezh.ICGenerator.LLTACInstruction
 import org.nnezh.org.nnezh.ICGenerator.LLTACOperation
 import org.nnezh.org.nnezh.ICGenerator.Operand
 import org.nnezh.org.nnezh.base.Type
@@ -285,5 +288,26 @@ class CTranspileTest {
         )
         assertEquals(expected, transpiler.compile(tac))
         assertEquals(expected, transpiler.compile(tac))
+    }
+
+    @Test
+    fun `malformed tac reports instruction index opcode and expected operand`() {
+        val tac = listOf(
+            LLTACElement.function("main", Type.UnitType),
+            LLTACInstruction(
+                opcode = LLTACOperation.LLTAC_ASSIGN,
+                destination = null,
+                arg1 = Operand.IntConst(1),
+            ),
+        )
+
+        val error = assertThrows(CTranspileException::class.java) {
+            CTranspile().compile(tac)
+        }
+
+        val message = error.message ?: ""
+        assertTrue(message.contains("instruction #1"), message)
+        assertTrue(message.contains("ASSIGN"), message)
+        assertTrue(message.contains("expected destination"), message)
     }
 }

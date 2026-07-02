@@ -11,7 +11,6 @@ import org.nnezh.lexer.Lexer
 import org.nnezh.lexer.LexerError
 import org.nnezh.lexer.readSource
 import org.nnezh.org.nnezh.ICGenerator.LLTACGenerator
-import org.nnezh.org.nnezh.ICGenerator.PrettyPrinter
 import org.nnezh.org.nnezh.compiler.CTranspile
 import java.nio.file.Path
 
@@ -36,6 +35,8 @@ class BredToCCompiler(
     private val contextCollectorFactory: () -> ProgramContextCollector,
     private val cTranspiler: CTranspile,
 ) {
+    private val semanticFormatter = SemanticDiagnosticFormatter()
+
     fun compile(sourceFile: String): Either<List<String>, List<String>> =
         compile(Path.of(sourceFile))
 
@@ -74,17 +75,19 @@ class BredToCCompiler(
         val instantiatedContext = contextCollectorFactory().collect(instantiatedRoot)
         val analysis = SemanticAnalyzer(instantiatedContext)
             .analyzeWithResult(instantiatedRoot)
-            .mapLeft { errors -> errors.map { it.describe() } }
+            .mapLeft { errors -> errors.map { semanticFormatter.format(it) } }
             .bind()
 
+        val tac = Either.catch {
+            LLTACGenerator(typeTable = analysis.expressionTypes).build(instantiatedRoot)
+        }.mapLeft { error ->
+            listOf("TAC generation failed: ${error.message ?: error::class.qualifiedName}")
+        }.bind()
+
         Either.catch {
-            val tac = LLTACGenerator(typeTable = analysis.expressionTypes).build(instantiatedRoot)
-            PrettyPrinter().format(tac).forEach {
-                println(it)
-            }
             cTranspiler.compile(tac)
         }.mapLeft { error ->
-            listOf("C generation failed: ${error.message ?: error::class.qualifiedName}")
+            listOf("C transpilation failed: ${error.message ?: error::class.qualifiedName}")
         }.bind()
     }
 
@@ -94,15 +97,4 @@ class BredToCCompiler(
     private fun ASTError.describe(): String =
         "Parser error: $message"
 
-    private fun SemanticError.describe(): String =
-        when (this) {
-            is SemanticError.ControlFlowSemanticError ->
-                "Semantic error $errorType at ${where::class.simpleName}"
-            is SemanticError.FunctionSemanticError ->
-                "Semantic error $errorType at ${where::class.simpleName}"
-            is SemanticError.TypeSemanticError ->
-                "Semantic error $errorType at ${where::class.simpleName}"
-            is SemanticError.VariableScopeSemanticError ->
-                "Semantic error $errorType at ${where::class.simpleName}"
-        }
 }

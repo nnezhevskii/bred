@@ -29,6 +29,10 @@ class LLTAGCompileExpectationsTest {
       ex.message?.contains("semantic analysis failed", ignoreCase = true) == true,
       "expected semantic rejection, got: ${ex.message}",
     )
+    assertTrue(
+      ex.message?.contains("Semantic error") == true,
+      "expected formatted semantic diagnostic, got: ${ex.message}",
+    )
   }
 
   private fun assertCompiles(src: String) {

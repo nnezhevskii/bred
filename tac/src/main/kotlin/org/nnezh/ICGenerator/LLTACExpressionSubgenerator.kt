@@ -57,7 +57,7 @@ class LLTACExpressionSubgenerator(
     ): LLTACExpressionSubgeneratorResult =
         when (expression) {
             is BooleanLiteralExpressionASTNode -> {
-                val destination = requireNotNull(variable) { "literal TAC destination is required" }
+                val destination = variable ?: lltacError("literal TAC destination is required", expression)
                 LLTACExpressionSubgeneratorResult(
                     instructions = listOf(LLTACElement.assign(destination, Type.BoolType, expression.value)),
                     finalVariable = destination,
@@ -66,7 +66,7 @@ class LLTACExpressionSubgenerator(
             }
 
             is DoubleLiteralExpressionASTNode -> {
-                val destination = requireNotNull(variable) { "literal TAC destination is required" }
+                val destination = variable ?: lltacError("literal TAC destination is required", expression)
                 LLTACExpressionSubgeneratorResult(
                     instructions = listOf(LLTACElement.assign(destination, type, expression.value)),
                     finalVariable = destination,
@@ -75,7 +75,7 @@ class LLTACExpressionSubgenerator(
             }
 
             is IntLiteralExpressionASTNode -> {
-                val destination = requireNotNull(variable) { "literal TAC destination is required" }
+                val destination = variable ?: lltacError("literal TAC destination is required", expression)
                 LLTACExpressionSubgeneratorResult(
                     instructions = listOf(LLTACElement.assign(destination, type, expression.value.toLong())),
                     finalVariable = destination,
@@ -84,7 +84,7 @@ class LLTACExpressionSubgenerator(
             }
 
             is StringLiteralExpressionASTNode -> {
-                val destination = requireNotNull(variable) { "literal TAC destination is required" }
+                val destination = variable ?: lltacError("literal TAC destination is required", expression)
                 LLTACExpressionSubgeneratorResult(
                     instructions = listOf(LLTACElement.assign(destination, type, expression.value)),
                     finalVariable = destination,
@@ -108,7 +108,7 @@ class LLTACExpressionSubgenerator(
                 )
                 instructions.addAll(rightOperand.instructions)
 
-                val destination = requireNotNull(variable) { "binary expression TAC destination is required" }
+                val destination = variable ?: lltacError("binary expression TAC destination is required", expression)
                 instructions.add(
                     binOp(
                         opcode = binaryOperatorToTACCommand.getValue(expression.operator.kind),
@@ -157,7 +157,7 @@ class LLTACExpressionSubgenerator(
                     type = expression.operand.tacType(),
                     expression = expression.operand,
                 )
-                val destination = requireNotNull(variable) { "unary expression TAC destination is required" }
+                val destination = variable ?: lltacError("unary expression TAC destination is required", expression)
                 val instructions = operand.instructions.toMutableList()
                 instructions.add(
                     LLTACElement.unOp(
@@ -181,7 +181,7 @@ class LLTACExpressionSubgenerator(
             }
 
             is ArrayInitializationExpressionASTNode -> {
-                error("array initializer should be lowered by ArrayDeclarationASTNode")
+                lltacError("array initializer should be lowered by ArrayDeclarationASTNode", expression)
             }
 
             is ArrayElementAccessASTNode -> {
@@ -214,6 +214,6 @@ class LLTACExpressionSubgenerator(
             is DoubleLiteralExpressionASTNode -> Type.DoubleType
             is IntLiteralExpressionASTNode -> Type.IntType
             is StringLiteralExpressionASTNode -> Type.StringType
-            else -> error("missing semantic type for expression: $expression")
+            else -> lltacError("missing semantic type for expression", expression)
         }
 }

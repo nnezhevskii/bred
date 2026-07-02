@@ -1,6 +1,8 @@
 package org.nnezh
 
 import org.nnezh.bred.ast.ASTNode
+import org.nnezh.bred.common.FunctionSignature
+import org.nnezh.bred.common.TypeSign
 
 enum class SemanticErrorType {
     VARIABLE_OVERSHADOW, VARIABLE_REDECLARATION, UNKNOWN_VARIABLE, VARIABLE_CHANGING_IMMUTABLE, UNEXPECTED_LVALUE,
@@ -10,12 +12,37 @@ enum class SemanticErrorType {
     BLOCK_CONTAINS_MORE_THAN_ONE_RETURN, BLOCK_CONTAINS_CODE_AFTER_RETURN, METHOD_HAS_NO_RETURN, METHOD_HAS_WRONG_RETURN, EXPLICIT_RETURN_IS_EXPECTED
 }
 
+sealed interface SemanticDiagnosticDetail {
+    data class UnknownVariable(val name: String) : SemanticDiagnosticDetail
+    data class VariableRedeclaration(val name: String) : SemanticDiagnosticDetail
+    data class ImmutableAssignment(val name: String) : SemanticDiagnosticDetail
+    data class TypeMismatch(
+        val subject: String,
+        val expected: TypeSign?,
+        val actual: TypeSign?,
+    ) : SemanticDiagnosticDetail
+    data class FunctionNotFound(val name: String, val actualArguments: List<TypeSign>) : SemanticDiagnosticDetail
+    data class FunctionWrongArguments(
+        val name: String,
+        val actualArguments: List<TypeSign>,
+        val candidates: List<FunctionSignature>,
+    ) : SemanticDiagnosticDetail
+    data class ArraySizeMismatch(val name: String, val expected: Int, val actual: Int) : SemanticDiagnosticDetail
+    data class ArrayIndexType(val name: String, val actual: TypeSign?) : SemanticDiagnosticDetail
+    data class ArrayExpected(val name: String, val actual: TypeSign?) : SemanticDiagnosticDetail
+    data class WrongReturn(val expected: TypeSign, val actual: TypeSign) : SemanticDiagnosticDetail
+    data class ControlFlow(val message: String) : SemanticDiagnosticDetail
+    data class UnsupportedNode(val subject: String) : SemanticDiagnosticDetail
+}
+
 sealed interface SemanticError {
     val isCriticalError: Boolean
+    val detail: SemanticDiagnosticDetail?
 
     data class VariableScopeSemanticError(
         val where: ASTNode,
-        val errorType: SemanticErrorType
+        val errorType: SemanticErrorType,
+        override val detail: SemanticDiagnosticDetail? = null,
     ): SemanticError {
         override val isCriticalError: Boolean
             get() = true
@@ -23,7 +50,8 @@ sealed interface SemanticError {
 
     data class FunctionSemanticError(
         val where: ASTNode,
-        val errorType: SemanticErrorType
+        val errorType: SemanticErrorType,
+        override val detail: SemanticDiagnosticDetail? = null,
     ): SemanticError {
         override val isCriticalError: Boolean
             get() = true
@@ -31,12 +59,14 @@ sealed interface SemanticError {
 
     data class SemanticWarning(
         val where: ASTNode,
-        val type: SemanticErrorType
+        val type: SemanticErrorType,
+        val detail: SemanticDiagnosticDetail? = null,
     )
 
     data class TypeSemanticError(
         val where: ASTNode,
-        val errorType: SemanticErrorType
+        val errorType: SemanticErrorType,
+        override val detail: SemanticDiagnosticDetail? = null,
     ): SemanticError {
         override val isCriticalError: Boolean
             get() = true
@@ -45,7 +75,8 @@ sealed interface SemanticError {
     data class ControlFlowSemanticError(
         val where: ASTNode,
         val critical: Boolean,
-        val errorType: SemanticErrorType
+        val errorType: SemanticErrorType,
+        override val detail: SemanticDiagnosticDetail? = null,
     ): SemanticError {
         override val isCriticalError: Boolean
             get() = critical
