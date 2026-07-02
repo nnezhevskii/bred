@@ -1,10 +1,18 @@
+// Full feature demo for bred: arrays, functions, globals, loops,
+// typeclasses, instances, generics, strings, numbers and reports.
+
+val ProgramName: String = "Bred data analyzer"
+val ProgramVersion: Double = 1.0
+val DefaultLimit: Int = 32
+val DiagnosticsEnabled: Boolean = true
+
 typeclass Printable<A> {
-    fun toString(a: A): String
+    fun toString(value: A): String
 }
-typeclass Comparability<A> {
+
+typeclass Ordered<A> {
     fun equals(a: A, b: A): Boolean
     fun less(a: A, b: A): Boolean
-    fun greater(a: A, b: A): Boolean
 }
 
 instance Printable<Int> {
@@ -13,74 +21,334 @@ instance Printable<Int> {
     }
 }
 
-instance Equality<Int> {
+instance Ordered<Int> {
     fun equals(a: Int, b: Int): Boolean {
         return a == b
     }
+
     fun less(a: Int, b: Int): Boolean {
         return a < b
     }
 }
 
-
-
-fun printValue<T: Printable>(value: T) {
+fun printValue<T: Printable>(value: T): Unit {
     println(toString(value))
 }
 
 fun arrayToString<T: Printable>(arr: Array<T>, size: Int): String {
-    var buff: String = ""
+    var text: String = ""
 
-    if (size == 0) {
-        return ""
-    }
-    if (size == 1) {
-        return intToString(arr[0])
+    for (i in 0 to size) {
+        if (i == 0) {
+            text = text + toString(arr[i])
+        } else {
+            text = text + ", " + toString(arr[i])
+        }
     }
 
-    for (i in 0 to size - 1) {
-        buff = buff + intToString(arr[i]) + " "
-    }
-    buff = buff + intToString(arr[size - 1])
-
-    return buff
+    return text
 }
 
-fun binarySearch<T: Equality>(arr: Array<T>, size: Int, element: T): Int {
+fun isSorted<T: Ordered>(arr: Array<T>, size: Int): Boolean {
+    var i: Int = 1
+
+    while (i < size) {
+        if (less(arr[i], arr[i - 1])) {
+            return false
+        }
+        i = i + 1
+    }
+
+    return true
+}
+
+fun bubbleSort<T: Ordered>(arr: Array<T>, size: Int): Unit {
+    var pass: Int = 0
+
+    while (pass < size) {
+        var j: Int = 1
+
+        while (j < size - pass) {
+            if (less(arr[j], arr[j - 1])) {
+                var tmp: T = arr[j]
+                arr[j] = arr[j - 1]
+                arr[j - 1] = tmp
+            }
+
+            j = j + 1
+        }
+
+        pass = pass + 1
+    }
+}
+
+fun binarySearch<T: Ordered>(arr: Array<T>, size: Int, target: T): Int {
     if (size == 0) {
         return -1
     }
+
     var left: Int = 0
     var right: Int = size - 1
 
     while (left <= right) {
-        var mid: Int = (left + right) / 2
-        if (equals(arr[mid], element)) {
-            return mid
+        var middle: Int = (left + right) / 2
+
+        if (equals(arr[middle], target)) {
+            return middle
         }
-        if (less(element, arr[mid])) {
-            right = mid - 1
+
+        if (less(target, arr[middle])) {
+            right = middle - 1
         } else {
-            left = mid + 1
+            left = middle + 1
         }
     }
+
     return -1
 }
 
-fun main(): Unit {
-
-    val arrSize: Int = readInt()
-    val arr: Array<Int>[1024]
-
-    for (i in 0 to arrSize) {
-        arr[i] = i * 2
+fun clampSize(value: Int, maxValue: Int): Int {
+    if (value < 0) {
+        return 0
     }
-    arr[arrSize - 1] = arr[arrSize - 1] * 11
 
-    println(arrayToString(arr, arrSize))
+    if (value > maxValue) {
+        return maxValue
+    }
 
-    val elementToSeek: Int = readInt()
-    println("index = " + intToString(binarySearch(arr, arrSize, elementToSeek)))
+    return value
+}
+
+fun positiveSeed(seed: Int): Int {
+    if (seed < 0) {
+        return -seed
+    }
+
+    return seed
+}
+
+fun fillData(arr: Array<Int>, size: Int, seed: Int): Unit {
+    var state: Int = positiveSeed(seed) + 17
+
+    for (i in 0 to size) {
+        state = (state * 37 + 23) % 101
+        arr[i] = state - 50
+    }
+}
+
+fun copyArray(source: Array<Int>, target: Array<Int>, size: Int): Unit {
+    for (i in 0 to size) {
+        target[i] = source[i]
+    }
+}
+
+fun sumArray(arr: Array<Int>, size: Int): Int {
+    var total: Int = 0
+
+    for (i in 0 to size) {
+        total = total + arr[i]
+    }
+
+    return total
+}
+
+fun minArray(arr: Array<Int>, size: Int): Int {
+    if (size == 0) {
+        return 0
+    }
+
+    var result: Int = arr[0]
+    var i: Int = 1
+
+    while (i < size) {
+        if (arr[i] < result) {
+            result = arr[i]
+        }
+
+        i = i + 1
+    }
+
+    return result
+}
+
+fun maxArray(arr: Array<Int>, size: Int): Int {
+    if (size == 0) {
+        return 0
+    }
+
+    var result: Int = arr[0]
+    var i: Int = 1
+
+    while (i < size) {
+        if (arr[i] > result) {
+            result = arr[i]
+        }
+
+        i = i + 1
+    }
+
+    return result
+}
+
+fun countLessThan(arr: Array<Int>, size: Int, threshold: Int): Int {
+    var count: Int = 0
+
+    for (i in 0 to size) {
+        if (arr[i] < threshold) {
+            count = count + 1
+        }
+    }
+
+    return count
+}
+
+fun countGreaterOrEqual(arr: Array<Int>, size: Int, threshold: Int): Int {
+    var count: Int = 0
+
+    for (i in 0 to size) {
+        if (arr[i] >= threshold) {
+            count = count + 1
+        }
+    }
+
+    return count
+}
+
+fun countEven(arr: Array<Int>, size: Int): Int {
+    var count: Int = 0
+
+    for (i in 0 to size) {
+        if (arr[i] % 2 == 0) {
+            count = count + 1
+        }
+    }
+
+    return count
+}
+
+fun checksum(arr: Array<Int>, size: Int): Int {
+    var result: Int = 0
+
+    for (i in 0 to size) {
+        result = result + arr[i] * (i + 1)
+    }
+
+    return result
+}
+
+fun pad2(value: Int): String {
+    if (value < 10) {
+        return "0" + intToString(value)
+    }
+
+    return intToString(value)
+}
+
+fun averageText(sum: Int, size: Int): String {
+    if (size == 0) {
+        return "n/a"
+    }
+
+    var scaled: Int = (sum * 100) / size
+    var negative: Boolean = false
+
+    if (scaled < 0) {
+        negative = true
+        scaled = -scaled
+    }
+
+    var whole: Int = scaled / 100
+    var fraction: Int = scaled % 100
+    var text: String = intToString(whole) + "." + pad2(fraction)
+
+    if (negative) {
+        return "-" + text
+    }
+
+    return text
+}
+
+fun qualityScore(sorted: Boolean, hasSpread: Boolean, evenCount: Int): Double {
+    var score: Double = 0.0
+
+    if (sorted) {
+        score = score + 1.25
+    }
+
+    if (hasSpread) {
+        score = score + 0.75
+    }
+
+    if (evenCount > 0) {
+        score = score + 0.50
+    }
+
+    return score * 2.0
+}
+
+fun printBoolean(label: String, value: Boolean): Unit {
+    if (value) {
+        println(label + "true")
+    } else {
+        println(label + "false")
+    }
+}
+
+fun main(): Unit {
+    println("Bred data analyzer")
+    println("Enter array size, seed, value to search, threshold:")
+
+    var requestedSize: Int = readInt()
+    var seed: Int = readInt()
+    var target: Int = readInt()
+    var threshold: Int = readInt()
+
+    var size: Int = clampSize(requestedSize, 32)
+
+    val raw: Array<Int>[64]
+    val sorted: Array<Int>[64]
+
+    fillData(raw, size, seed)
+    copyArray(raw, sorted, size)
+
+    println("normalized size = " + intToString(size))
+    println("raw data = " + arrayToString(raw, size))
+
+    bubbleSort(sorted, size)
+
+    var total: Int = sumArray(sorted, size)
+    var minValue: Int = minArray(sorted, size)
+    var maxValue: Int = maxArray(sorted, size)
+    var below: Int = countLessThan(sorted, size, threshold)
+    var aboveOrEqual: Int = countGreaterOrEqual(sorted, size, threshold)
+    var evenCount: Int = countEven(sorted, size)
+    var foundIndex: Int = binarySearch(sorted, size, target)
+    var sortedOk: Boolean = isSorted(sorted, size)
+    var hasSpread: Boolean = maxValue > minValue
+    var healthy: Boolean = (size == 0) || (sortedOk && minValue <= maxValue)
+
+    println("sorted data = " + arrayToString(sorted, size))
+    println("sum = " + intToString(total))
+    println("min = " + intToString(minValue))
+    println("max = " + intToString(maxValue))
+    println("average = " + averageText(total, size))
+    println("threshold = " + intToString(threshold))
+    println("below threshold = " + intToString(below))
+    println("above or equal threshold = " + intToString(aboveOrEqual))
+    println("even count = " + intToString(evenCount))
+    println("checksum = " + intToString(checksum(sorted, size)))
+    println("search target = " + intToString(target))
+    println("binary search index = " + intToString(foundIndex))
+
+    printBoolean("sorted = ", sortedOk)
+    printBoolean("has spread = ", hasSpread)
+    printBoolean("healthy report = ", healthy)
+
+    var score: Double = qualityScore(sortedOk, hasSpread, evenCount)
+    println("quality score = " + doubleToString(score))
+
+    println("generic print of checksum:")
+    printValue(checksum(sorted, size))
 
     readInt()
 }

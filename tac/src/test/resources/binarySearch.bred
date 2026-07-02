@@ -1,8 +1,10 @@
 typeclass Printable<A> {
     fun toString(a: A): String
 }
-typeclass Equality<A> {
+typeclass Comparability<A> {
     fun equals(a: A, b: A): Boolean
+    fun less(a: A, b: A): Boolean
+    fun greater(a: A, b: A): Boolean
 }
 
 instance Printable<Int> {
@@ -11,9 +13,12 @@ instance Printable<Int> {
     }
 }
 
-instance Equality<Int> {
+instance Comparability<Int> {
     fun equals(a: Int, b: Int): Boolean {
         return a == b
+    }
+    fun less(a: Int, b: Int): Boolean {
+        return a < b
     }
 }
 
@@ -39,7 +44,7 @@ fun arrayToString<T: Printable>(arr: Array<T>, size: Int): String {
     return buff
 }
 
-fun binarySearch<T: Equality>(arr: Array<T>, size: Int, element: T): Int {
+fun binarySearch<T: Comparability>(arr: Array<T>, size: Int, element: T): Int {
     if (size == 0) {
         return -1
     }
@@ -48,10 +53,10 @@ fun binarySearch<T: Equality>(arr: Array<T>, size: Int, element: T): Int {
 
     while (left <= right) {
         var mid: Int = (left + right) / 2
-        if (arr[mid] == element) {
+        if (equals(arr[mid], element)) {
             return mid
         }
-        if (element < arr[mid]) {
+        if (less(element, arr[mid])) {
             right = mid - 1
         } else {
             left = mid + 1
