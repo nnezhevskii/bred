@@ -1,5 +1,6 @@
 package org.nnezh.org.nnezh.ICGenerator
 
+import org.nnezh.bred.common.TypeNames
 import org.nnezh.bred.common.TypeSign
 
 sealed interface LLTACElement {
@@ -89,7 +90,11 @@ sealed interface LLTACElement {
             LLTACInstruction(
                 opcode = LLTACOperation.LLTAC_ASSIGN,
                 destination = Operand.Variable(name = name, type = type),
-                arg1 = Operand.IntConst(value),
+                arg1 = if (type.isPrimitive && type.name == TypeNames.LONG) {
+                    Operand.LongConst(value)
+                } else {
+                    Operand.IntConst(value)
+                },
             )
 
         fun assign(name: String, type: TypeSign, value: Double): LLTACElement =

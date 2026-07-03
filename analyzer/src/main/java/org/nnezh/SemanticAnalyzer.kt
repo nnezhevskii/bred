@@ -24,6 +24,7 @@ import org.nnezh.bred.ast.IfStatementAstNode
 import org.nnezh.bred.ast.InstanceDeclAstNode
 import org.nnezh.bred.ast.IntLiteralExpressionASTNode
 import org.nnezh.bred.ast.LeftValue
+import org.nnezh.bred.ast.LongLiteralExpressionASTNode
 import org.nnezh.bred.ast.ProgramRoot
 import org.nnezh.bred.ast.ReturnFunctionStatementAstNode
 import org.nnezh.bred.ast.ScalarVariableInitializationASTNode
@@ -416,6 +417,11 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
 
             is IntLiteralExpressionASTNode -> {
                 scope.put(node, globalContext.intType)
+                return listOf<SemanticError.SemanticWarning>().right()
+            }
+
+            is LongLiteralExpressionASTNode -> {
+                scope.put(node, globalContext.longType)
                 return listOf<SemanticError.SemanticWarning>().right()
             }
 
@@ -930,6 +936,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
             is BooleanLiteralExpressionASTNode -> value.toString()
             is DoubleLiteralExpressionASTNode -> value.toString()
             is IntLiteralExpressionASTNode -> value.toString()
+            is LongLiteralExpressionASTNode -> "${value}L"
             is StringLiteralExpressionASTNode -> "\"${value.escape()}\""
             is VariableExpressionASTNode -> token.lexeme
             is ArrayElementAccessASTNode -> "$name[${index.renderExpression()}]"

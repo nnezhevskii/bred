@@ -77,6 +77,18 @@ class Lexer(private val source: String) {
             }
         }
 
+        if (!isDouble && !isAtEnd() && peek() == 'L') {
+            builder.append(advance())
+            val text = builder.toString()
+            if (!isAtEnd() && (peek().isLetterOrDigit() || peek() == '_')) {
+                raise(LexerError.InvalidNumber(currentPosition(), "Invalid long literal: unexpected '${peek()}'"))
+            }
+            val numericText = text.dropLast(1)
+            val value = numericText.toLongOrNull()
+                ?: raise(LexerError.InvalidNumber(start, "Long literal out of range: $text"))
+            return Token.Literal.LongLiteral(value, text, start)
+        }
+
         // Reject identifiers glued to a number, e.g. "12abc" or "3.14abc".
         if (!isAtEnd() && (peek().isLetter() || peek() == '_')) {
             raise(LexerError.InvalidNumber(currentPosition(), "Invalid number literal: unexpected '${peek()}'"))

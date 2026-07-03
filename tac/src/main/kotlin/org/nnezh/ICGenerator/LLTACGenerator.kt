@@ -17,6 +17,7 @@ import org.nnezh.bred.ast.FunctionArgument
 import org.nnezh.bred.ast.FunctionDeclAstNode
 import org.nnezh.bred.ast.IfStatementAstNode
 import org.nnezh.bred.ast.IntLiteralExpressionASTNode
+import org.nnezh.bred.ast.LongLiteralExpressionASTNode
 import org.nnezh.bred.ast.ProgramRoot
 import org.nnezh.bred.ast.ReturnFunctionStatementAstNode
 import org.nnezh.bred.ast.ScalarVariableInitializationASTNode
@@ -255,6 +256,7 @@ class LLTACGenerator(
             is BooleanLiteralExpressionASTNode -> Operand.BoolConst(value)
             is DoubleLiteralExpressionASTNode -> Operand.DoubleConst(value)
             is IntLiteralExpressionASTNode -> Operand.IntConst(value.toLong())
+            is LongLiteralExpressionASTNode -> Operand.LongConst(value)
             is StringLiteralExpressionASTNode -> Operand.StringConst(value)
             else -> lltacError("unsupported global ${expectedType.render()} array initializer expression", this)
         }
@@ -264,6 +266,7 @@ class LLTACGenerator(
             is BooleanLiteralExpressionASTNode -> globalContext.booleanType
             is DoubleLiteralExpressionASTNode -> globalContext.doubleType
             is IntLiteralExpressionASTNode -> globalContext.intType
+            is LongLiteralExpressionASTNode -> globalContext.longType
             is StringLiteralExpressionASTNode -> globalContext.stringType
             else -> lltacError("missing semantic type for expression", expression)
         }

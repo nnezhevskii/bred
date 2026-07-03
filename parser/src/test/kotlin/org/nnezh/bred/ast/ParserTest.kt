@@ -172,6 +172,17 @@ class ParserTest {
     }
 
     @Test
+    fun `long local initializer keeps TypeRef and Long literal node`() {
+        val root = parse("fun main(): Unit { val n: Long = 42L }")
+
+        val declaration = assertInstanceOf(ScalarVariableInitializationASTNode::class.java, root.functions.single().body.statements.first())
+        val literal = assertInstanceOf(LongLiteralExpressionASTNode::class.java, declaration.expression)
+
+        assertEquals(TypeRef("Long"), declaration.type)
+        assertEquals(42L, literal.value)
+    }
+
+    @Test
     fun `parentheses override arithmetic precedence`() {
         val root = parse("fun main(): Unit { val n: Int = (1 + 2) * 3 }")
 

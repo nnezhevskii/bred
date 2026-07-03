@@ -117,6 +117,37 @@ class SemanticAnalyzerTest {
     }
 
     @Test
+    fun `long arithmetic modulo unary minus and comparison are valid`() {
+        assertNoSemanticDiagnostics(
+            """
+            fun main(): Unit {
+                var total: Long = 1L
+                val delta: Long = 2L
+                total = total + delta * 3L
+                val remainder: Long = total % 2L
+                val negated: Long = -remainder
+                val ok: Boolean = negated <= 0L
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `generic function can be instantiated with Long literal`() {
+        assertNoSemanticDiagnosticsAfterTemplateInstantiation(
+            """
+            fun id<T>(value: T): T {
+                return value
+            }
+
+            fun main(): Unit {
+                val result: Long = id(7L)
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
     fun `boolean conditions are accepted in if and while`() {
         assertNoSemanticDiagnostics(
             """
@@ -174,6 +205,19 @@ class SemanticAnalyzerTest {
                 println(input + intText + doubleText)
             }
             """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `int literal cannot initialize Long without long suffix`() {
+        assertSingleSemanticError(
+            """
+            fun main(): Unit {
+                val n: Long = 1
+            }
+            """.trimIndent(),
+            SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
+            ScalarVariableInitializationASTNode::class.java,
         )
     }
 
@@ -1249,6 +1293,19 @@ class SemanticAnalyzerTest {
             """
             fun first(values: Int[]): Int {
                 return values[true]
+            }
+            """.trimIndent(),
+            SemanticErrorType.ARRAY_INDEX_IS_NOT_INTEGER,
+            ArrayElementAccessASTNode::class.java,
+        )
+    }
+
+    @Test
+    fun `long array index is rejected because indexes are Int`() {
+        assertSingleSemanticError(
+            """
+            fun first(values: Long[]): Long {
+                return values[0L]
             }
             """.trimIndent(),
             SemanticErrorType.ARRAY_INDEX_IS_NOT_INTEGER,

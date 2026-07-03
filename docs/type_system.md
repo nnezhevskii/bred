@@ -44,6 +44,7 @@ sealed interface TypeSign {
 `ProgramGlobalContext` initializes and exposes:
 
 - `intType`;
+- `longType`;
 - `doubleType`;
 - `stringType`;
 - `booleanType`;
@@ -55,7 +56,7 @@ sealed interface TypeSign {
 - `resolveOrThrow(ref, genericScope)`;
 - `builtInSignatures`.
 
-Primitive names are `Int`, `Double`, `String`, `Boolean`, and `Unit`.
+Primitive names are `Int`, `Long`, `Double`, `String`, `Boolean`, and `Unit`.
 
 User-defined type names are registered from `ProgramRoot.types` by
 `ProgramContextCollector`. The current grammar does not produce user type
@@ -162,6 +163,20 @@ longer part of the active compiler.
 C storage types. Arrays use `elementTypeOrNull` for element declarations and
 the size stored in TAC.
 
+Current primitive C mappings are:
+
+| bred type | C type |
+|-----------|--------|
+| `Boolean` | `bool` |
+| `Int` | `int` |
+| `Long` | `long long` |
+| `Double` | `double` |
+| `String` | `String` runtime struct |
+| `Unit` | `void` |
+
+`Long` constants are emitted as TAC `LongConst` operands and rendered to C with
+an `LL` suffix.
+
 ## 8. Tests
 
 Coverage exists at these layers:
@@ -172,6 +187,8 @@ Coverage exists at these layers:
   `T`;
 - analyzer tests check resolved global primitive types and template-generated
   code;
-- TAC tests check mangled generic-array functions and that internal type class
-  names such as `TypeRef` or `PrimitiveTypeSign` do not leak into 3AC output;
+- TAC tests check mangled generic-array functions, `Long` lowering, and that
+  internal type class names such as `TypeRef` or `PrimitiveTypeSign` do not
+  leak into 3AC output;
+- C backend tests check primitive rendering including `Long -> long long`;
 - root tests compile `examples/3ac.bred` through the active front end.

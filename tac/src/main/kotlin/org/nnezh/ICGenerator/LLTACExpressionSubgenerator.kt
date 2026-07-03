@@ -9,6 +9,7 @@ import org.nnezh.bred.ast.DoubleLiteralExpressionASTNode
 import org.nnezh.bred.ast.ExpressionASTNode
 import org.nnezh.bred.ast.FunctionCallExpressionASTNode
 import org.nnezh.bred.ast.IntLiteralExpressionASTNode
+import org.nnezh.bred.ast.LongLiteralExpressionASTNode
 import org.nnezh.bred.ast.StringLiteralExpressionASTNode
 import org.nnezh.bred.ast.UnaryExpressionASTNode
 import org.nnezh.bred.ast.UnaryOperator
@@ -79,6 +80,15 @@ class LLTACExpressionSubgenerator(
                 val destination = variable ?: lltacError("literal TAC destination is required", expression)
                 LLTACExpressionSubgeneratorResult(
                     instructions = listOf(LLTACElement.assign(destination, type, expression.value.toLong())),
+                    finalVariable = destination,
+                    finalType = type,
+                )
+            }
+
+            is LongLiteralExpressionASTNode -> {
+                val destination = variable ?: lltacError("literal TAC destination is required", expression)
+                LLTACExpressionSubgeneratorResult(
+                    instructions = listOf(LLTACElement.assign(destination, type, expression.value)),
                     finalVariable = destination,
                     finalType = type,
                 )
@@ -225,6 +235,7 @@ class LLTACExpressionSubgenerator(
             is BooleanLiteralExpressionASTNode -> globalContext.booleanType
             is DoubleLiteralExpressionASTNode -> globalContext.doubleType
             is IntLiteralExpressionASTNode -> globalContext.intType
+            is LongLiteralExpressionASTNode -> globalContext.longType
             is StringLiteralExpressionASTNode -> globalContext.stringType
             else -> lltacError("missing semantic type for expression", expression)
         }

@@ -43,21 +43,27 @@ Keywords are case-sensitive. Prefixes and longer words are identifiers:
 
 ```ebnf
 intLiteral     ::= digit { digit } ;
+longLiteral    ::= digit { digit } "L" ;
 doubleLiteral  ::= digit { digit } "." digit { digit } ;
 stringLiteral  ::= '"' { stringChar | escapeSequence } '"' ;
 escapeSequence ::= "\" ( "n" | "t" | "r" | '"' | "\" | "0" ) ;
 booleanLiteral ::= "true" | "false" ;
 ```
 
-Integer literals are parsed as `Long` by the lexer and stored as `Int` in the
-AST expression node. Integer overflow is a lexer error.
+Unsuffixed integer literals become `IntLiteralExpressionASTNode` and have
+semantic type `Int`. The lexer stores their scanned numeric value as Kotlin
+`Long` before the parser builds the `Int` literal AST node.
+
+Integer literals with an uppercase `L` suffix, for example `42L`, become
+`LongLiteralExpressionASTNode` and have semantic type `Long`. Values outside
+the Kotlin `Long` range are lexer errors.
 
 A dot starts a double literal only when followed by a digit. Therefore `3.`
 lexes as `3` and `.`, `.5` lexes as `.` and `5`, and `1..2` lexes as
 `1`, `.`, `.`, `2`.
 
-Numbers glued to an identifier or underscore, for example `12abc` or `1_000`,
-are lexer errors.
+Numbers glued to an identifier or underscore, for example `12abc`, `12Labc`,
+or `1_000`, are lexer errors.
 
 String literals decode `\n`, `\t`, `\r`, `\"`, `\\`, and `\0`. Raw newlines,
 unknown escapes, EOF inside a string, and a trailing backslash produce lexer
@@ -132,7 +138,7 @@ Empty type argument lists are invalid: `Box<>`. Trailing commas are invalid:
 `Pair<A,>`.
 
 Primitive names initialized by `ProgramGlobalContext` and used by tests and
-built-ins are `Int`, `Double`, `String`, `Boolean`, and `Unit`.
+built-ins are `Int`, `Long`, `Double`, `String`, `Boolean`, and `Unit`.
 
 ## 4. Functions
 
@@ -258,6 +264,7 @@ val values: Array<Int>[3]
 
 fun main(): Unit {
     val n: Int = 1
+    val wide: Long = 1L
     var total: Int = 0
 }
 ```
@@ -384,6 +391,7 @@ additive       ::= multiplicative { ( "+" | "-" ) multiplicative } ;
 multiplicative ::= unary { ( "*" | "/" | "%" ) unary } ;
 unary          ::= ( "-" | "!" ) unary | primary ;
 primary        ::= intLiteral
+                 | longLiteral
                  | doubleLiteral
                  | stringLiteral
                  | booleanLiteral

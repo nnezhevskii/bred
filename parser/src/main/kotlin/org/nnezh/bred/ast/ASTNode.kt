@@ -10,6 +10,7 @@ sealed interface ExpressionASTNode : ASTNode
 
 sealed interface LiteralExpressionASTNode : ExpressionASTNode
 data class IntLiteralExpressionASTNode(val value: Int) : LiteralExpressionASTNode
+data class LongLiteralExpressionASTNode(val value: Long) : LiteralExpressionASTNode
 data class DoubleLiteralExpressionASTNode(val value: Double) : LiteralExpressionASTNode
 data class BooleanLiteralExpressionASTNode(val value: Boolean) : LiteralExpressionASTNode
 data class StringLiteralExpressionASTNode(val value: String) : LiteralExpressionASTNode
@@ -30,5 +31,6 @@ data class UnaryExpressionASTNode(
 ) : ExpressionASTNode
 
 typealias IntLiteralExpressionNode = IntLiteralExpressionASTNode
+typealias LongLiteralExpressionNode = LongLiteralExpressionASTNode
 typealias VariableExpressionNode = VariableExpressionASTNode
 typealias StaticArrayInitializationExpressionsListNode = ArrayInitializationExpressionASTNode

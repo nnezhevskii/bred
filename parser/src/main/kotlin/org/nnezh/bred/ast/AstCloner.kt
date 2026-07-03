@@ -145,6 +145,7 @@ object AstCloner {
     ): ExpressionASTNode =
         when (node) {
             is IntLiteralExpressionASTNode -> IntLiteralExpressionASTNode(node.value)
+            is LongLiteralExpressionASTNode -> LongLiteralExpressionASTNode(node.value)
             is DoubleLiteralExpressionASTNode -> DoubleLiteralExpressionASTNode(node.value)
             is BooleanLiteralExpressionASTNode -> BooleanLiteralExpressionASTNode(node.value)
             is StringLiteralExpressionASTNode -> StringLiteralExpressionASTNode(node.value)
@@ -269,6 +270,7 @@ object AstCloner {
             is Token.Keyword.Instance -> Token.Keyword.Instance(clonePosition(token.position))
             is Token.Identifier -> Token.Identifier(token.lexeme, clonePosition(token.position))
             is Token.Literal.IntLiteral -> Token.Literal.IntLiteral(token.value, token.lexeme, clonePosition(token.position))
+            is Token.Literal.LongLiteral -> Token.Literal.LongLiteral(token.value, token.lexeme, clonePosition(token.position))
             is Token.Literal.DoubleLiteral -> Token.Literal.DoubleLiteral(token.value, token.lexeme, clonePosition(token.position))
             is Token.Literal.StringLiteral -> Token.Literal.StringLiteral(token.value, token.lexeme, clonePosition(token.position))
             is Token.Operator.Plus -> Token.Operator.Plus(clonePosition(token.position))

@@ -20,6 +20,7 @@ import org.nnezh.bred.ast.FunctionDeclAstNode
 import org.nnezh.bred.ast.GenericParam
 import org.nnezh.bred.ast.IfStatementAstNode
 import org.nnezh.bred.ast.IntLiteralExpressionASTNode
+import org.nnezh.bred.ast.LongLiteralExpressionASTNode
 import org.nnezh.bred.ast.ProgramRoot
 import org.nnezh.bred.ast.ReturnFunctionStatementAstNode
 import org.nnezh.bred.ast.ScalarVariableInitializationASTNode
@@ -201,6 +202,7 @@ class TemplateInstantiator(
     ): ExpressionASTNode =
         when (expression) {
             is IntLiteralExpressionASTNode -> expression
+            is LongLiteralExpressionASTNode -> expression
             is DoubleLiteralExpressionASTNode -> expression
             is BooleanLiteralExpressionASTNode -> expression
             is StringLiteralExpressionASTNode -> expression
@@ -287,6 +289,7 @@ class TemplateInstantiator(
     ): TypeSign =
         when (expression) {
             is IntLiteralExpressionASTNode -> context.intType
+            is LongLiteralExpressionASTNode -> context.longType
             is DoubleLiteralExpressionASTNode -> context.doubleType
             is BooleanLiteralExpressionASTNode -> context.booleanType
             is StringLiteralExpressionASTNode -> context.stringType

@@ -12,6 +12,7 @@ import org.nnezh.bred.ast.ExpressionASTNode
 import org.nnezh.bred.ast.FunctionCallExpressionASTNode
 import org.nnezh.bred.ast.FunctionDeclAstNode
 import org.nnezh.bred.ast.IntLiteralExpressionASTNode
+import org.nnezh.bred.ast.LongLiteralExpressionASTNode
 import org.nnezh.bred.ast.ReturnFunctionStatementAstNode
 import org.nnezh.bred.ast.ScalarVariableInitializationASTNode
 import org.nnezh.bred.ast.StringLiteralExpressionASTNode
@@ -44,6 +45,7 @@ private fun ExpressionASTNode.expressionSummary(): String =
         is BooleanLiteralExpressionASTNode -> value.toString()
         is DoubleLiteralExpressionASTNode -> value.toString()
         is IntLiteralExpressionASTNode -> value.toString()
+        is LongLiteralExpressionASTNode -> "${value}L"
         is StringLiteralExpressionASTNode -> "\"${value.escape()}\""
         is VariableExpressionASTNode -> token.lexeme
         is ArrayElementAccessASTNode -> "$name[${index.expressionSummary()}]"

@@ -34,6 +34,13 @@ sealed class Operand {
         override fun asRightValue(): String = value.toString()
     }
 
+    data class LongConst(
+        val value: Long,
+    ) : Operand(), RightValue {
+        override fun toString() = "${value}:${TypeNames.LONG}"
+        override fun asRightValue(): String = "${value}LL"
+    }
+
     data class BoolConst(
         val value: Boolean,
     ) : Operand(), RightValue {

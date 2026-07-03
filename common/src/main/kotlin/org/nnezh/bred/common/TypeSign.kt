@@ -6,6 +6,7 @@ import arrow.core.right
 
 public object TypeNames {
     public const val INT: String = "Int"
+    public const val LONG: String = "Long"
     public const val DOUBLE: String = "Double"
     public const val STRING: String = "String"
     public const val BOOLEAN: String = "Boolean"

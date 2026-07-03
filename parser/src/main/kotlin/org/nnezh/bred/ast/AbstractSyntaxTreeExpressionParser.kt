@@ -104,6 +104,11 @@ class AbstractSyntaxTreeExpressionParser : Parser<ExpressionASTNode> {
                 IntLiteralExpressionASTNode(token.value.toInt())
             }
 
+            is Token.Literal.LongLiteral -> {
+                context.consumeToken()
+                LongLiteralExpressionASTNode(token.value)
+            }
+
             is Token.Literal.DoubleLiteral -> {
                 context.consumeToken()
                 DoubleLiteralExpressionASTNode(token.value)

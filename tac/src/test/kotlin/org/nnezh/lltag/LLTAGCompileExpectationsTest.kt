@@ -237,6 +237,46 @@ class LLTAGCompileExpectationsTest {
   }
 
   @Test
+  fun `long literals arrays arithmetic and calls emit Long typed TAC`() {
+    val tac = formattedTac(
+      """
+      val values: Long[2] = [4L, 5L]
+
+      fun addOne(value: Long): Long {
+          return value + 1L
+      }
+
+      fun main(): Unit {
+          val first: Long = values[0]
+          val result: Long = addOne(first + 1L)
+          val ok: Boolean = result > 5L
+      }
+      """.trimIndent(),
+    )
+
+    assertTrue(
+      tac.any { it.startsWith("global values:Array[2]") && it.contains("4:Long") && it.contains("5:Long") },
+      "expected Long global array initializer, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
+      tac.any { it.startsWith("GET_PARAM") && it.contains("value:Long") },
+      "expected Long function parameter, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
+      tac.any { it.startsWith("ADD") && it.contains(":Long") && it.contains("value:Long") },
+      "expected Long ADD instruction, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
+      tac.any { it.startsWith("CALL") && it.contains("result:Long") && it.contains("addOne:Long") },
+      "expected Long function call result, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
+      tac.none { it.contains("TypeRef") || it.contains("PrimitiveTypeSign") },
+      "unresolved/internal type leaked into TAC:\n${tac.joinToString("\n")}",
+    )
+  }
+
+  @Test
   fun `zero-trip for loop compiles`() {
     assertCompiles(
       """

@@ -52,7 +52,7 @@ source -> Lexer -> AbstractSyntaxTreeBuilder -> ProgramContextCollector
 `ProgramTypeResolver` turns parser-level `TypeRef` values into context-owned
 `TypeSign` instances before semantic analysis. The context records:
 
-- primitive types `Int`, `Double`, `String`, `Boolean`, and `Unit`;
+- primitive types `Int`, `Long`, `Double`, `String`, `Boolean`, and `Unit`;
 - user-declared types from `ProgramRoot.types`;
 - declared functions;
 - typeclasses;
@@ -260,6 +260,7 @@ Literal types:
 | Expression node | Type |
 |-----------------|------|
 | `IntLiteralExpressionASTNode` | `Int` |
+| `LongLiteralExpressionASTNode` | `Long` |
 | `DoubleLiteralExpressionASTNode` | `Double` |
 | `StringLiteralExpressionASTNode` | `String` |
 | `BooleanLiteralExpressionASTNode` | `Boolean` |
@@ -274,6 +275,7 @@ from the resolved signature.
 | Operator | Operand type | Result |
 |----------|--------------|--------|
 | `-` | `Int` | `Int` |
+| `-` | `Long` | `Long` |
 | `-` | `Double` | `Double` |
 | `!` | `Boolean` | `Boolean` |
 
@@ -288,18 +290,18 @@ The analyzer stores the produced type on the unary expression node.
 | Operators | Accepted operands | Result |
 |-----------|-------------------|--------|
 | `==`, `!=` | equal types | `Boolean` |
-| `+` | `Int`/`Int`, `Double`/`Double`, `String`/`String` | operand type |
-| `-`, `*`, `/` | `Int`/`Int`, `Double`/`Double` | operand type |
-| `%` | `Int` and `Int` | `Int` |
+| `+` | `Int`/`Int`, `Long`/`Long`, `Double`/`Double`, `String`/`String` | operand type |
+| `-`, `*`, `/` | `Int`/`Int`, `Long`/`Long`, `Double`/`Double` | operand type |
+| `%` | `Int`/`Int`, `Long`/`Long` | operand type |
 | `&&`, `||` | `Boolean` and `Boolean` | `Boolean` |
 | `<`, `>`, `<=`, `>=` | numeric/numeric or `String`/`String` | `Boolean` |
 
-There is no numeric promotion. `Int + Double` is rejected.
+There is no numeric promotion for arithmetic. `Int + Double`, `Int + Long`,
+and `Long + Double` are rejected.
 
-Note: the implementation of relational operators accepts mixed `Int`/`Double`
-comparisons because it checks that both operands are numeric, not that they are
-equal. This is not covered by a dedicated analyzer test and is tracked in
-`docs/TODO.md`.
+Note: the implementation of relational operators accepts mixed
+`Int`/`Long`/`Double` comparisons because it checks that both operands are
+numeric, not that they are equal. This is tracked in `docs/TODO.md`.
 
 ## 8. Arrays
 

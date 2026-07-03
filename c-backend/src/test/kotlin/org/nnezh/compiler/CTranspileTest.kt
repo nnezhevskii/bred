@@ -15,12 +15,15 @@ import org.nnezh.bred.common.TypeSign
 class CTranspileTest {
     private val registry = TypeRegistry()
     private val int = registry.declarePrimitive(TypeNames.INT)
+    private val long = registry.declarePrimitive(TypeNames.LONG)
     private val string = registry.declarePrimitive(TypeNames.STRING)
     private val double = registry.declarePrimitive(TypeNames.DOUBLE)
     private val boolean = registry.declarePrimitive(TypeNames.BOOLEAN)
     private val unit = registry.declarePrimitive(TypeNames.UNIT)
     private val intArray: TypeSign
         get() = registry.arrayOf(int)
+    private val longArray: TypeSign
+        get() = registry.arrayOf(long)
 
     @Test
     fun `transpiles minimal main function`() {
@@ -88,6 +91,19 @@ class CTranspileTest {
 
         assertEquals("int sum(int a,int b);", cLines[0])
         assertEquals("int sum(int a,int b) {", cLines[1])
+    }
+
+    @Test
+    fun `function prototype renders Long parameters and return as long long`() {
+        val tac = listOf(
+            LLTACElement.function("next", long),
+            LLTACElement.getParam("value", long),
+            LLTACElement.ret("value", long),
+        )
+        val cLines = CTranspile().compile(tac)
+
+        assertEquals("long long next(long long value);", cLines[0])
+        assertEquals("long long next(long long value) {", cLines[1])
     }
 
     @Test
@@ -164,6 +180,50 @@ class CTranspileTest {
                 "int i, read;",
                 "i = 1;",
                 "read=values[i];",
+                "return;",
+                "}",
+            ),
+            CTranspile().compile(tac),
+        )
+    }
+
+    @Test
+    fun `long locals globals constants and operations transpile to long long`() {
+        val tac = listOf(
+            LLTACElement.globalArray(
+                name = "values",
+                arrayType = longArray,
+                size = 2,
+                initialValues = listOf(Operand.LongConst(4), Operand.LongConst(5)),
+            ),
+            LLTACElement.function("main", unit),
+            LLTACElement.assign("i", int, 1),
+            LLTACElement.assign("value", long, 7),
+            LLTACElement.load("values", "read", "i", longArray, long, int),
+            LLTACElement.binOp(
+                opcode = LLTACOperation.LLTAC_ADD,
+                varName = "sum",
+                varType = long,
+                arg1Name = "value",
+                arg1Type = long,
+                arg2Name = "read",
+                arg2Type = long,
+            ),
+            LLTACElement.ret(),
+        )
+
+        assertEquals(
+            listOf(
+                "long long values[2] = {4LL, 5LL};",
+                "int main(int size, char** arg);",
+                "int main(int size, char** arg) {",
+                "init_runtime();",
+                "int i;",
+                "long long value, read, sum;",
+                "i = 1;",
+                "value = 7LL;",
+                "read=values[i];",
+                "sum=value+read;",
                 "return;",
                 "}",
             ),

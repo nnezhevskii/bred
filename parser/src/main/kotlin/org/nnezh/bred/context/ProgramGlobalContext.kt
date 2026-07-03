@@ -17,6 +17,7 @@ class ProgramGlobalContext(
     val instances: MutableMap<InstanceKey, InstanceMeta> = mutableMapOf(),
 ) {
     val intType: TypeSign
+    val longType: TypeSign
     val doubleType: TypeSign
     val stringType: TypeSign
     val booleanType: TypeSign
@@ -27,6 +28,7 @@ class ProgramGlobalContext(
 
     init {
         intType = typeRegistry.declarePrimitive(TypeNames.INT)
+        longType = typeRegistry.declarePrimitive(TypeNames.LONG)
         doubleType = typeRegistry.declarePrimitive(TypeNames.DOUBLE)
         stringType = typeRegistry.declarePrimitive(TypeNames.STRING)
         booleanType = typeRegistry.declarePrimitive(TypeNames.BOOLEAN)

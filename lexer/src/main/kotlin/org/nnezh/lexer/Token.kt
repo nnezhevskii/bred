@@ -125,6 +125,12 @@ sealed class Token {
             override val position: Position,
         ) : Literal()
 
+        data class LongLiteral(
+            val value: Long,
+            override val lexeme: String,
+            override val position: Position,
+        ) : Literal()
+
         data class DoubleLiteral(
             val value: Double,
             override val lexeme: String,

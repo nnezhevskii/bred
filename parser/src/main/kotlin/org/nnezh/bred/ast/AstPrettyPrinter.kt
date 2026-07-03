@@ -149,6 +149,7 @@ class AstPrettyPrinter(
         private fun expression(node: ExpressionASTNode, level: Int) {
             when (node) {
                 is IntLiteralExpressionASTNode -> line(level, "int ${node.value}")
+                is LongLiteralExpressionASTNode -> line(level, "long ${node.value}L")
                 is DoubleLiteralExpressionASTNode -> line(level, "double ${node.value}")
                 is BooleanLiteralExpressionASTNode -> line(level, "boolean ${node.value}")
                 is StringLiteralExpressionASTNode -> line(level, "string \"${escape(node.value)}\"")

@@ -397,6 +397,7 @@ class CTranspile {
         return when {
             type.isBooleanType() -> "bool"
             type.isDoubleType() -> "double"
+            type.isLongType() -> "long long"
             type.isIntType() -> "int"
             type.isArray -> throw CTranspileException("Cannot render static array type as scalar C declaration: ${type.render()}")
             type.isStringType() -> "String"
@@ -409,6 +410,7 @@ class CTranspile {
         return when {
             type.isBooleanType() -> "bool"
             type.isDoubleType() -> "double"
+            type.isLongType() -> "long long"
             type.isIntType() -> "int"
             type.isArray -> "${typeToStringInArguments(type.elementTypeOrNull!!)}*"
             type.isStringType() -> "String"
@@ -419,6 +421,9 @@ class CTranspile {
 
     private fun TypeSign.isIntType(): Boolean =
         isPrimitive && name == TypeNames.INT
+
+    private fun TypeSign.isLongType(): Boolean =
+        isPrimitive && name == TypeNames.LONG
 
     private fun TypeSign.isDoubleType(): Boolean =
         isPrimitive && name == TypeNames.DOUBLE

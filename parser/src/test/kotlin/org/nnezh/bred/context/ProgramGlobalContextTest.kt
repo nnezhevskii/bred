@@ -21,10 +21,12 @@ class ProgramGlobalContextTest {
         val context = ProgramGlobalContext()
 
         assertTrue(context.intType.isPrimitive)
+        assertTrue(context.longType.isPrimitive)
         assertTrue(context.doubleType.isPrimitive)
         assertTrue(context.stringType.isPrimitive)
         assertTrue(context.booleanType.isPrimitive)
         assertTrue(context.unitType.isPrimitive)
+        assertSame(context.longType, context.findType(TypeNames.LONG))
         assertSame(context.unitType, context.findType(TypeNames.UNIT))
     }
 

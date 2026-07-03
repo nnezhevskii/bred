@@ -16,6 +16,7 @@ import org.nnezh.bred.ast.FunctionCallExpressionASTNode
 import org.nnezh.bred.ast.FunctionDeclAstNode
 import org.nnezh.bred.ast.IfStatementAstNode
 import org.nnezh.bred.ast.IntLiteralExpressionASTNode
+import org.nnezh.bred.ast.LongLiteralExpressionASTNode
 import org.nnezh.bred.ast.ReturnFunctionStatementAstNode
 import org.nnezh.bred.ast.ScalarVariableInitializationASTNode
 import org.nnezh.bred.ast.StringLiteralExpressionASTNode
@@ -152,6 +153,7 @@ class SemanticDiagnosticFormatter {
     private fun ExpressionASTNode.expressionSummary(): String =
         when (this) {
             is IntLiteralExpressionASTNode -> value.toString()
+            is LongLiteralExpressionASTNode -> "${value}L"
             is DoubleLiteralExpressionASTNode -> value.toString()
             is BooleanLiteralExpressionASTNode -> value.toString()
             is StringLiteralExpressionASTNode -> "\"${value.escape()}\""

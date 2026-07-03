@@ -127,6 +127,15 @@ class LexerTest {
     }
 
     @Test
+    fun `long literals use uppercase L suffix`() {
+        val tokens = meaningfulTokens("0L 9223372036854775807L")
+        val literals = tokens.map { assertInstanceOf(Token.Literal.LongLiteral::class.java, it) }
+
+        assertEquals(listOf(0L, Long.MAX_VALUE), literals.map { it.value })
+        assertEquals(listOf("0L", "9223372036854775807L"), literals.map { it.lexeme })
+    }
+
+    @Test
     fun `double literals are parsed with their numeric value`() {
         val tokens = meaningfulTokens("3.14 2.0 0.5")
         val literals = tokens.map { assertInstanceOf(Token.Literal.DoubleLiteral::class.java, it) }
@@ -380,6 +389,14 @@ class LexerTest {
     fun `number glued to identifier is reported`() {
         val error = assertInstanceOf(LexerError.InvalidNumber::class.java, errorOf("12abc"))
         assertTrue(error.message.contains("Invalid number literal"))
+    }
+
+    @Test
+    fun `long literal glued to identifier is reported`() {
+        val error = assertInstanceOf(LexerError.InvalidNumber::class.java, errorOf("12Labc"))
+
+        assertEquals(Position(1, 4), error.position)
+        assertTrue(error.message.contains("Invalid long literal"))
     }
 
     @Test
