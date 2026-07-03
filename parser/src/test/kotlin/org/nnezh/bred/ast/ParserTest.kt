@@ -11,9 +11,10 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.nnezh.bred.codegenerator.TemplateInstantiator
-import org.nnezh.bred.common.TypeSign
+import org.nnezh.bred.common.TypeRef
 import org.nnezh.bred.context.ProgramContextCollector
 import org.nnezh.bred.context.ProgramGlobalContext
+import org.nnezh.bred.context.ProgramTypeResolver
 import org.nnezh.lexer.Lexer
 
 class ParserTest {
@@ -26,6 +27,27 @@ class ParserTest {
         assertInstanceOf(ProgramRoot::class.java, parseEither(source).getOrElse { error("unexpected parser error: $it") })
 
     private fun parseFails(source: String): Boolean = parseEither(source).isLeft()
+
+    private fun resolve(root: ProgramRoot): ProgramRoot {
+        val initialContext = ProgramContextCollector().collect(root)
+        return ProgramTypeResolver(initialContext)
+            .resolve(root)
+            .getOrElse { error("unexpected type resolution error: $it") }
+    }
+
+    private fun instantiate(root: ProgramRoot): ProgramRoot {
+        val resolved = resolve(root)
+        val context = ProgramContextCollector().collect(resolved)
+        return TemplateInstantiator(context)
+            .instantiate(resolved)
+            .getOrElse { error("unexpected instantiation error: $it") }
+    }
+
+    private fun instantiateEither(root: ProgramRoot): Either<ASTError, ProgramRoot> {
+        val resolved = resolve(root)
+        val context = ProgramContextCollector().collect(resolved)
+        return TemplateInstantiator(context).instantiate(resolved)
+    }
 
     @Test
     fun `empty program produces empty ProgramRoot`() {
@@ -43,7 +65,7 @@ class ParserTest {
 
         val function = root.functions.single()
         assertEquals("main", function.name)
-        assertEquals(TypeSign("Unit"), function.result)
+        assertEquals(TypeRef("Unit"), function.result)
         val syntheticReturn = assertInstanceOf(ReturnFunctionStatementAstNode::class.java, function.body.statements.single())
         assertNull(syntheticReturn.expression)
         assertEquals(false, syntheticReturn.explicit)
@@ -56,7 +78,7 @@ class ParserTest {
         val function = root.functions.single()
         assertEquals("prettyPrint", function.name)
         assertEquals(listOf(GenericParam("A", listOf("Printable"))), function.genericParams)
-        assertEquals(FunctionArgument("a", TypeSign("A")), function.arguments.single())
+        assertEquals(FunctionArgument("a", TypeRef("A")), function.arguments.single())
     }
 
     @Test
@@ -70,7 +92,7 @@ class ParserTest {
 
         assertEquals(2, root.globalVariables.size)
         assertEquals("answer", root.globalVariables[0].name)
-        assertEquals(TypeSign("Int"), root.globalVariables[0].type)
+        assertEquals(TypeRef("Int"), root.globalVariables[0].type)
         assertNull(root.globalVariables[0].size)
         assertEquals("buf", root.globalVariables[1].name)
         assertEquals(3, root.globalVariables[1].size)
@@ -83,7 +105,7 @@ class ParserTest {
 
         val values = root.globalVariables.single()
         assertEquals("values", values.name)
-        assertEquals(TypeSign("Array", listOf(TypeSign("Int"))), values.type)
+        assertEquals(TypeRef("Array", listOf(TypeRef("Int"))), values.type)
         assertEquals(2, values.size)
         assertInstanceOf(ArrayInitializationExpressionASTNode::class.java, values.expression)
     }
@@ -102,7 +124,7 @@ class ParserTest {
         assertEquals(GenericParam("A", emptyList<String>()), typeClass.genericParam)
         val method = typeClass.methods.single()
         assertEquals("toPrettyPrinter", method.name)
-        assertEquals(TypeSign("String"), method.result)
+        assertEquals(TypeRef("String"), method.result)
     }
 
     @Test
@@ -119,7 +141,7 @@ class ParserTest {
 
         val instance = root.instances.single()
         assertEquals("Printable", instance.typeClassName)
-        assertEquals(TypeSign("Int"), instance.type)
+        assertEquals(TypeRef("Int"), instance.type)
         assertEquals("toPrettyPrinter", instance.methods.single().name)
     }
 
@@ -253,13 +275,13 @@ class ParserTest {
         val main = root.functions.single { it.name == "main" }
         val declarations = main.body.statements.filterIsInstance<ScalarVariableInitializationASTNode>()
         assertEquals(listOf("requestedSize", "seed", "target", "threshold"), declarations.map { it.name })
-        assertEquals(listOf(TypeSign("Int"), TypeSign("Int"), TypeSign("Int"), TypeSign("Int")), declarations.map { it.type })
+        assertEquals(listOf(TypeRef("Int"), TypeRef("Int"), TypeRef("Int"), TypeRef("Int")), declarations.map { it.type })
 
         val arrays = main.body.statements.filterIsInstance<ArrayDeclarationASTNode>()
         assertEquals(listOf("raw", "sorted"), arrays.map { it.name })
         assertEquals(listOf(64, 64), arrays.map { it.size })
         assertEquals(
-            listOf(TypeSign("Array", listOf(TypeSign("Int"))), TypeSign("Array", listOf(TypeSign("Int")))),
+            listOf(TypeRef("Array", listOf(TypeRef("Int"))), TypeRef("Array", listOf(TypeRef("Int")))),
             arrays.map { it.type },
         )
 
@@ -294,8 +316,8 @@ class ParserTest {
             listOf(GenericParam("A", listOf("Printable")), GenericParam("B", emptyList())),
             function.genericParams,
         )
-        assertEquals(TypeSign("Pair", listOf(TypeSign("A"), TypeSign("B"))), function.result)
-        assertEquals(listOf(FunctionArgument("a", TypeSign("A")), FunctionArgument("b", TypeSign("B"))), function.arguments)
+        assertEquals(TypeRef("Pair", listOf(TypeRef("A"), TypeRef("B"))), function.result)
+        assertEquals(listOf(FunctionArgument("a", TypeRef("A")), FunctionArgument("b", TypeRef("B"))), function.arguments)
     }
 
     @Test
@@ -304,7 +326,7 @@ class ParserTest {
         val argument = root.functions.single().arguments.single()
 
         assertEquals("values", argument.name)
-        assertEquals(TypeSign("Int"), argument.type)
+        assertEquals(TypeRef("Int"), argument.type)
         assertTrue(argument.isArray)
     }
 
@@ -322,8 +344,8 @@ class ParserTest {
         val instance = root.instances.single()
 
         assertEquals("Codec", instance.typeClassName)
-        assertEquals(TypeSign("List", listOf(TypeSign("Int"))), instance.type)
-        assertEquals(TypeSign("List", listOf(TypeSign("Int"))), instance.methods.single().arguments.single().type)
+        assertEquals(TypeRef("List", listOf(TypeRef("Int"))), instance.type)
+        assertEquals(TypeRef("List", listOf(TypeRef("Int"))), instance.methods.single().arguments.single().type)
     }
 
     @Test
@@ -331,7 +353,7 @@ class ParserTest {
         val root = parse("typeclass Runnable<A> { fun run(a: A) }")
         val method = root.typeClasses.single().methods.single()
 
-        assertEquals(TypeSign("Unit"), method.result)
+        assertEquals(TypeRef("Unit"), method.result)
     }
 
     @Test
@@ -520,12 +542,12 @@ class ParserTest {
 
         val counter = assertInstanceOf(ScalarVariableInitializationASTNode::class.java, desugared[0])
         assertEquals("i", counter.name)
-        assertEquals(TypeSign("Int"), counter.type)
+        assertEquals(TypeRef("Int"), counter.type)
         assertTrue(counter.isMutable)
 
         val rightBorder = assertInstanceOf(ScalarVariableInitializationASTNode::class.java, desugared[1])
         assertEquals("_right_borderi", rightBorder.name)
-        assertEquals(TypeSign("Int"), rightBorder.type)
+        assertEquals(TypeRef("Int"), rightBorder.type)
         assertFalse(rightBorder.isMutable)
 
         val loop = assertInstanceOf(WhileStatementAstNode::class.java, desugared[2])
@@ -553,7 +575,8 @@ class ParserTest {
         )
         val originalFunction = root.functions.single()
 
-        val clone = cloneSubtreeReplacingType(root, "A", "Int", ProgramGlobalContext())
+        val context = ProgramGlobalContext()
+        val clone = cloneSubtreeReplacingType(root, "A", "Int", context)
         val clonedFunction = clone.functions.single()
         val clonedLocal = assertInstanceOf(
             ScalarVariableInitializationASTNode::class.java,
@@ -562,13 +585,13 @@ class ParserTest {
 
         assertNotSame(root, clone)
         assertNotSame(originalFunction, clonedFunction)
-        assertEquals(TypeSign("Box", listOf(TypeSign("Int"))), clonedFunction.result)
-        assertEquals(listOf(FunctionArgument("a", TypeSign("Int"))), clonedFunction.arguments)
-        assertEquals(TypeSign("Int"), clonedLocal.type)
+        assertEquals(TypeRef("Box", listOf(TypeRef("Int"))), clonedFunction.result)
+        assertEquals(listOf(FunctionArgument("a", context.intType)), clonedFunction.arguments)
+        assertEquals(context.intType, clonedLocal.type)
         assertTrue(clonedFunction.genericParams.isEmpty())
 
-        assertEquals(TypeSign("Box", listOf(TypeSign("A"))), originalFunction.result)
-        assertEquals(listOf(FunctionArgument("a", TypeSign("A"))), originalFunction.arguments)
+        assertEquals(TypeRef("Box", listOf(TypeRef("A"))), originalFunction.result)
+        assertEquals(listOf(FunctionArgument("a", TypeRef("A"))), originalFunction.arguments)
         assertEquals(listOf(GenericParam("A", listOf("Printable"))), originalFunction.genericParams)
     }
 
@@ -607,9 +630,7 @@ class ParserTest {
             }
             """.trimIndent()
         )
-        val instantiated = TemplateInstantiator(ProgramContextCollector().collect(root))
-            .instantiate(root)
-            .getOrElse { error("unexpected instantiation error: $it") }
+        val instantiated = instantiate(root)
 
         assertTrue(instantiated.instances.isEmpty())
         assertTrue(instantiated.typeClasses.isEmpty())
@@ -650,9 +671,7 @@ class ParserTest {
             }
             """.trimIndent()
         )
-        val instantiated = TemplateInstantiator(ProgramContextCollector().collect(root))
-            .instantiate(root)
-            .getOrElse { error("unexpected instantiation error: $it") }
+        val instantiated = instantiate(root)
         val printValue = instantiated.functions.single { it.name == "printValue_String_Unit" }
         val printStatement = assertInstanceOf(CallFunctionStatementAstNode::class.java, printValue.body.statements.first())
         val printCall = assertInstanceOf(FunctionCallExpressionASTNode::class.java, printStatement.expression)
@@ -702,9 +721,7 @@ class ParserTest {
             }
             """.trimIndent()
         )
-        val instantiated = TemplateInstantiator(ProgramContextCollector().collect(root))
-            .instantiate(root)
-            .getOrElse { error("unexpected instantiation error: $it") }
+        val instantiated = instantiate(root)
 
         val bubbleSort = instantiated.functions.single { it.name.startsWith("bubbleSort_") }
         val outerWhile = assertInstanceOf(WhileStatementAstNode::class.java, bubbleSort.body.statements[1])
@@ -713,7 +730,54 @@ class ParserTest {
         val tmp = assertInstanceOf(ScalarVariableInitializationASTNode::class.java, swapIf.thenBlock.statements.first())
 
         assertEquals("tmp", tmp.name)
-        assertEquals(TypeSign("Int"), tmp.type)
+        assertEquals(ProgramGlobalContext().intType, tmp.type)
+    }
+
+    @Test
+    fun `template instantiator infers same generic from array and scalar arguments`() {
+        val root = parse(
+            """
+            typeclass Ordered<T> {
+                fun equals(a: T, b: T): Boolean
+            }
+
+            instance Ordered<Int> {
+                fun equals(a: Int, b: Int): Boolean {
+                    return a == b
+                }
+            }
+
+            fun findIndex<T: Ordered>(arr: Array<T>, target: T): Int {
+                if (equals(arr[0], target)) {
+                    return 0
+                }
+
+                return -1
+            }
+
+            fun main(): Unit {
+                val values: Array<Int>[2]
+                val target: Int = 1
+                val index: Int = findIndex(values, target)
+            }
+            """.trimIndent()
+        )
+
+        val context = ProgramGlobalContext()
+        val instantiated = instantiate(root)
+        val generated = instantiated.functions.single { it.name == "findIndex_Array_Int_Int_Int" }
+        val main = instantiated.functions.single { it.name == "main" }
+        val callDeclaration = assertInstanceOf(
+            ScalarVariableInitializationASTNode::class.java,
+            main.body.statements[2],
+        )
+        val call = assertInstanceOf(FunctionCallExpressionASTNode::class.java, callDeclaration.expression)
+
+        assertTrue(generated.arguments[0].type.isArray)
+        assertEquals(context.intType, generated.arguments[0].type.elementTypeOrNull)
+        assertEquals(context.intType, generated.arguments[1].type)
+        assertEquals(context.intType, generated.result)
+        assertEquals("findIndex_Array_Int_Int_Int", call.name)
     }
 
     @Test
@@ -735,7 +799,7 @@ class ParserTest {
             """.trimIndent()
         )
 
-        assertTrue(TemplateInstantiator(ProgramContextCollector().collect(root)).instantiate(root).isLeft())
+        assertTrue(instantiateEither(root).isLeft())
     }
 
     @Test
@@ -763,7 +827,7 @@ class ParserTest {
             """.trimIndent()
         )
 
-        assertTrue(TemplateInstantiator(ProgramContextCollector().collect(root)).instantiate(root).isLeft())
+        assertTrue(instantiateEither(root).isLeft())
     }
 
     @Test
@@ -785,6 +849,6 @@ class ParserTest {
             """.trimIndent()
         )
 
-        assertTrue(TemplateInstantiator(ProgramContextCollector().collect(root)).instantiate(root).isLeft())
+        assertTrue(instantiateEither(root).isLeft())
     }
 }

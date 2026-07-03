@@ -1,6 +1,8 @@
 package org.nnezh.bred.ast
 
+import org.nnezh.bred.common.TypeRef
 import org.nnezh.bred.common.TypeSign
+import org.nnezh.bred.common.toTypeRef
 import org.nnezh.bred.context.ProgramGlobalContext
 import org.nnezh.lexer.Position
 import org.nnezh.lexer.Token
@@ -209,10 +211,14 @@ object AstCloner {
     ): TypeSign = cloneTypeSign(node, TypeReplacement(template, type, context))
 
     private fun cloneTypeSign(node: TypeSign, replacement: TypeReplacement?): TypeSign =
-        TypeSign(
-            name = if (node.name == replacement?.template) replacement.type else node.name,
-            args = node.args.map { cloneTypeSign(it, replacement) },
-        )
+        if (replacement == null && node.isResolved) {
+            node
+        } else {
+            val name = if (node.name == replacement?.template) replacement.type else node.name
+            val args = node.arguments.map { cloneTypeSign(it, replacement).toTypeRef() }
+            val ref = TypeRef(name, args)
+            replacement?.context?.resolve(ref) ?: ref
+        }
 
     private fun cloneGenericParams(
         nodes: List<GenericParam>,

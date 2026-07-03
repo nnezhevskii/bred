@@ -33,13 +33,12 @@ import org.nnezh.bred.ast.TypeClassMethodDeclAstNode
 import org.nnezh.bred.ast.UnaryExpressionASTNode
 import org.nnezh.bred.ast.VariableExpressionASTNode
 import org.nnezh.bred.ast.WhileStatementAstNode
-import org.nnezh.bred.common.BuiltInMethods
 import org.nnezh.bred.common.FunctionSignature
+import org.nnezh.bred.common.TypeRef
 import org.nnezh.bred.common.TypeSign
+import org.nnezh.bred.common.toTypeRef
 import org.nnezh.bred.context.DeclaredFunctionMeta
 import org.nnezh.bred.context.ProgramGlobalContext
-import sun.reflect.generics.tree.TypeSignature
-import java.lang.classfile.Attributes.signature
 import java.util.Collections.singletonList
 import java.util.IdentityHashMap
 import kotlin.collections.flatMap
@@ -63,7 +62,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
     fun analyzeWithResult(root: ProgramRoot): Either<List<SemanticError>, SemanticAnalysisResult> {
         val scope = Scope()
 
-        BuiltInMethods.functions.forEach { scope.registerFunction(it) }
+        globalContext.builtInSignatures.forEach { scope.registerFunction(it) }
 
         root.globalVariables.forEach {
             visit(it, scope).fold(
@@ -76,7 +75,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
 
         root.functions.forEach { function ->
             val name = function.name
-            val args = function.arguments.map { if (it.isArray) TypeSign("Array", listOf(it.type)) else it.type }
+            val args = function.arguments.map { if (it.isArray) globalContext.arrayOf(it.type) else it.type }
             if (scope.getFunction(name, args) != null) {
                 return singletonList(
                     SemanticError.VariableScopeSemanticError(
@@ -122,7 +121,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
             is FunctionDeclAstNode -> {
                 val newScope = scope.innerScope(node.result)
                 node.arguments.forEach { arg ->
-                    val argType = if (arg.isArray) TypeSign("Array", listOf(arg.type)) else arg.type
+                    val argType = if (arg.isArray) globalContext.arrayOf(arg.type) else arg.type
                     newScope.put(arg.name, argType, false)
                 }
                 visit(node.body, newScope).fold(
@@ -268,7 +267,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                     )
                 ).left()
 
-                if (variable.name != "Array") {
+                if (!variable.isArray) {
                     return singletonList(
                         SemanticError.VariableScopeSemanticError(
                             node,
@@ -283,7 +282,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                     ifLeft = { return it.left() },
                     ifRight = {
                         warnings.addAll(it)
-                        return if (scope.get(node.index) != getPrimitiveType("Int")) {
+                        return if (scope.get(node.index) != globalContext.intType) {
                             singletonList(
                                 SemanticError.VariableScopeSemanticError(
                                     node,
@@ -292,7 +291,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                                 )
                             ).left()
                         } else {
-                            scope.put(node, scope.findVariable(node.name)!!.first.args[0])
+                            scope.put(node, scope.findVariable(node.name)!!.first.elementTypeOrNull!!)
                             warnings.right()
                         }
 
@@ -347,7 +346,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                             SemanticDiagnosticDetail.TypeMismatch(
                                 "apply operator '${node.operator.lexeme}'",
                                 null,
-                                TypeSign("Operands", listOf(leftType, rightType)),
+                                TypeRef("Operands", listOf(leftType.toTypeRef(), rightType.toTypeRef())),
                             )
                         )
                     ).left()
@@ -406,22 +405,22 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
             }
 
             is BooleanLiteralExpressionASTNode -> {
-                scope.put(node, TypeSign("Boolean"))
+                scope.put(node, globalContext.booleanType)
                 return listOf<SemanticError.SemanticWarning>().right()
             }
 
             is DoubleLiteralExpressionASTNode -> {
-                scope.put(node, TypeSign("Double"))
+                scope.put(node, globalContext.doubleType)
                 return listOf<SemanticError.SemanticWarning>().right()
             }
 
             is IntLiteralExpressionASTNode -> {
-                scope.put(node, TypeSign("Int"))
+                scope.put(node, globalContext.intType)
                 return listOf<SemanticError.SemanticWarning>().right()
             }
 
             is StringLiteralExpressionASTNode -> {
-                scope.put(node, TypeSign("String"))
+                scope.put(node, globalContext.stringType)
                 return listOf<SemanticError.SemanticWarning>().right()
             }
 
@@ -579,7 +578,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                         scope.endInitializing(node.name)
                     }
                 }
-                val type = if (node.type.name == "Array") node.type else TypeSign("Array", listOf(node.type))
+                val type = node.type.asArrayType()
                 scope.put(node.name, type , node.isMutable)
                 return warnings.right()
             }
@@ -638,14 +637,14 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                     ifLeft = { return it.left() },
                     ifRight = { warnings.addAll(it) }
                 )
-                if (scope.get(node.condition) != getPrimitiveType("Boolean")) {
+                if (scope.get(node.condition) != globalContext.booleanType) {
                     return singletonList(
                         SemanticError.TypeSemanticError(
                             node.condition,
                             SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
                             SemanticDiagnosticDetail.TypeMismatch(
                                 "use if condition",
-                                getPrimitiveType("Boolean"),
+                                globalContext.booleanType,
                                 scope.get(node.condition),
                             )
                         )
@@ -671,14 +670,14 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                     ifLeft = { return it.left() },
                     ifRight = { }
                 )
-                if (scope.get(node.condition) != getPrimitiveType("Boolean")) {
+                if (scope.get(node.condition) != globalContext.booleanType) {
                     return singletonList(
                         SemanticError.TypeSemanticError(
                             node.condition,
                             SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
                             SemanticDiagnosticDetail.TypeMismatch(
                                 "use while condition",
-                                getPrimitiveType("Boolean"),
+                                globalContext.booleanType,
                                 scope.get(node.condition),
                             )
                         )
@@ -817,22 +816,18 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
         }
     }
 
-    private fun getPrimitiveType(type: String): TypeSign? {
-        return globalContext.types[type]?.let { TypeSign(it.name) }
-    }
-
     private fun DeclareGlobalVariableASTNode.scopeType(): TypeSign {
         val declaredType = requireNotNull(type) { "global variable type is required" }
         return if (size == null) declaredType else declaredType.asArrayType()
     }
 
     private fun TypeSign.asArrayType(): TypeSign =
-        if (name == "Array") this else TypeSign("Array", listOf(this))
+        if (isArray) this else globalContext.arrayOf(this)
 
     private fun TypeSign.arrayElementType(): TypeSign =
-        if (name == "Array") args.single() else this
+        if (isArray) elementTypeOrNull!! else this
 
-    private fun unitType(): TypeSign = getPrimitiveType("Unit") ?: TypeSign("Unit")
+    private fun unitType(): TypeSign = globalContext.unitType
 
     private data class BlockFlow(
         val errors: List<SemanticError>,
@@ -926,13 +921,6 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
 
     private fun blockContainsExplicitReturn(block: BlockAstNode): Boolean =
         block.statements.any { statementContainsExplicitReturn(it) }
-
-    private fun TypeSign.render(): String =
-        if (args.isEmpty()) {
-            name
-        } else {
-            args.joinToString(prefix = "$name<", postfix = ">") { it.render() }
-        }
 
     private fun List<TypeSign>.renderArguments(): String =
         joinToString(prefix = "(", postfix = ")") { it.render() }

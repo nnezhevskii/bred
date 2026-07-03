@@ -8,14 +8,24 @@ import org.nnezh.org.nnezh.ICGenerator.LLTACElement
 import org.nnezh.org.nnezh.ICGenerator.LLTACInstruction
 import org.nnezh.org.nnezh.ICGenerator.LLTACOperation
 import org.nnezh.org.nnezh.ICGenerator.Operand
-import org.nnezh.org.nnezh.base.Type
+import org.nnezh.bred.common.TypeNames
+import org.nnezh.bred.common.TypeRegistry
+import org.nnezh.bred.common.TypeSign
 
 class CTranspileTest {
+    private val registry = TypeRegistry()
+    private val int = registry.declarePrimitive(TypeNames.INT)
+    private val string = registry.declarePrimitive(TypeNames.STRING)
+    private val double = registry.declarePrimitive(TypeNames.DOUBLE)
+    private val boolean = registry.declarePrimitive(TypeNames.BOOLEAN)
+    private val unit = registry.declarePrimitive(TypeNames.UNIT)
+    private val intArray: TypeSign
+        get() = registry.arrayOf(int)
 
     @Test
     fun `transpiles minimal main function`() {
         val tac = listOf(
-            LLTACElement.function("main", Type.UnitType),
+            LLTACElement.function("main", unit),
             LLTACElement.ret(),
         )
 
@@ -34,13 +44,13 @@ class CTranspileTest {
     @Test
     fun `emits prototypes before function bodies so forward calls compile`() {
         val tac = listOf(
-            LLTACElement.function("foo", Type.UnitType),
-            LLTACElement.call("bar", null, Type.UnitType, 0),
+            LLTACElement.function("foo", unit),
+            LLTACElement.call("bar", null, unit, 0),
             LLTACElement.ret(),
-            LLTACElement.function("bar", Type.UnitType),
+            LLTACElement.function("bar", unit),
             LLTACElement.ret(),
-            LLTACElement.function("main", Type.UnitType),
-            LLTACElement.call("foo", null, Type.UnitType, 0),
+            LLTACElement.function("main", unit),
+            LLTACElement.call("foo", null, unit, 0),
             LLTACElement.ret(),
         )
 
@@ -69,10 +79,10 @@ class CTranspileTest {
     @Test
     fun `function prototype includes parameters and return type`() {
         val tac = listOf(
-            LLTACElement.function("sum", Type.IntType),
-            LLTACElement.getParam("a", Type.IntType),
-            LLTACElement.getParam("b", Type.IntType),
-            LLTACElement.ret("a", Type.IntType),
+            LLTACElement.function("sum", int),
+            LLTACElement.getParam("a", int),
+            LLTACElement.getParam("b", int),
+            LLTACElement.ret("a", int),
         )
         val cLines = CTranspile().compile(tac)
 
@@ -83,9 +93,9 @@ class CTranspileTest {
     @Test
     fun `function prototype renders array parameter as pointer`() {
         val tac = listOf(
-            LLTACElement.function("sort", Type.UnitType),
-            LLTACElement.getParam("arr", Type.StaticArrayType(Type.IntType, 0)),
-            LLTACElement.getParam("size", Type.IntType),
+            LLTACElement.function("sort", unit),
+            LLTACElement.getParam("arr", intArray),
+            LLTACElement.getParam("size", int),
             LLTACElement.ret(),
         )
 
@@ -103,12 +113,12 @@ class CTranspileTest {
     @Test
     fun `emits local static array declaration store and load`() {
         val tac = listOf(
-            LLTACElement.function("main", Type.UnitType),
-            LLTACElement.alloc("arr", Type.StaticArrayType(Type.IntType, 3), 3),
-            LLTACElement.assign("i", Type.IntType, 0),
-            LLTACElement.assign("value", Type.IntType, 42),
-            LLTACElement.store("arr", "i", "value", Type.IntType),
-            LLTACElement.load("arr", "read", "i", Type.IntType),
+            LLTACElement.function("main", unit),
+            LLTACElement.alloc("arr", intArray, 3),
+            LLTACElement.assign("i", int, 0),
+            LLTACElement.assign("value", int, 42),
+            LLTACElement.store("arr", "i", "value", intArray, int, int),
+            LLTACElement.load("arr", "read", "i", intArray, int, int),
             LLTACElement.ret(),
         )
 
@@ -135,12 +145,13 @@ class CTranspileTest {
         val tac = listOf(
             LLTACElement.globalArray(
                 name = "values",
-                type = Type.StaticArrayType(Type.IntType, 3),
+                arrayType = intArray,
+                size = 3,
                 initialValues = listOf(Operand.IntConst(1), Operand.IntConst(2), Operand.IntConst(3)),
             ),
-            LLTACElement.function("main", Type.UnitType),
-            LLTACElement.assign("i", Type.IntType, 1),
-            LLTACElement.load("values", "read", "i", Type.IntType),
+            LLTACElement.function("main", unit),
+            LLTACElement.assign("i", int, 1),
+            LLTACElement.load("values", "read", "i", intArray, int, int),
             LLTACElement.ret(),
         )
 
@@ -165,10 +176,11 @@ class CTranspileTest {
         val tac = listOf(
             LLTACElement.globalArray(
                 name = "values",
-                type = Type.StaticArrayType(Type.IntType, 2),
+                arrayType = intArray,
+                size = 2,
                 initialValues = null,
             ),
-            LLTACElement.function("main", Type.UnitType),
+            LLTACElement.function("main", unit),
             LLTACElement.ret(),
         )
 
@@ -188,17 +200,17 @@ class CTranspileTest {
     @Test
     fun `string addition emits runtime concat call`() {
         val tac = listOf(
-            LLTACElement.function("main", Type.UnitType),
-            LLTACElement.assign("prefix", Type.StringType, "checksum = "),
-            LLTACElement.assign("value", Type.StringType, "215"),
+            LLTACElement.function("main", unit),
+            LLTACElement.assign("prefix", string, "checksum = "),
+            LLTACElement.assign("value", string, "215"),
             LLTACElement.binOp(
                 opcode = LLTACOperation.LLTAC_ADD,
                 varName = "line",
-                varType = Type.StringType,
+                varType = string,
                 arg1Name = "prefix",
-                arg1Type = Type.StringType,
+                arg1Type = string,
                 arg2Name = "value",
-                arg2Type = Type.StringType,
+                arg2Type = string,
             ),
             LLTACElement.ret(),
         )
@@ -222,8 +234,8 @@ class CTranspileTest {
     @Test
     fun `string assignment escapes c string literal contents`() {
         val tac = listOf(
-            LLTACElement.function("main", Type.UnitType),
-            LLTACElement.assign("msg", Type.StringType, "line1\n\"quoted\"\\"),
+            LLTACElement.function("main", unit),
+            LLTACElement.assign("msg", string, "line1\n\"quoted\"\\"),
             LLTACElement.ret(),
         )
 
@@ -244,14 +256,14 @@ class CTranspileTest {
     @Test
     fun `not operation assigns logical negation`() {
         val tac = listOf(
-            LLTACElement.function("main", Type.UnitType),
-            LLTACElement.assign("flag", Type.BoolType, true),
+            LLTACElement.function("main", unit),
+            LLTACElement.assign("flag", boolean, true),
             LLTACElement.unOp(
                 opcode = LLTACOperation.LLTAC_NOT,
                 varName = "negated",
-                varType = Type.BoolType,
+                varType = boolean,
                 arg1Name = "flag",
-                arg1Type = Type.BoolType,
+                arg1Type = boolean,
             ),
             LLTACElement.ret(),
         )
@@ -275,7 +287,7 @@ class CTranspileTest {
     fun `compile resets function body state between invocations`() {
         val transpiler = CTranspile()
         val tac = listOf(
-            LLTACElement.function("main", Type.UnitType),
+            LLTACElement.function("main", unit),
             LLTACElement.ret(),
         )
 
@@ -293,7 +305,7 @@ class CTranspileTest {
     @Test
     fun `malformed tac reports instruction index opcode and expected operand`() {
         val tac = listOf(
-            LLTACElement.function("main", Type.UnitType),
+            LLTACElement.function("main", unit),
             LLTACInstruction(
                 opcode = LLTACOperation.LLTAC_ASSIGN,
                 destination = null,

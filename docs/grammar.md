@@ -11,6 +11,8 @@ Source of truth:
 - `parser/src/test/kotlin/org/nnezh/bred/ast/ParserTest.kt`
 
 Semantic checks are documented in `docs/semantic_analysis_draft.md`.
+The compiler-wide type model and resolution pipeline are documented in
+`docs/type_system.md`.
 
 ## 1. Lexical Structure
 
@@ -106,8 +108,11 @@ not preserve one combined top-level declaration order.
 
 ## 3. Types
 
-The parser stores types as `TypeSign(name, args)` and does not validate type
-names syntactically.
+The parser stores type syntax as `TypeRef(name, args)`. `TypeRef` is not a
+semantic type; concrete `TypeSign` instances are created and returned by
+`ProgramGlobalContext` / `TypeRegistry` during the resolution phase. Unknown
+concrete type names are rejected during resolution, while generic names are
+valid only in the generic scope that declares them.
 
 ```ebnf
 typeSign ::= identifier [ "<" typeSign { "," typeSign } ">" ] ;
@@ -126,8 +131,8 @@ Codec<List<Int>>
 Empty type argument lists are invalid: `Box<>`. Trailing commas are invalid:
 `Pair<A,>`.
 
-Primitive names used by tests and built-ins are `Int`, `Double`, `String`,
-`Boolean`, and `Unit`.
+Primitive names initialized by `ProgramGlobalContext` and used by tests and
+built-ins are `Int`, `Double`, `String`, `Boolean`, and `Unit`.
 
 ## 4. Functions
 
@@ -154,9 +159,10 @@ fun prettyPrint<A: Printable>(a: A) { println(toPrettyPrinter(a)) }
 fun pair<A: Printable, B>(a: A, b: B): Pair<A, B> { return makePair(a, b) }
 ```
 
-Parameter arrays use `Type[]` and are represented as a normal `TypeSign` plus
-`FunctionArgument.isArray = true`. Sized parameter arrays such as `Int[3]` are
-not supported.
+Parameter arrays use `Type[]` and are represented as a parsed element
+`TypeRef` plus `FunctionArgument.isArray = true`; later phases use
+`ProgramGlobalContext.arrayOf(elementType)` for the actual `Array<T>` type.
+Sized parameter arrays such as `Int[3]` are not supported.
 
 Trailing commas in generic parameter lists and function parameter lists are
 invalid.
@@ -418,8 +424,12 @@ permit `[]` but reject `[1,]` and `[1,, 2]`.
 - No `else if` syntax.
 - No member access despite the lexer having a dot token.
 - No indirect calls or first-class function syntax.
-- No parser-level validation of type names.
+- No parser-level semantic validation of type names. Type syntax is accepted
+  as `TypeRef`; unknown concrete names are rejected later by
+  `ProgramTypeResolver`.
 - No mutable static array declaration syntax.
 - No user-defined type declarations in the current parser grammar despite
   `ProgramRoot.types` existing in the AST.
+
+
 

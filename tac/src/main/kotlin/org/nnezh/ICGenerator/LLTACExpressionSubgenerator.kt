@@ -14,18 +14,19 @@ import org.nnezh.bred.ast.UnaryExpressionASTNode
 import org.nnezh.bred.ast.UnaryOperator
 import org.nnezh.bred.ast.VariableExpressionASTNode
 import org.nnezh.bred.common.TypeSign
+import org.nnezh.bred.context.ProgramGlobalContext
 import org.nnezh.org.nnezh.ICGenerator.LLTACElement.Companion.binOp
-import org.nnezh.org.nnezh.base.Type
 
 data class LLTACExpressionSubgeneratorResult(
     val instructions: List<LLTACElement>,
     val finalVariable: String?,
-    val finalType: Type,
+    val finalType: TypeSign,
 )
 
 class LLTACExpressionSubgenerator(
     private val nameEmitter: TACNameEmitter,
     private val typeTable: Map<ExpressionASTNode, TypeSign>,
+    private val globalContext: ProgramGlobalContext,
     private val mangledFunctionsCallback: () -> Map<String, String>,
 ) {
 
@@ -52,16 +53,16 @@ class LLTACExpressionSubgenerator(
 
     fun buildInstructionsForExpression(
         variable: String?,
-        type: Type,
+        type: TypeSign,
         expression: ExpressionASTNode,
     ): LLTACExpressionSubgeneratorResult =
         when (expression) {
             is BooleanLiteralExpressionASTNode -> {
                 val destination = variable ?: lltacError("literal TAC destination is required", expression)
                 LLTACExpressionSubgeneratorResult(
-                    instructions = listOf(LLTACElement.assign(destination, Type.BoolType, expression.value)),
+                    instructions = listOf(LLTACElement.assign(destination, type, expression.value)),
                     finalVariable = destination,
-                    finalType = Type.BoolType,
+                    finalType = type,
                 )
             }
 
@@ -70,7 +71,7 @@ class LLTACExpressionSubgenerator(
                 LLTACExpressionSubgeneratorResult(
                     instructions = listOf(LLTACElement.assign(destination, type, expression.value)),
                     finalVariable = destination,
-                    finalType = Type.DoubleType,
+                    finalType = type,
                 )
             }
 
@@ -79,7 +80,7 @@ class LLTACExpressionSubgenerator(
                 LLTACExpressionSubgeneratorResult(
                     instructions = listOf(LLTACElement.assign(destination, type, expression.value.toLong())),
                     finalVariable = destination,
-                    finalType = Type.IntType,
+                    finalType = type,
                 )
             }
 
@@ -88,7 +89,7 @@ class LLTACExpressionSubgenerator(
                 LLTACExpressionSubgeneratorResult(
                     instructions = listOf(LLTACElement.assign(destination, type, expression.value)),
                     finalVariable = destination,
-                    finalType = Type.StringType,
+                    finalType = type,
                 )
             }
 
@@ -188,32 +189,43 @@ class LLTACExpressionSubgenerator(
                 val instructions = mutableListOf<LLTACElement>()
                 val index = buildInstructionsForExpression(
                     variable = nameEmitter.nextVar(),
-                    type = Type.IntType,
+                    type = globalContext.intType,
                     expression = expression.index,
                 )
                 instructions.addAll(index.instructions)
 
                 val destination = nameEmitter.nextVar()
-                instructions.add(LLTACElement.assign(destination, type, 0))
-                instructions.add(LLTACElement.load(expression.name, destination, index.finalVariable!!, type))
+                val elementType = type
+                val arrayType = globalContext.arrayOf(elementType)
+                instructions.add(LLTACElement.assign(destination, elementType, 0))
+                instructions.add(
+                    LLTACElement.load(
+                        array = expression.name,
+                        destination = destination,
+                        index = index.finalVariable!!,
+                        arrayType = arrayType,
+                        elementType = elementType,
+                        intType = globalContext.intType,
+                    )
+                )
 
                 LLTACExpressionSubgeneratorResult(
                     instructions = instructions,
                     finalVariable = destination,
-                    finalType = type,
+                    finalType = elementType,
                 )
             }
         }
 
-    private fun ExpressionASTNode.tacType(): Type =
-        typeTable[this]?.toTacType() ?: inferLiteralTacType(this)
+    private fun ExpressionASTNode.tacType(): TypeSign =
+        typeTable[this] ?: inferLiteralTacType(this)
 
-    private fun inferLiteralTacType(expression: ExpressionASTNode): Type =
+    private fun inferLiteralTacType(expression: ExpressionASTNode): TypeSign =
         when (expression) {
-            is BooleanLiteralExpressionASTNode -> Type.BoolType
-            is DoubleLiteralExpressionASTNode -> Type.DoubleType
-            is IntLiteralExpressionASTNode -> Type.IntType
-            is StringLiteralExpressionASTNode -> Type.StringType
+            is BooleanLiteralExpressionASTNode -> globalContext.booleanType
+            is DoubleLiteralExpressionASTNode -> globalContext.doubleType
+            is IntLiteralExpressionASTNode -> globalContext.intType
+            is StringLiteralExpressionASTNode -> globalContext.stringType
             else -> lltacError("missing semantic type for expression", expression)
         }
 }

@@ -1,40 +1,49 @@
 package org.nnezh.bred.common
 
 object BuiltInMethods {
-
-    val StringType = TypeSign("String")
-    val BooleanType = TypeSign("Boolean")
-    val DoubleType = TypeSign("Double")
-    val IntType = TypeSign("Int")
-    val UnitType = TypeSign("Unit")
-
-    val functions: List<FunctionSignature> = listOf(
-
-        FunctionSignature(name = "println", args = listOf(StringType), UnitType),
-        FunctionSignature(name = "stringToInt", args = listOf(StringType), IntType),
-        FunctionSignature(name = "doubleToString", args = listOf(DoubleType, StringType, IntType), UnitType),
-        FunctionSignature(name = "stringToDouble", args = listOf(StringType), DoubleType),
-        FunctionSignature(name = "intToDouble", args = listOf(IntType), DoubleType),
-        FunctionSignature(name = "readInt", args = listOf(), IntType),
-        FunctionSignature(name = "readDouble", args = listOf(), DoubleType),
-        FunctionSignature(name = "readBoolean", args = listOf(), BooleanType),
-        FunctionSignature(name = "doubleToInt", args = listOf(DoubleType), IntType),
-        FunctionSignature(name = "booleanToString", args = listOf(BooleanType, StringType, IntType), UnitType),
-
-
-        FunctionSignature(name = "stringEquals", args = listOf(StringType, StringType), BooleanType),
-        FunctionSignature(name = "readString", args = listOf(), StringType),
-        FunctionSignature(name = "intToString", args = listOf(IntType), StringType),
-        FunctionSignature(name = "doubleToString", args = listOf(DoubleType), StringType),
-        FunctionSignature(name = "random", args = listOf(IntType, IntType), IntType),
-
-
-//        FunctionSignature(name = "stringLength", args = listOf(StringType), IntType),
-//        FunctionSignature(name = "stringConcat", args = listOf(StringType, StringType, StringType, IntType), UnitType),
-//        FunctionSignature(name = "intToString", args = listOf(IntType, StringType, IntType), UnitType),
-//        FunctionSignature(name = "substring", args = listOf(StringType, IntType, IntType, StringType, IntType), UnitType),
-
-        //
-//        FunctionSignature(name = "currentTimeMillis", args = listOf(), IntType),
+    data class BuiltInFunctionSpec(
+        val name: String,
+        val args: List<TypeRef>,
+        val result: TypeRef,
     )
+
+    private val string = TypeRef(TypeNames.STRING)
+    private val boolean = TypeRef(TypeNames.BOOLEAN)
+    private val double = TypeRef(TypeNames.DOUBLE)
+    private val int = TypeRef(TypeNames.INT)
+    private val unit = TypeRef(TypeNames.UNIT)
+
+    val specs: List<BuiltInFunctionSpec> = listOf(
+        BuiltInFunctionSpec(name = "println", args = listOf(string), unit),
+        BuiltInFunctionSpec(name = "stringToInt", args = listOf(string), int),
+        BuiltInFunctionSpec(name = "doubleToString", args = listOf(double, string, int), unit),
+        BuiltInFunctionSpec(name = "stringToDouble", args = listOf(string), double),
+        BuiltInFunctionSpec(name = "intToDouble", args = listOf(int), double),
+        BuiltInFunctionSpec(name = "readInt", args = listOf(), int),
+        BuiltInFunctionSpec(name = "readDouble", args = listOf(), double),
+        BuiltInFunctionSpec(name = "readBoolean", args = listOf(), boolean),
+        BuiltInFunctionSpec(name = "doubleToInt", args = listOf(double), int),
+        BuiltInFunctionSpec(name = "booleanToString", args = listOf(boolean, string, int), unit),
+
+        BuiltInFunctionSpec(name = "stringEquals", args = listOf(string, string), boolean),
+        BuiltInFunctionSpec(name = "readString", args = listOf(), string),
+        BuiltInFunctionSpec(name = "intToString", args = listOf(int), string),
+        BuiltInFunctionSpec(name = "doubleToString", args = listOf(double), string),
+        BuiltInFunctionSpec(name = "random", args = listOf(int, int), int),
+
+//        BuiltInFunctionSpec(name = "stringLength", args = listOf(string), int),
+//        BuiltInFunctionSpec(name = "stringConcat", args = listOf(string, string, string, int), unit),
+//        BuiltInFunctionSpec(name = "intToString", args = listOf(int, string, int), unit),
+//        BuiltInFunctionSpec(name = "substring", args = listOf(string, int, int, string, int), unit),
+//        BuiltInFunctionSpec(name = "currentTimeMillis", args = listOf(), int),
+    )
+
+    fun signatures(resolve: (TypeRef) -> TypeSign): List<FunctionSignature> =
+        specs.map { spec ->
+            FunctionSignature(
+                name = spec.name,
+                args = spec.args.map(resolve),
+                resultType = resolve(spec.result),
+            )
+        }
 }

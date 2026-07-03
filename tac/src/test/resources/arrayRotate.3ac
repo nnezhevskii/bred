@@ -21,28 +21,28 @@ lbl2:
   ASSIGN var13:Int i:Int
   ASSIGN var16:Int 0:Int
   LOAD var16:Int arr:Array next:Int
-  STORE arr:Int var13:Int var16:Int
+  STORE arr:Array var13:Int var16:Int
   ASSIGN var18:Int 1:Int
   ADD i:Int i:Int var18:Int
   JMP lbl2
 lbl3:
   ASSIGN var19:Int size:Int
-  STORE arr:Int var19:Int first:Int
+  STORE arr:Array var19:Int first:Int
   RET Unit
 func main:
   ALLOC buf:Array Int 4:Int
   ASSIGN var21:Int 0:Int
   ASSIGN var22:Int 10:Int
-  STORE buf:Int var21:Int var22:Int
+  STORE buf:Array var21:Int var22:Int
   ASSIGN var23:Int 1:Int
   ASSIGN var24:Int 20:Int
-  STORE buf:Int var23:Int var24:Int
+  STORE buf:Array var23:Int var24:Int
   ASSIGN var25:Int 2:Int
   ASSIGN var26:Int 30:Int
-  STORE buf:Int var25:Int var26:Int
+  STORE buf:Array var25:Int var26:Int
   ASSIGN var27:Int 3:Int
   ASSIGN var28:Int 40:Int
-  STORE buf:Int var27:Int var28:Int
+  STORE buf:Array var27:Int var28:Int
   ASSIGN var30:Int 3:Int
   PARAM buf:Array
   PARAM var30:Int

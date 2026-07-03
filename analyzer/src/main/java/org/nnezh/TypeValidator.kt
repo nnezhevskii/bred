@@ -6,11 +6,11 @@ import org.nnezh.bred.common.TypeSign
 import org.nnezh.bred.context.ProgramGlobalContext
 
 class TypeValidator(private val globalContext: ProgramGlobalContext) {
-    
-    val IntType = globalContext.types["Int"]!!
-    val DoubleType = globalContext.types["Double"]!!
-    val StringType = globalContext.types["String"]!!
-    val BoolType = globalContext.types["Boolean"]!!
+
+    private val intType = globalContext.intType
+    private val doubleType = globalContext.doubleType
+    private val stringType = globalContext.stringType
+    private val booleanType = globalContext.booleanType
     
     fun check(typeA: TypeSign, typeB: TypeSign): Boolean {
         return typeA == typeB
@@ -18,36 +18,36 @@ class TypeValidator(private val globalContext: ProgramGlobalContext) {
 
     fun checkUnaryOperation(operation: UnaryOperator, type: TypeSign): Boolean {
         return when (operation) {
-            UnaryOperator.Minus -> type == IntType || type == DoubleType
-            UnaryOperator.Not -> type == BoolType
+            UnaryOperator.Minus -> type == intType || type == doubleType
+            UnaryOperator.Not -> type == booleanType
         }
     }
 
     fun produceUnaryType(operation: UnaryOperator, operandType: TypeSign): TypeSign? {
         return when (operation) {
             UnaryOperator.Minus -> when (operandType) {
-                IntType, DoubleType -> operandType
+                intType, doubleType -> operandType
                 else -> null
             }
-            UnaryOperator.Not -> if (operandType == BoolType) BoolType else null
+            UnaryOperator.Not -> if (operandType == booleanType) booleanType else null
         }
     }
 
     fun produceBinaryType(operation: BinaryOperator, typeA: TypeSign, typeB: TypeSign): TypeSign? {
 
         return when (operation) {
-            BinaryOperator.Eq, BinaryOperator.Neq -> { if (typeA == typeB) BoolType else null }
-            BinaryOperator.Plus -> { if (typeA in setOf(IntType, DoubleType, StringType) && typeA == typeB) typeA else null }
+            BinaryOperator.Eq, BinaryOperator.Neq -> { if (typeA == typeB) booleanType else null }
+            BinaryOperator.Plus -> { if (typeA in setOf(intType, doubleType, stringType) && typeA == typeB) typeA else null }
             BinaryOperator.Minus, BinaryOperator.Star, BinaryOperator.Slash -> {
-                if (typeA in setOf(IntType, DoubleType) && typeA == typeB) typeA else null
+                if (typeA in setOf(intType, doubleType) && typeA == typeB) typeA else null
             }
-            BinaryOperator.Percent -> { if (typeA == typeB && typeA == IntType) IntType else null }
+            BinaryOperator.Percent -> { if (typeA == typeB && typeA == intType) intType else null }
 
-            BinaryOperator.And, BinaryOperator.Or -> if (typeA == typeB && typeA == BoolType) BoolType else null
+            BinaryOperator.And, BinaryOperator.Or -> if (typeA == typeB && typeA == booleanType) booleanType else null
 
             BinaryOperator.Lt, BinaryOperator.Gt, BinaryOperator.Le, BinaryOperator.Ge -> {
-                if (typeA in setOf(IntType, DoubleType) && typeB in setOf(IntType, DoubleType) ||
-                    (typeA == StringType && typeB == typeA)) BoolType else null
+                if (typeA in setOf(intType, doubleType) && typeB in setOf(intType, doubleType) ||
+                    (typeA == stringType && typeB == typeA)) booleanType else null
             }
         }
     }

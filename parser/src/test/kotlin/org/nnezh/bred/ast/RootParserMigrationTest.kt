@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import org.nnezh.bred.common.TypeSign
+import org.nnezh.bred.common.TypeRef
 import org.nnezh.lexer.Lexer
 
 class RootParserMigrationTest {
@@ -39,7 +39,7 @@ class RootParserMigrationTest {
 
         assertEquals(listOf("helper", "main"), root.functions.map { it.name })
         assertEquals("answer", root.globalVariables.single().name)
-        assertEquals(TypeSign("Int"), root.globalVariables.single().type)
+        assertEquals(TypeRef("Int"), root.globalVariables.single().type)
     }
 
     @Test
@@ -58,7 +58,7 @@ class RootParserMigrationTest {
         assertFalse(declarations[0].isMutable)
         assertTrue(declarations[1].isMutable)
         assertInstanceOf(BinaryExpressionASTNode::class.java, declarations[0].expression)
-        assertEquals(TypeSign("String"), declarations[1].type)
+        assertEquals(TypeRef("String"), declarations[1].type)
     }
 
     @Test

@@ -11,12 +11,14 @@ Source of truth:
 - `analyzer/src/test/kotlin/org/nnezh/SemanticAnalyzerTest.kt`
 - `analyzer/src/test/kotlin/org/nnezh/SemanticAnalyzerTestSupport.kt`
 - shared context and signatures in `common` and `parser/src/main/.../context`
+- compiler-wide type ownership in `docs/type_system.md`
 
 ## 1. Public API
 
 ```kotlin
 class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
     fun analyze(root: ProgramRoot): Either<List<SemanticError>, List<SemanticError.SemanticWarning>>
+    fun analyzeWithResult(root: ProgramRoot): Either<List<SemanticError>, SemanticAnalysisResult>
 }
 ```
 
@@ -33,27 +35,39 @@ expected result.
 The ordinary analyzer test pipeline is:
 
 ```text
-source -> Lexer -> AbstractSyntaxTreeBuilder -> ProgramContextCollector -> SemanticAnalyzer
+source -> Lexer -> AbstractSyntaxTreeBuilder -> ProgramContextCollector
+       -> ProgramTypeResolver -> ProgramContextCollector -> SemanticAnalyzer
 ```
 
 Template/typeclass integration tests use the full front half of the compiler:
 
 ```text
 source -> Lexer -> AbstractSyntaxTreeBuilder -> ProgramContextCollector
-       -> TemplateInstantiator -> ProgramContextCollector -> SemanticAnalyzer
+       -> ProgramTypeResolver -> ProgramContextCollector -> TemplateInstantiator
+       -> ProgramContextCollector -> ProgramTypeResolver -> ProgramContextCollector
+       -> SemanticAnalyzer
 ```
 
-`ProgramContextCollector` builds a `ProgramGlobalContext` and currently records:
+`ProgramContextCollector` builds a `ProgramGlobalContext`, and
+`ProgramTypeResolver` turns parser-level `TypeRef` values into context-owned
+`TypeSign` instances before semantic analysis. The context records:
 
-- primitive types `Int`, `Double`, `String`, `Boolean`;
+- primitive types `Int`, `Double`, `String`, `Boolean`, and `Unit`;
+- user-declared types from `ProgramRoot.types`;
 - declared functions;
 - typeclasses;
 - instances;
-- a `println` built-in in the context-level function map.
+- built-in function metadata whose signatures are resolved through the same
+  context registry.
 
-`SemanticAnalyzer` also registers all functions from
-`common/src/main/kotlin/org/nnezh/bred/common/BuiltInMethods.kt` in its own
-semantic function registry before analyzing the program.
+`SemanticAnalyzer` registers `globalContext.builtInSignatures` before analyzing
+the program, so built-ins used by semantic analysis and template instantiation
+come from the same registry.
+
+The analyzer expects a resolved AST. Running it directly on parser output can
+produce false mismatches such as `TypeRef("String")` versus the context-owned
+`String` type. Active compiler entry points run `ProgramTypeResolver` before
+semantic analysis.
 
 The analyzer then:
 
@@ -81,11 +95,10 @@ Each scope contains:
 Variable lookup walks parent scopes. Function lookup walks parent scopes and
 matches exact name plus exact argument type list.
 
-Array variables are represented as:
-
-```kotlin
-TypeSign("Array", listOf(elementType))
-```
+Array variables are represented by context-owned `Array<T>` `TypeSign` values
+created with `ProgramGlobalContext.arrayOf(elementType)`. Consumers should use
+`type.isArray`, `type.elementTypeOrNull`, and `type.arguments` instead of
+matching the raw type name.
 
 Array parameters are converted to the same representation during function
 signature registration and when function arguments are put into scope. Top-level
@@ -166,16 +179,14 @@ For scalar local declarations:
 1. Check whether the name exists in the current or parent scope.
 2. If it exists in the current scope, emit `VARIABLE_REDECLARATION`.
 3. If it exists only in a parent scope, emit warning `VARIABLE_OVERSHADOW`.
-4. Put the declared name in scope before analyzing the initializer.
+4. Hide the declared name while analyzing the initializer, so self-reference
+   reports `UNKNOWN_VARIABLE`.
 5. Analyze the initializer expression.
 6. Require the declared type to equal the initializer expression type.
+7. Put the declared name in scope.
 
 The same redeclaration and shadowing policy is used for global scalar
 variables.
-
-Important current behavior: because a scalar variable is inserted into scope
-before its initializer is analyzed, self-reference behavior is not separately
-diagnosed as "use before initialization".
 
 ### 5.2 Assignment
 
@@ -205,7 +216,7 @@ variables are processed.
 A user function signature is:
 
 ```text
-name + argument TypeSign list
+name + argument `TypeSign` list from the active `ProgramGlobalContext`
 ```
 
 Return type and parameter names are not part of duplicate detection. Therefore
@@ -221,7 +232,7 @@ fun take(values: Int[])
 is registered as:
 
 ```kotlin
-FunctionSignature("take", listOf(TypeSign("Array", listOf(TypeSign("Int")))), ...)
+FunctionSignature("take", listOf(context.arrayOf(context.intType)), ...)
 ```
 
 ### 6.2 Calls
@@ -341,10 +352,10 @@ the declaration node.
 For `values[index]`, the analyzer:
 
 1. resolves `values`;
-2. requires its type name to be `Array`;
+2. requires `type.isArray`;
 3. analyzes `index`;
 4. requires the index type to be `Int`;
-5. stores the element type on the access expression.
+5. stores `type.elementTypeOrNull` on the access expression.
 
 Using array access on a scalar variable produces `ARRAY_IS_EXPECTED_BUT_GOT_SCALAR`.
 
@@ -391,8 +402,10 @@ This component:
 - collects generic functions as templates;
 - collects typeclass method names;
 - clones instance methods using mangled names;
-- instantiates generic function calls when concrete argument types can be
-  inferred;
+- instantiates generic function calls by structurally matching parameter types
+  against argument types, including `Array<T>` and scalar `T` in the same call;
+- normalizes inferred concrete types through `ProgramGlobalContext` before
+  comparing mappings;
 - replaces generic parameter types in generated function arguments, return
   types, local scalar declarations, and local static array declarations;
 - rewrites typeclass method calls to mangled instance method calls when an
@@ -405,7 +418,8 @@ raw typeclass and instance declarations remains incomplete.
 
 ## 11. Built-ins
 
-`common.BuiltInMethods` defines semantic signatures for:
+`common.BuiltInMethods` defines built-in specs as `TypeRef` values. The active
+`ProgramGlobalContext` resolves them to semantic signatures for:
 
 ```text
 println(String): Unit
@@ -437,5 +451,9 @@ Important known gaps:
 
 - semantic validation for typeclasses and instances is incomplete;
 - `mut` is lexed but unused by the parser;
-- parser-level type names are not validated;
-- the context-level built-in registry and semantic built-in registry are split.
+- mixed numeric comparison behavior is still a design decision;
+- global initializers cannot call user functions;
+- empty array initializer expressions still do not carry their own element
+  type outside declaration context.
+
+

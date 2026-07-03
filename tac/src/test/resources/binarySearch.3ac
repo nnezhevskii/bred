@@ -9,7 +9,7 @@ lbl1:
   ASSIGN var4:Int i:Int
   ASSIGN var7:Int 2:Int
   MUL var5:Int i:Int var7:Int
-  STORE arr:Int var4:Int var5:Int
+  STORE arr:Array var4:Int var5:Int
   ASSIGN var9:Int 1:Int
   ADD i:Int i:Int var9:Int
   JMP lbl1
@@ -22,7 +22,7 @@ lbl2:
   LOAD var18:Int arr:Array var15:Int
   ASSIGN var19:Int 11:Int
   MUL var13:Int var18:Int var19:Int
-  STORE arr:Int var10:Int var13:Int
+  STORE arr:Array var10:Int var13:Int
   PARAM arr:Array
   PARAM arrSize:Int
   CALL var20:String arrayToString_Array_Int_Int_String:String 2:Int

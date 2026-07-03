@@ -10,7 +10,8 @@ import org.nnezh.org.nnezh.ICGenerator.LLTACRetInstruction
 import org.nnezh.org.nnezh.ICGenerator.LeftValue
 import org.nnezh.org.nnezh.ICGenerator.Operand
 import org.nnezh.org.nnezh.ICGenerator.RightValue
-import org.nnezh.org.nnezh.base.Type
+import org.nnezh.bred.common.TypeNames
+import org.nnezh.bred.common.TypeSign
 import java.util.Collections.singletonList
 
 class CTranspile {
@@ -56,7 +57,7 @@ class CTranspile {
         while (index < instructions.size) {
             val instruction = instructions[index]
             if (instruction is LLTACFunc) {
-                val params = mutableListOf<Pair<String, Type>>()
+                val params = mutableListOf<Pair<String, TypeSign>>()
                 index++
                 while (index < instructions.size) {
                     val param = instructions[index] as? LLTACInstruction ?: break
@@ -84,13 +85,15 @@ class CTranspile {
     }
 
     private fun renderGlobalStaticArray(array: LLTACGlobalStaticArray): String {
-        val elementType = typeToStringInInitialization(array.type.elementType)
+        val elementTypeSign = array.type.elementTypeOrNull
+            ?: throw CTranspileException("global array must have an element type: ${array.type.render()}")
+        val elementType = typeToStringInInitialization(elementTypeSign)
         val initializer = array.initialValues
             ?.takeIf { it.isNotEmpty() }
-            ?.joinToString(prefix = " = {", postfix = "}") { renderGlobalInitializer(it, array.type.elementType) }
+            ?.joinToString(prefix = " = {", postfix = "}") { renderGlobalInitializer(it, elementTypeSign) }
             .orEmpty()
 
-        return "$elementType ${array.name}[${array.type.count}]$initializer;"
+        return "$elementType ${array.name}[${array.size}]$initializer;"
     }
 
     private fun renderPrototype(header: FunctionHeader): String =
@@ -119,12 +122,12 @@ class CTranspile {
         try {
         when (instruction.opcode) {
             LLTACOperation.LLTAC_ASSIGN -> {
-                val destination = instruction.expectOperand(instruction.destination, "destination")
+                val destination = instruction.expectVariable(instruction.destination, "destination")
                 val dest = instruction.expectLeftValue(instruction.destination, "destination").asLeftValue()
                 val value = instruction.expectRightValue(instruction.arg1, "arg1").asRightValue()
 
 
-                if (destination.type.name == "String") {
+                if (destination.type.isStringType()) {
                     val escaped = escapeCString(value)
                     cCode.add("$dest = create_string(\"$escaped\", strlen(\"$escaped\"));")
                 } else {
@@ -224,8 +227,8 @@ class CTranspile {
         cCode.addAll(parseFunc(context))
 
         var pointer = 0
-        val scalarVariables: MutableMap<Type, MutableSet<String>> = mutableMapOf()
-        val staticArrays: MutableMap<Type, MutableSet<Operand.Variable>> = mutableMapOf()
+        val scalarVariables: MutableMap<TypeSign, MutableSet<String>> = mutableMapOf()
+        val staticArrays: MutableMap<TypeSign, MutableSet<Pair<Operand.Variable, Int>>> = mutableMapOf()
         while (true) {
             val localTop = context.top(pointer++)
             if (localTop == null || localTop is LLTACFunc) {
@@ -238,19 +241,20 @@ class CTranspile {
                 }
                 if (localTop.opcode == LLTACOperation.LLTAC_ALLOC) {
                     destination.let {
-                        val arrayType = it.type as Type.StaticArrayType
-                        staticArrays.computeIfAbsent(arrayType.elementType) { mutableSetOf() }
-                        staticArrays[arrayType.elementType]!!.add(it)
+                        val arrayType = it.type
+                        val arraySize = localTop.expectIntConst(localTop.arg2, "arg2").value.toInt()
+                        val elementType = arrayType.elementTypeOrNull
+                            ?: throw CTranspileException("ALLOC destination must be array type, got ${arrayType.render()}")
+                        staticArrays.computeIfAbsent(elementType) { mutableSetOf() }
+                        staticArrays[elementType]!!.add(it to arraySize)
                     }
                 } else {
                     if (localTop.opcode != LLTACOperation.LLTAC_STX) {
                         destination.let {
-                            if (it.type.name == "Array") {
-                            } else {
+                            if (!it.type.isArray) {
                                 scalarVariables.computeIfAbsent(it.type) { mutableSetOf() }
                                 scalarVariables[it.type]!!.add(it.name)
                             }
-
                         }
                     }
                 }
@@ -258,22 +262,13 @@ class CTranspile {
         }
 
         for (type in staticArrays.keys) {
-                val names = staticArrays[type]!!.map { variable -> "${variable.name}[${(variable.type as Type.StaticArrayType).count}]" }
+                val names = staticArrays[type]!!.map { (variable, size) -> "${variable.name}[$size]" }
                     .joinToString(", ")
                 cCode.add("${typeToStringInInitialization(type)} $names;")
         }
 
         for (type in scalarVariables.keys) {
             cCode.add("${typeToStringInInitialization(type)} ${scalarVariables[type]!!.joinToString(", ")};")
-            // TODO
-//            if (type is Type.StaticArrayType) {
-//            } else if (type is Type.StringType) {
-//                val names = scalarVariables[type]!!.joinToString(", ") { "${it}[${StringDefaultSize}]" }
-//                val res = "char $names;"
-//                cCode.add(res)
-//            } else {
-//
-//            }
         }
 
         firstFunctionWasProceeded = true
@@ -284,10 +279,7 @@ class CTranspile {
     private fun parseReturnInstruction(context: Context): List<String> {
         val top = context.consume() as LLTACRetInstruction
 
-        val returnInstruction: String = top.value.fold(
-            ifLeft = { "return;" },
-            ifRight = { "return ${it.first};" }
-        )
+        val returnInstruction: String = top.value?.let { "return ${it.first};" } ?: "return;"
 
         return listOf(
             returnInstruction
@@ -300,7 +292,8 @@ class CTranspile {
         val arg1 = instruction.expectLeftValue(instruction.arg1, "arg1").asLeftValue()
         val arg2 = instruction.expectLeftValue(instruction.arg2, "arg2").asLeftValue()
 
-        if (instruction.destination!!.type.name == "String" && instruction.opcode == LLTACOperation.LLTAC_ADD) {
+        val destination = instruction.expectVariable(instruction.destination, "destination")
+        if (destination.type.isStringType() && instruction.opcode == LLTACOperation.LLTAC_ADD) {
             return "${left}=concat(${arg1},${arg2});"
         }
 
@@ -325,9 +318,6 @@ class CTranspile {
         return "${left}=${arg1}${command}${arg2};"
     }
 
-    private fun LLTACInstruction.expectOperand(operand: Operand?, role: String): Operand =
-        operand ?: throw CTranspileException("expected $role to be an operand, got <missing>")
-
     private fun LLTACInstruction.expectLeftValue(operand: Operand?, role: String): LeftValue =
         operand as? LeftValue
             ?: throw CTranspileException("expected $role to be a left-value operand, got ${operand.describe()}")
@@ -351,8 +341,12 @@ class CTranspile {
     private fun Operand?.describe(): String =
         this?.let { "${it::class.simpleName}($it)" } ?: "<missing>"
 
-    private fun renderGlobalInitializer(operand: Operand, elementType: Type): String =
-        if (elementType == Type.StringType && operand is Operand.StringConst) {
+    private fun LLTACInstruction.expectVariable(operand: Operand?, role: String): Operand.Variable =
+        operand as? Operand.Variable
+            ?: throw CTranspileException("expected $role to be a variable operand, got ${operand.describe()}")
+
+    private fun renderGlobalInitializer(operand: Operand, elementType: TypeSign): String =
+        if (elementType.isStringType() && operand is Operand.StringConst) {
             val escaped = escapeCString(operand.value)
             """{"$escaped", ${operand.value.length}}"""
         } else {
@@ -382,7 +376,7 @@ class CTranspile {
         val (name, type) = top.name to top.type
         context.consume()
 
-        val params = mutableListOf<Pair<String, Type>>()
+        val params = mutableListOf<Pair<String, TypeSign>>()
         while ((context.top as? LLTACInstruction)?.opcode == LLTACOperation.LLTAC_GET_PARAM) {
             val arg: Operand.Variable = (context.consume() as LLTACInstruction).destination as Operand.Variable
             params.add(arg.name to arg.type)
@@ -399,42 +393,49 @@ class CTranspile {
     }
 
 
-    private fun typeToStringInInitialization(type: Type): String {
-        return when (type) {
-            Type.BoolType -> "bool"
-            Type.DoubleType -> "double"
-            Type.IntType -> "int"
-            is Type.StaticArrayType -> {
-                throw CTranspileException("Cannot render static array type as scalar C declaration: $type")
-            }
-
-            Type.StringType -> "String"
-            Type.UnitType -> "void"
+    private fun typeToStringInInitialization(type: TypeSign): String {
+        return when {
+            type.isBooleanType() -> "bool"
+            type.isDoubleType() -> "double"
+            type.isIntType() -> "int"
+            type.isArray -> throw CTranspileException("Cannot render static array type as scalar C declaration: ${type.render()}")
+            type.isStringType() -> "String"
+            type.isUnitType() -> "void"
+            else -> throw CTranspileException("Unsupported C initialization type: ${type.render()}")
         }
     }
 
-    private fun typeToStringInArguments(type: Type): String {
-        return when (type) {
-            Type.BoolType -> "bool"
-            Type.DoubleType -> "double"
-            Type.IntType -> "int"
-            is Type.StaticArrayType -> {
-                if (type.elementType == Type.StringType) {
-                    "${typeToStringInArguments(type.elementType)}*"
-                } else {
-                    "${typeToStringInArguments(type.elementType)}*"
-                }
-            }
-
-            Type.StringType -> "String"
-            Type.UnitType -> "void"
+    private fun typeToStringInArguments(type: TypeSign): String {
+        return when {
+            type.isBooleanType() -> "bool"
+            type.isDoubleType() -> "double"
+            type.isIntType() -> "int"
+            type.isArray -> "${typeToStringInArguments(type.elementTypeOrNull!!)}*"
+            type.isStringType() -> "String"
+            type.isUnitType() -> "void"
+            else -> throw CTranspileException("Unsupported C argument type: ${type.render()}")
         }
     }
+
+    private fun TypeSign.isIntType(): Boolean =
+        isPrimitive && name == TypeNames.INT
+
+    private fun TypeSign.isDoubleType(): Boolean =
+        isPrimitive && name == TypeNames.DOUBLE
+
+    private fun TypeSign.isStringType(): Boolean =
+        isPrimitive && name == TypeNames.STRING
+
+    private fun TypeSign.isBooleanType(): Boolean =
+        isPrimitive && name == TypeNames.BOOLEAN
+
+    private fun TypeSign.isUnitType(): Boolean =
+        isPrimitive && name == TypeNames.UNIT
 
     private data class FunctionHeader(
         val name: String,
-        val returnType: Type,
-        val params: List<Pair<String, Type>>,
+        val returnType: TypeSign,
+        val params: List<Pair<String, TypeSign>>,
     )
 
     private class Context(private val tacLines: List<LLTACElement>) {

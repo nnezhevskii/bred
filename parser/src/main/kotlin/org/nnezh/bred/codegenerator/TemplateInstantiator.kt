@@ -30,13 +30,15 @@ import org.nnezh.bred.ast.UnaryExpressionASTNode
 import org.nnezh.bred.ast.VariableExpressionASTNode
 import org.nnezh.bred.ast.WhileStatementAstNode
 import org.nnezh.bred.ast.cloneSubtree
+import org.nnezh.bred.common.TypeNames
+import org.nnezh.bred.common.TypeRef
 import org.nnezh.bred.common.TypeSign
+import org.nnezh.bred.common.toTypeRef
 import org.nnezh.bred.context.BuiltInFunctionMeta
 import org.nnezh.bred.context.DeclaredFunctionMeta
 import org.nnezh.bred.context.InstanceMeta
 import org.nnezh.bred.context.ProgramGlobalContext
 import org.nnezh.bred.context.mangleFunctionName
-import org.nnezh.bred.context.toManglePart
 
 class TemplateInstantiator(
     private val context: ProgramGlobalContext,
@@ -102,11 +104,11 @@ class TemplateInstantiator(
         val mapping = inferGenericMapping(template, argumentTypes)
         val replacedArguments = template.arguments.map { it.replaceTypes(mapping) }
         val replacedResult = replaceType(template.result, mapping)
-        val key = TemplateInstanceKey(template.name, replacedArguments.map { it.type }, replacedResult)
+        val key = TemplateInstanceKey(template.name, replacedArguments.map { it.scopeType() }, replacedResult)
         generatedTemplates[key]?.let { return it }
 
         val generatedName = mangleFunctionName(template.name, replacedArguments, replacedResult)
-        val reservedSignature = FunctionSignature(replacedArguments.map { it.type }, replacedResult)
+        val reservedSignature = FunctionSignature(replacedArguments.map { it.scopeType() }, replacedResult)
         ensureNameAvailable(generatedName, reservedSignature)
         if (key in templatesInProgress) {
             return template.copy(
@@ -235,8 +237,8 @@ class TemplateInstantiator(
         if (expression.name in typeClassMethods) {
             val argumentTypes = expression.arguments.map { inferType(it, scope, rewriteContext) }
             var receiverType = argumentTypes.firstOrNull()
-            if (receiverType?.name == "Array") {
-                receiverType = receiverType.args.firstOrNull()
+            if (receiverType?.isArray == true) {
+                receiverType = receiverType.elementTypeOrNull
             }
             resolveTypeClassMethod(expression.name, receiverType, rewriteContext)?.let { method ->
                 return FunctionCallExpressionASTNode(
@@ -269,8 +271,8 @@ class TemplateInstantiator(
         }
         val owner = candidates.singleOrNull()
             ?: fail("Ambiguous typeclass method $methodName for type ${receiverType.name}")
-        val instance: InstanceMeta = if (receiverType.name == "Array") {
-            context.findInstance(owner.typeClass.name, receiverType.args.first())
+        val instance: InstanceMeta = if (receiverType.isArray) {
+            context.findInstance(owner.typeClass.name, receiverType.elementTypeOrNull ?: receiverType)
         } else {
             context.findInstance(owner.typeClass.name, receiverType)
         } ?: fail("Missing instance ${owner.typeClass.name}<${receiverType.name}> for method $methodName")
@@ -284,10 +286,10 @@ class TemplateInstantiator(
         rewriteContext: TemplateRewriteContext,
     ): TypeSign =
         when (expression) {
-            is IntLiteralExpressionASTNode -> TypeSign("Int")
-            is DoubleLiteralExpressionASTNode -> TypeSign("Double")
-            is BooleanLiteralExpressionASTNode -> TypeSign("Boolean")
-            is StringLiteralExpressionASTNode -> TypeSign("String")
+            is IntLiteralExpressionASTNode -> context.intType
+            is DoubleLiteralExpressionASTNode -> context.doubleType
+            is BooleanLiteralExpressionASTNode -> context.booleanType
+            is StringLiteralExpressionASTNode -> context.stringType
             is VariableExpressionASTNode -> scope.lookup(expression.token.lexeme)
                 ?: fail("Cannot infer type for variable ${expression.token.lexeme}")
             is ArrayElementAccessASTNode -> scope.lookup(expression.name)
@@ -307,7 +309,10 @@ class TemplateInstantiator(
                 resolveTypeClassMethod(expression.name, argumentTypes.firstOrNull(), rewriteContext)?.let { return it.result }
                 when (val meta = context.functions[expression.name]) {
                     is DeclaredFunctionMeta -> meta.astNode.result
-                    is BuiltInFunctionMeta -> TypeSign("Unit")
+                    is BuiltInFunctionMeta -> context.builtInSignatures
+                        .firstOrNull { it.name == meta.name && it.args == argumentTypes }
+                        ?.resultType
+                        ?: context.unitType
                     null -> fail("Cannot infer return type for function ${expression.name}")
                 }
             }
@@ -325,22 +330,7 @@ class TemplateInstantiator(
         val mapping = mutableMapOf<String, TypeSign>()
         template.arguments.zip(argumentTypes).forEach { (parameter, argumentType) ->
             val parameterType = parameter.scopeType()
-            if (parameterType.name == "Array" && genericNames.contains(parameterType.args.first().name)) {
-                val argumentElementType = argumentType.arrayElementType()
-                    ?: fail("Cannot infer generic array parameter ${parameter.name} from ${argumentType.name}")
-                val previous = mapping.putIfAbsent(parameterType.args.first().name, argumentElementType)
-                if (previous != null && previous != argumentElementType) {
-                    fail("Conflicting concrete types for ${parameterType.args.first().name}: ${previous.name} and ${argumentElementType.name}")
-                }
-            }
-            else if (parameterType.args.isEmpty() && parameterType.name in genericNames) {
-                val previous = mapping.putIfAbsent(parameterType.name, argumentType)
-                if (previous != null && previous != argumentType) {
-                    fail("Conflicting concrete types for ${parameterType.name}: ${previous.name} and ${argumentType.name}")
-                }
-            } else if (containsGeneric(parameterType, genericNames)) {
-                fail("Cannot infer generic type from complex parameter ${parameter.name}: ${parameterType.name}")
-            }
+            inferGenericMappingFromParameter(parameter.name, parameterType, argumentType, genericNames, mapping)
         }
 
         template.genericParams.forEach { generic ->
@@ -352,24 +342,78 @@ class TemplateInstantiator(
         return mapping
     }
 
+    private fun inferGenericMappingFromParameter(
+        parameterName: String,
+        parameterType: TypeSign,
+        argumentType: TypeSign,
+        genericNames: Set<String>,
+        mapping: MutableMap<String, TypeSign>,
+    ) {
+        if (parameterType.arguments.isEmpty() && parameterType.name in genericNames) {
+            bindGeneric(parameterType.name, argumentType, mapping)
+            return
+        }
+        if (!containsGeneric(parameterType, genericNames)) {
+            return
+        }
+        if (!sameGenericContainer(parameterType, argumentType) ||
+            parameterType.arguments.size != argumentType.arguments.size
+        ) {
+            fail("Cannot infer generic type from complex parameter $parameterName: ${parameterType.render()}")
+        }
+
+        parameterType.arguments.zip(argumentType.arguments).forEach { (parameterArgument, argumentArgument) ->
+            inferGenericMappingFromParameter(parameterName, parameterArgument, argumentArgument, genericNames, mapping)
+        }
+    }
+
+    private fun bindGeneric(
+        genericName: String,
+        argumentType: TypeSign,
+        mapping: MutableMap<String, TypeSign>,
+    ) {
+        val normalizedType = context.resolve(argumentType) ?: argumentType
+        val previous = mapping.putIfAbsent(genericName, normalizedType)
+        if (previous != null && previous != normalizedType) {
+            fail("Conflicting concrete types for $genericName: ${previous.render()} and ${normalizedType.render()}")
+        }
+    }
+
+    private fun sameGenericContainer(parameterType: TypeSign, argumentType: TypeSign): Boolean =
+        if (parameterType.isArrayLike() || argumentType.isArrayLike()) {
+            parameterType.isArrayLike() && argumentType.isArrayLike()
+        } else {
+            parameterType.name == argumentType.name
+        }
+
+    private fun TypeSign.isArrayLike(): Boolean =
+        isArray || name == TypeNames.ARRAY
+
     private fun replaceType(type: TypeSign, mapping: Map<String, TypeSign>): TypeSign =
-        mapping[type.name]?.takeIf { type.args.isEmpty() }
-            ?: type.copy(args = type.args.map { replaceType(it, mapping) })
+        mapping[type.name]?.takeIf { type.arguments.isEmpty() }
+            ?: if (type.isArray) {
+                context.arrayOf(replaceType(type.elementTypeOrNull ?: fail("Array type has no element type"), mapping))
+            } else if (type.arguments.isEmpty()) {
+                type
+            } else {
+                val args = type.arguments.map { replaceType(it, mapping).toTypeRef() }
+                context.resolveOrThrow(TypeRef(type.name, args))
+            }
 
     private fun FunctionArgument.replaceTypes(mapping: Map<String, TypeSign>): FunctionArgument =
         copy(type = replaceType(type, mapping))
 
     private fun FunctionArgument.scopeType(): TypeSign =
-        if (isArray) TypeSign("Array", listOf(type)) else type
+        if (isArray) context.arrayOf(type) else type
 
     private fun ArrayDeclarationASTNode.arrayScopeType(): TypeSign =
-        if (type.name == "Array") type else TypeSign("Array", listOf(type))
+        if (type.isArray) type else context.arrayOf(type)
 
     private fun TypeSign.arrayElementType(): TypeSign? =
-        if (name == "Array") args.singleOrNull() else null
+        if (isArray) elementTypeOrNull else null
 
     private fun containsGeneric(type: TypeSign, genericNames: Set<String>): Boolean =
-        type.name in genericNames || type.args.any { containsGeneric(it, genericNames) }
+        type.name in genericNames || type.arguments.any { containsGeneric(it, genericNames) }
 
     private fun cloneGlobalVariable(node: DeclareGlobalVariableASTNode): DeclareGlobalVariableASTNode =
         node.copy(expression = node.expression?.let { cloneSubtree(it) })
@@ -378,7 +422,7 @@ class TemplateInstantiator(
         functions: MutableList<FunctionDeclAstNode>,
         function: FunctionDeclAstNode,
     ) {
-        val signature = FunctionSignature(function.arguments.map { it.type }, function.result)
+        val signature = FunctionSignature(function.arguments.map { it.scopeType() }, function.result)
         ensureNameAvailable(function.name, signature)
         signaturesByName[function.name] = signature
         functions.add(function)

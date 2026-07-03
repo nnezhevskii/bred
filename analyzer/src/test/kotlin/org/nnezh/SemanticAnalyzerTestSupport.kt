@@ -12,6 +12,7 @@ import org.nnezh.bred.ast.AbstractSyntaxTreeBuilder
 import org.nnezh.bred.ast.ProgramRoot
 import org.nnezh.bred.codegenerator.TemplateInstantiator
 import org.nnezh.bred.context.ProgramContextCollector
+import org.nnezh.bred.context.ProgramTypeResolver
 import org.nnezh.lexer.Lexer
 
 internal fun parseProgram(source: String): ProgramRoot {
@@ -27,11 +28,15 @@ internal fun parseEither(source: String): Either<ASTError, ASTNode> {
 
 internal fun analyze(source: String): Either<List<SemanticError>, List<SemanticError.SemanticWarning>> {
     val root = parseProgram(source)
-    val context = ProgramContextCollector().collect(root)
+    val initialContext = ProgramContextCollector().collect(root)
+    val resolvedRoot = ProgramTypeResolver(initialContext)
+        .resolve(root)
+        .getOrElse { error("unexpected type resolution error: $it") }
+    val context = ProgramContextCollector().collect(resolvedRoot)
     var result: Either<List<SemanticError>, List<SemanticError.SemanticWarning>>? = null
 
     assertDoesNotThrow {
-        result = SemanticAnalyzer(context).analyze(root)
+        result = SemanticAnalyzer(context).analyze(resolvedRoot)
     }
 
     return result ?: error("SemanticAnalyzer did not return a result")
@@ -39,15 +44,22 @@ internal fun analyze(source: String): Either<List<SemanticError>, List<SemanticE
 
 internal fun analyzeAfterTemplateInstantiation(source: String): Either<List<SemanticError>, SemanticAnalysisResult> {
     val root = parseProgram(source)
-    val context = ProgramContextCollector().collect(root)
+    val initialContext = ProgramContextCollector().collect(root)
+    val resolvedRoot = ProgramTypeResolver(initialContext)
+        .resolve(root)
+        .getOrElse { error("unexpected type resolution error: $it") }
+    val context = ProgramContextCollector().collect(resolvedRoot)
     val instantiatedRoot = TemplateInstantiator(context)
-        .instantiate(root)
+        .instantiate(resolvedRoot)
         .getOrElse { error("unexpected template instantiation error: $it") }
     val instantiatedContext = ProgramContextCollector().collect(instantiatedRoot)
+    val resolvedInstantiatedRoot = ProgramTypeResolver(instantiatedContext)
+        .resolve(instantiatedRoot)
+        .getOrElse { error("unexpected type resolution error: $it") }
     var result: Either<List<SemanticError>, SemanticAnalysisResult>? = null
 
     assertDoesNotThrow {
-        result = SemanticAnalyzer(instantiatedContext).analyzeWithResult(instantiatedRoot)
+        result = SemanticAnalyzer(instantiatedContext).analyzeWithResult(resolvedInstantiatedRoot)
     }
 
     return result ?: error("SemanticAnalyzer did not return a result")

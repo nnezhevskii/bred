@@ -23,18 +23,19 @@ import org.nnezh.bred.ast.ScalarVariableInitializationASTNode
 import org.nnezh.bred.ast.StringLiteralExpressionASTNode
 import org.nnezh.bred.ast.VariableExpressionASTNode
 import org.nnezh.bred.ast.WhileStatementAstNode
-import org.nnezh.bred.common.BuiltInMethods
 import org.nnezh.bred.common.TypeSign
-import org.nnezh.org.nnezh.base.Type
+import org.nnezh.bred.context.ProgramGlobalContext
 
 class LLTACGenerator(
     private val nameEmitter: TACNameEmitter = TACNameEmitter(),
     private val typeTable: Map<ExpressionASTNode, TypeSign>,
+    private val globalContext: ProgramGlobalContext,
 ) {
     private val mangledFunctions: MutableMap<String, String> = hashMapOf()
     private val expressionLLTACGenerator = LLTACExpressionSubgenerator(
         nameEmitter = nameEmitter,
         typeTable = typeTable,
+        globalContext = globalContext,
         mangledFunctionsCallback = { mangledFunctions },
     )
 
@@ -52,8 +53,8 @@ class LLTACGenerator(
             is FunctionDeclAstNode -> {
                 val functionName = mangleFunctionName(node)
                 mangledFunctions[node.name] = functionName
-                instructions.add(LLTACElement.function(functionName, node.result.toTacType()))
-                instructions.addAll(node.arguments.map { LLTACElement.getParam(it.name, it.toTacType()) })
+                instructions.add(LLTACElement.function(functionName, node.result))
+                instructions.addAll(node.arguments.map { LLTACElement.getParam(it.name, it.scopeType()) })
                 instructions.addAll(visit(node.body))
             }
 
@@ -67,12 +68,12 @@ class LLTACGenerator(
                         val indexName = nameEmitter.nextVar()
                         val index = expressionLLTACGenerator.buildInstructionsForExpression(
                             variable = indexName,
-                            type = Type.IntType,
+                            type = globalContext.intType,
                             expression = lValue.index,
                         )
                         instructions.addAll(index.instructions)
                         if (indexName != index.finalVariable) {
-                            instructions.add(LLTACElement.assignVariable(indexName, Type.IntType, index.finalVariable!!))
+                            instructions.add(LLTACElement.assignVariable(indexName, globalContext.intType, index.finalVariable!!))
                         }
 
                         val rightValueName = nameEmitter.nextVar()
@@ -88,7 +89,9 @@ class LLTACGenerator(
                                 array = lValue.name,
                                 index = indexName,
                                 source = rightValue.finalVariable!!,
-                                type = rightType,
+                                arrayType = globalContext.arrayOf(rightType),
+                                elementType = rightType,
+                                intType = globalContext.intType,
                             )
                         )
                     }
@@ -111,7 +114,7 @@ class LLTACGenerator(
                 instructions.addAll(
                     expressionLLTACGenerator.buildInstructionsForExpression(
                         variable = null,
-                        type = Type.UnitType,
+                        type = globalContext.unitType,
                         expression = node.expression,
                     ).instructions
                 )
@@ -123,11 +126,11 @@ class LLTACGenerator(
 
             is IfStatementAstNode -> {
                 val condVal = nameEmitter.nextVar()
-                val condition = expressionLLTACGenerator.buildInstructionsForExpression(condVal, Type.BoolType, node.condition)
+                val condition = expressionLLTACGenerator.buildInstructionsForExpression(condVal, globalContext.booleanType, node.condition)
                 instructions.addAll(condition.instructions)
 
                 val ifNotLabel = LLTACElement.label(nameEmitter.nextLbl()) as LLTACLabel
-                instructions.add(LLTACElement.jumpIfNot(ifNotLabel, condition.finalVariable!!))
+                instructions.add(LLTACElement.jumpIfNot(ifNotLabel, condition.finalVariable!!, globalContext.booleanType))
                 instructions.addAll(visit(node.thenBlock))
 
                 val elseBlock = node.elseBlock
@@ -158,23 +161,18 @@ class LLTACGenerator(
             is ScalarVariableInitializationASTNode -> {
                 val result = expressionLLTACGenerator.buildInstructionsForExpression(
                     variable = node.name,
-                    type = node.type.toTacType(),
+                    type = node.type,
                     expression = node.expression,
                 )
                 instructions.addAll(result.instructions)
                 if (node.name != result.finalVariable) {
-                    instructions.add(LLTACElement.assignVariable(node.name, node.type.toTacType(), result.finalVariable!!))
+                    instructions.add(LLTACElement.assignVariable(node.name, node.type, result.finalVariable!!))
                 }
             }
 
             is ArrayDeclarationASTNode -> {
-                val elementTypeSign = if (node.type.name == "Array") {
-                    node.type.args.single()
-                } else {
-                    node.type
-                }
-                val elementType = elementTypeSign.toTacType()
-                val arrayType = Type.StaticArrayType(elementType, node.size)
+                val elementType = node.type.arrayElementType()
+                val arrayType = globalContext.arrayOf(elementType)
                 instructions.add(LLTACElement.alloc(node.name, arrayType, node.size))
 
                 val initializer = node.expression
@@ -182,7 +180,7 @@ class LLTACGenerator(
                     initializer.args.forEachIndexed { index, value ->
                         val indexName = nameEmitter.nextVar()
                         val valueName = nameEmitter.nextVar()
-                        instructions.add(LLTACElement.assign(indexName, Type.IntType, index.toLong()))
+                        instructions.add(LLTACElement.assign(indexName, globalContext.intType, index.toLong()))
                         val result = expressionLLTACGenerator.buildInstructionsForExpression(valueName, elementType, value)
                         instructions.addAll(result.instructions)
                         instructions.add(
@@ -190,7 +188,9 @@ class LLTACGenerator(
                                 array = node.name,
                                 index = indexName,
                                 source = result.finalVariable!!,
-                                type = elementType,
+                                arrayType = arrayType,
+                                elementType = elementType,
+                                intType = globalContext.intType,
                             )
                         )
                     }
@@ -204,12 +204,12 @@ class LLTACGenerator(
 
                 val condition = expressionLLTACGenerator.buildInstructionsForExpression(
                     variable = nameEmitter.nextVar(),
-                    type = Type.BoolType,
+                    type = globalContext.booleanType,
                     expression = node.condition,
                 )
                 instructions.addAll(condition.instructions)
 
-                instructions.add(LLTACElement.jumpIfNot(endOfWhile, condition.finalVariable!!))
+                instructions.add(LLTACElement.jumpIfNot(endOfWhile, condition.finalVariable!!, globalContext.booleanType))
                 instructions.addAll(visit(node.bodyBlock))
                 instructions.add(LLTACElement.jump(beginOfWhile))
                 instructions.add(endOfWhile)
@@ -217,11 +217,12 @@ class LLTACGenerator(
 
             is DeclareGlobalVariableASTNode -> {
                 node.size?.let { size ->
-                    val elementType = node.arrayElementType().toTacType()
+                    val elementType = node.arrayElementType()
+                    val arrayType = globalContext.arrayOf(elementType)
                     val initializer = (node.expression as? ArrayInitializationExpressionASTNode)
                         ?.args
                         ?.map { it.toGlobalInitializerOperand(elementType) }
-                    instructions.add(LLTACElement.globalArray(node.name, Type.StaticArrayType(elementType, size), initializer))
+                    instructions.add(LLTACElement.globalArray(node.name, arrayType, size, initializer))
                 }
             }
 
@@ -232,66 +233,47 @@ class LLTACGenerator(
         return instructions
     }
 
-    private fun mangleFunctionName(function: FunctionDeclAstNode): String {
-        return function.name
-    }
+    private fun mangleFunctionName(function: FunctionDeclAstNode): String =
+        function.name
 
-    private fun FunctionArgument.toManglePart(): String =
-        if (isArray) "Array" else type.toTacType().toManglePart()
-
-    private fun FunctionArgument.toTacType(): Type =
-        if (isArray) Type.StaticArrayType(type.toTacType(), 0) else type.toTacType()
+    private fun FunctionArgument.scopeType(): TypeSign =
+        if (isArray) globalContext.arrayOf(type) else type
 
     private fun DeclareGlobalVariableASTNode.arrayElementType(): TypeSign {
         val declaredType = requireNotNull(type) { "global array element type is required" }
-        return if (declaredType.name == "Array") {
-            declaredType.args.single()
-        } else {
-            declaredType
-        }
+        return declaredType.arrayElementType()
     }
 
-    private fun ExpressionASTNode.tacType(): Type =
-        typeTable[this]?.toTacType() ?: inferLiteralTacType(this)
+    private fun TypeSign.arrayElementType(): TypeSign =
+        if (isArray) elementTypeOrNull!! else this
 
-    private fun ExpressionASTNode.toGlobalInitializerOperand(expectedType: Type): Operand =
+    private fun ExpressionASTNode.tacType(): TypeSign =
+        typeTable[this] ?: inferLiteralTacType(this)
+
+    private fun ExpressionASTNode.toGlobalInitializerOperand(expectedType: TypeSign): Operand =
         when (this) {
             is BooleanLiteralExpressionASTNode -> Operand.BoolConst(value)
             is DoubleLiteralExpressionASTNode -> Operand.DoubleConst(value)
             is IntLiteralExpressionASTNode -> Operand.IntConst(value.toLong())
             is StringLiteralExpressionASTNode -> Operand.StringConst(value)
-            else -> lltacError("unsupported global $expectedType array initializer expression", this)
+            else -> lltacError("unsupported global ${expectedType.render()} array initializer expression", this)
         }
 
-    private fun inferLiteralTacType(expression: ExpressionASTNode): Type =
+    private fun inferLiteralTacType(expression: ExpressionASTNode): TypeSign =
         when (expression) {
-            is BooleanLiteralExpressionASTNode -> Type.BoolType
-            is DoubleLiteralExpressionASTNode -> Type.DoubleType
-            is IntLiteralExpressionASTNode -> Type.IntType
-            is StringLiteralExpressionASTNode -> Type.StringType
+            is BooleanLiteralExpressionASTNode -> globalContext.booleanType
+            is DoubleLiteralExpressionASTNode -> globalContext.doubleType
+            is IntLiteralExpressionASTNode -> globalContext.intType
+            is StringLiteralExpressionASTNode -> globalContext.stringType
             else -> lltacError("missing semantic type for expression", expression)
         }
 }
 
-fun TypeSign.toTacType(): Type =
-    when (name) {
-        "Int" -> Type.IntType
-        "String" -> Type.StringType
-        "Double" -> Type.DoubleType
-        "Boolean" -> Type.BoolType
-        "Unit" -> Type.UnitType
-        "Array" -> Type.StaticArrayType(args.singleOrNull()?.toTacType() ?: Type.UnitType, 0)
-        else -> lltacError("unsupported TAC type: $this")
-    }
-
-fun Type.toManglePart(): String =
-    when (this) {
-        Type.BoolType -> "Boolean"
-        Type.DoubleType -> "Double"
-        Type.IntType -> "Int"
-        is Type.StaticArrayType -> "Array_${elementType.toManglePart()}"
-        Type.StringType -> "String"
-        Type.UnitType -> "Unit"
+fun TypeSign.toTACManglePart(): String =
+    if (isArray) {
+        "Array_${elementTypeOrNull!!.toTACManglePart()}"
+    } else {
+        name
     }
 
 class TACNameEmitter {

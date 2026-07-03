@@ -6,6 +6,7 @@ import org.nnezh.bred.ast.AstPrettyPrinter
 import org.nnezh.bred.ast.ProgramRoot
 import org.nnezh.bred.codegenerator.TemplateInstantiator
 import org.nnezh.bred.context.ProgramContextCollector
+import org.nnezh.bred.context.ProgramTypeResolver
 import org.nnezh.lexer.Lexer
 import org.nnezh.lexer.readSource
 
@@ -24,11 +25,16 @@ fun main(args: Array<String>) {
         }
         val ast = AbstractSyntaxTreeBuilder().build(tokens).bind()
 
-        val globalContext = ProgramContextCollector().collect(ast as ProgramRoot)
-        val instantiatedAst = TemplateInstantiator(globalContext).instantiate(ast).bind()
+        val root = ast as ProgramRoot
+        val initialContext = ProgramContextCollector().collect(root)
+        val resolvedRoot = ProgramTypeResolver(initialContext).resolve(root).bind()
+        val globalContext = ProgramContextCollector().collect(resolvedRoot)
+        val instantiatedAst = TemplateInstantiator(globalContext).instantiate(resolvedRoot).bind()
+        val instantiatedContext = ProgramContextCollector().collect(instantiatedAst)
+        val resolvedInstantiatedAst = ProgramTypeResolver(instantiatedContext).resolve(instantiatedAst).bind()
 
         stringBuilder.append("\nAST:\n")
-        stringBuilder.append(AstPrettyPrinter().render(instantiatedAst))
+        stringBuilder.append(AstPrettyPrinter().render(resolvedInstantiatedAst))
         stringBuilder.toString()
     }
 

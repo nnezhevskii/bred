@@ -44,22 +44,22 @@ func main:
   ALLOC data:Array Int 6:Int
   ASSIGN var30:Int 0:Int
   ASSIGN var31:Int 2:Int
-  STORE data:Int var30:Int var31:Int
+  STORE data:Array var30:Int var31:Int
   ASSIGN var32:Int 1:Int
   ASSIGN var33:Int 7:Int
-  STORE data:Int var32:Int var33:Int
+  STORE data:Array var32:Int var33:Int
   ASSIGN var34:Int 2:Int
   ASSIGN var35:Int 11:Int
-  STORE data:Int var34:Int var35:Int
+  STORE data:Array var34:Int var35:Int
   ASSIGN var36:Int 3:Int
   ASSIGN var37:Int 15:Int
-  STORE data:Int var36:Int var37:Int
+  STORE data:Array var36:Int var37:Int
   ASSIGN var38:Int 4:Int
   ASSIGN var39:Int 4:Int
-  STORE data:Int var38:Int var39:Int
+  STORE data:Array var38:Int var39:Int
   ASSIGN var40:Int 5:Int
   ASSIGN var41:Int 9:Int
-  STORE data:Int var40:Int var41:Int
+  STORE data:Array var40:Int var41:Int
   ASSIGN var43:Int 5:Int
   ASSIGN var44:Int 18:Int
   PARAM data:Array

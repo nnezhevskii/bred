@@ -7,6 +7,7 @@ import org.nnezh.bred.ast.ASTError
 import org.nnezh.bred.ast.ProgramRoot
 import org.nnezh.bred.codegenerator.TemplateInstantiator
 import org.nnezh.bred.context.ProgramContextCollector
+import org.nnezh.bred.context.ProgramTypeResolver
 import org.nnezh.lexer.Lexer
 import org.nnezh.lexer.LexerError
 import org.nnezh.lexer.readSource
@@ -66,20 +67,29 @@ class BredToCCompiler(
         val root = ast as? ProgramRoot
             ?: raise(listOf("Parser returned ${ast::class.simpleName}, expected ProgramRoot"))
 
-        val context = contextCollectorFactory().collect(root)
+        val initialContext = contextCollectorFactory().collect(root)
+        val resolvedRoot = ProgramTypeResolver(initialContext)
+            .resolve(root)
+            .mapLeft { listOf(it.describe()) }
+            .bind()
+        val context = contextCollectorFactory().collect(resolvedRoot)
         val instantiatedRoot = TemplateInstantiator(context)
-            .instantiate(root)
+            .instantiate(resolvedRoot)
             .mapLeft { listOf(it.describe()) }
             .bind()
 
         val instantiatedContext = contextCollectorFactory().collect(instantiatedRoot)
+        val resolvedInstantiatedRoot = ProgramTypeResolver(instantiatedContext)
+            .resolve(instantiatedRoot)
+            .mapLeft { listOf(it.describe()) }
+            .bind()
         val analysis = SemanticAnalyzer(instantiatedContext)
-            .analyzeWithResult(instantiatedRoot)
+            .analyzeWithResult(resolvedInstantiatedRoot)
             .mapLeft { errors -> errors.map { semanticFormatter.format(it) } }
             .bind()
 
         val tac = Either.catch {
-            LLTACGenerator(typeTable = analysis.expressionTypes).build(instantiatedRoot)
+            LLTACGenerator(typeTable = analysis.expressionTypes, globalContext = instantiatedContext).build(resolvedInstantiatedRoot)
         }.mapLeft { error ->
             listOf("TAC generation failed: ${error.message ?: error::class.qualifiedName}")
         }.bind()

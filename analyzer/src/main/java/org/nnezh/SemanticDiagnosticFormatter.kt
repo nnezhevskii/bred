@@ -186,10 +186,4 @@ class SemanticDiagnosticFormatter {
     private fun FunctionSignature.render(): String =
         "$name${args.renderArguments()}: ${resultType.render()}"
 
-    private fun TypeSign.render(): String =
-        if (args.isEmpty()) {
-            name
-        } else {
-            args.joinToString(prefix = "$name<", postfix = ">") { it.render() }
-        }
 }

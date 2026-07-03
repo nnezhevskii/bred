@@ -18,7 +18,8 @@ import org.nnezh.bred.ast.VariableExpressionNode
 import org.nnezh.bred.ast.WhileStatementAstNode
 import org.nnezh.bred.ast.match
 import org.nnezh.bred.ast.parseWith
-import org.nnezh.bred.common.TypeSign
+import org.nnezh.bred.common.TypeNames
+import org.nnezh.bred.common.TypeRef
 import org.nnezh.lexer.Token
 
 class ForParser(
@@ -37,9 +38,9 @@ class ForParser(
         val innerBlockStatements = parseWith(blockParser.value, context).statements
         val syntheticOpPosition = toKeyword.position
         val counterInit = ScalarVariableInitializationASTNode(counterName.lexeme,
-            TypeSign("Int"), initialValue, isMutable = true)
+            TypeRef(TypeNames.INT), initialValue, isMutable = true)
         val toVariableName = "_right_border${counterName.lexeme}"
-        val rightBorderInit = ScalarVariableInitializationASTNode(toVariableName, TypeSign("Int"), finalValue, isMutable = false)
+        val rightBorderInit = ScalarVariableInitializationASTNode(toVariableName, TypeRef(TypeNames.INT), finalValue, isMutable = false)
         val limitToken = Token.Identifier(toVariableName, syntheticOpPosition)
         val counter = VariableExpressionNode(counterName)
         val desugared = listOf(

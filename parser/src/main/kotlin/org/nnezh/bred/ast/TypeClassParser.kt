@@ -10,7 +10,8 @@ import org.nnezh.bred.ast.TokensContext
 import org.nnezh.bred.ast.TypeClassDeclAstNode
 import org.nnezh.bred.ast.TypeClassMethodDeclAstNode
 import org.nnezh.bred.ast.match
-import org.nnezh.bred.common.TypeSign
+import org.nnezh.bred.common.TypeNames
+import org.nnezh.bred.common.TypeRef
 import org.nnezh.lexer.Token
 
 class TypeClassParser(
@@ -47,7 +48,7 @@ class TypeClassParser(
             context.consumeToken()
             with(typeSignParser) { parse(context) }
         } else {
-            TypeSign("Unit")
+            TypeRef(TypeNames.UNIT)
         }
         return TypeClassMethodDeclAstNode(name.lexeme, args, result)
     }

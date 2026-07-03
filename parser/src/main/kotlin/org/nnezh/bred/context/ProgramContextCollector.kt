@@ -7,6 +7,7 @@ import org.nnezh.bred.ast.InstanceDeclAstNode
 import org.nnezh.bred.ast.ProgramRoot
 import org.nnezh.bred.ast.TokensContext
 import org.nnezh.bred.ast.TypeClassDeclAstNode
+import org.nnezh.bred.common.BuiltInMethods
 
 class ProgramContextCollector {
     private var context: ProgramGlobalContext = ProgramGlobalContext()
@@ -45,24 +46,22 @@ class ProgramContextCollector {
     }
 
     private fun handleInstances(instances: List<InstanceDeclAstNode>) {
-        // TODO: didn't handle args for target type (Array<Int> - show error)
         instances.forEach {
             context.addInstance(it.typeClassName, it.type, it.methods)
         }
     }
 
     private fun handleTypes(types: List<DeclareTypeASTNode>) {
-        if ((types.isEmpty())) {
-            return
+        types.forEach { type ->
+            context.declareUserType(type.name)
         }
-        TODO()
     }
 
 
     private fun assembleRuntimeContext(context: ProgramGlobalContext) {
-        listOf("Int", "Double", "String", "Boolean").forEach { context.addType(it, true) }
-
-        context.addFunction("println", BuiltInFunctionMeta("println", false))
+        BuiltInMethods.specs.forEach { spec ->
+            context.addFunction(spec.name, BuiltInFunctionMeta(spec.name, false))
+        }
     }
 
 }

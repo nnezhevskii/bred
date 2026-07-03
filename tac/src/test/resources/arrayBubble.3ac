@@ -23,9 +23,9 @@ lbl3:
   ASSIGN var16:Int j:Int
   ASSIGN var19:Int 0:Int
   LOAD var19:Int a:Array i:Int
-  STORE a:Int var16:Int var19:Int
+  STORE a:Array var16:Int var19:Int
   ASSIGN var20:Int i:Int
-  STORE a:Int var20:Int temp:Int
+  STORE a:Array var20:Int temp:Int
 lbl5:
   ASSIGN var23:Int 1:Int
   ADD j:Int j:Int var23:Int
@@ -50,7 +50,7 @@ lbl6:
   PARAM var31:Int
   PARAM var32:Int
   CALL var30:Int random:Int 2:Int
-  STORE arr:Int var29:Int var30:Int
+  STORE arr:Array var29:Int var30:Int
   ASSIGN var34:Int 1:Int
   ADD i:Int i:Int var34:Int
   JMP lbl6

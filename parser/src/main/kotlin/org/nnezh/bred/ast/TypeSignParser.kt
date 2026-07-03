@@ -7,7 +7,9 @@ import org.nnezh.bred.ast.FunctionArgument
 import org.nnezh.bred.ast.GenericParam
 import org.nnezh.bred.ast.TokensContext
 import org.nnezh.bred.ast.match
+import org.nnezh.bred.common.TypeRef
 import org.nnezh.bred.common.TypeSign
+import org.nnezh.bred.common.toTypeRef
 import org.nnezh.lexer.Token
 
 class TypeSignParser {
@@ -34,7 +36,7 @@ class TypeSignParser {
         } else {
             emptyList()
         }
-        return TypeSign(name.lexeme, args)
+        return TypeRef(name.lexeme, args.map { it.toTypeRef() })
     }
 
     fun Raise<ASTError>.parseGenericParams(context: TokensContext): List<GenericParam> {

@@ -38,11 +38,55 @@ class SemanticAnalyzerTest {
     }
 
     @Test
+    fun `global primitive initializer uses resolved context type`() {
+        assertNoSemanticDiagnostics(
+            """
+            val ProgramName: String = "Bred data analyzer"
+
+            fun main(): Unit {
+                println(ProgramName)
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
     fun `function arguments are visible in body`() {
         assertNoSemanticDiagnostics(
             """
             fun id(value: Int): Int {
                 return value
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `template generic inferred from array and scalar arguments has no semantic diagnostics`() {
+        assertNoSemanticDiagnosticsAfterTemplateInstantiation(
+            """
+            typeclass Ordered<T> {
+                fun equals(a: T, b: T): Boolean
+            }
+
+            instance Ordered<Int> {
+                fun equals(a: Int, b: Int): Boolean {
+                    return a == b
+                }
+            }
+
+            fun findIndex<T: Ordered>(arr: Array<T>, target: T): Int {
+                if (equals(arr[0], target)) {
+                    return 0
+                }
+
+                return -1
+            }
+
+            fun main(): Unit {
+                val values: Array<Int>[2]
+                val target: Int = 1
+                val index: Int = findIndex(values, target)
             }
             """.trimIndent(),
         )

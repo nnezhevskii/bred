@@ -43,7 +43,7 @@ lbl4:
   ASSIGN var28:Int i:Int
   ASSIGN var31:Int 50:Int
   SUB var29:Int state:Int var31:Int
-  STORE arr:Int var28:Int var29:Int
+  STORE arr:Array var28:Int var29:Int
   ASSIGN var33:Int 1:Int
   ADD i:Int i:Int var33:Int
   JMP lbl4
@@ -61,7 +61,7 @@ lbl6:
   ASSIGN var37:Int i:Int
   ASSIGN var40:Int 0:Int
   LOAD var40:Int source:Array i:Int
-  STORE target:Int var37:Int var40:Int
+  STORE target:Array var37:Int var40:Int
   ASSIGN var42:Int 1:Int
   ADD i:Int i:Int var42:Int
   JMP lbl6
@@ -258,11 +258,11 @@ lbl30:
   ASSIGN var161:Int 100:Int
   MUL var159:Int sum:Int var161:Int
   DIV scaled:Int var159:Int size:Int
-  ASSIGN negative:Boolean false:Bool
+  ASSIGN negative:Boolean false:Boolean
   ASSIGN var165:Int 0:Int
   LT var163:Boolean scaled:Int var165:Int
   JMP_IF_NOT lbl31 var163:Boolean
-  ASSIGN negative:Boolean true:Bool
+  ASSIGN negative:Boolean true:Boolean
   NEG scaled:Int scaled:Int
 lbl31:
   ASSIGN var168:Int 100:Int
@@ -580,10 +580,10 @@ lbl44:
   SUB var372:Int j:Int var374:Int
   ASSIGN var375:Int 0:Int
   LOAD var375:Int arr:Array var372:Int
-  STORE arr:Int var370:Int var375:Int
+  STORE arr:Array var370:Int var375:Int
   ASSIGN var378:Int 1:Int
   SUB var376:Int j:Int var378:Int
-  STORE arr:Int var376:Int tmp:Int
+  STORE arr:Array var376:Int tmp:Int
 lbl46:
   ASSIGN var381:Int 1:Int
   ADD j:Int j:Int var381:Int
@@ -657,14 +657,14 @@ lbl53:
   PARAM var426:Int
   CALL var418:Boolean less_Int_Int_Boolean:Boolean 2:Int
   JMP_IF_NOT lbl55 var418:Boolean
-  ASSIGN var427:Boolean false:Bool
+  ASSIGN var427:Boolean false:Boolean
   RET var427:Boolean
 lbl55:
   ASSIGN var429:Int 1:Int
   ADD i:Int i:Int var429:Int
   JMP lbl53
 lbl54:
-  ASSIGN var430:Boolean true:Bool
+  ASSIGN var430:Boolean true:Boolean
   RET var430:Boolean
 func printValue_Int_Unit:
   GET_PARAM value:Int

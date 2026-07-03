@@ -6,6 +6,8 @@ import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import org.nnezh.org.nnezh.ICGenerator.PrettyPrinter
 import org.nnezh.org.nnezh.compiler.TACCompilerImpl
+import java.nio.file.Files
+import java.nio.file.Path
 
 /**
  * Contract tests for the TAC compilation pipeline.
@@ -476,6 +478,72 @@ class LLTAGCompileExpectationsTest {
 
       fun main(): Unit { }
       """.trimIndent(),
+    )
+  }
+
+  @Test
+  fun `generic array and scalar template call emits resolved mangled function`() {
+    val tac = formattedTac(
+      """
+      typeclass Ordered<T> {
+          fun equals(a: T, b: T): Boolean
+      }
+
+      instance Ordered<Int> {
+          fun equals(a: Int, b: Int): Boolean {
+              return a == b
+          }
+      }
+
+      fun findIndex<T: Ordered>(arr: Array<T>, target: T): Int {
+          if (equals(arr[0], target)) {
+              return 0
+          }
+
+          return -1
+      }
+
+      fun main(): Unit {
+          val values: Array<Int>[2]
+          val target: Int = 1
+          val index: Int = findIndex(values, target)
+      }
+      """.trimIndent(),
+    )
+
+    assertTrue(
+      tac.any { it == "func findIndex_Array_Int_Int_Int:" },
+      "expected instantiated findIndex function, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
+      tac.any { it.startsWith("CALL ") && it.contains("findIndex_Array_Int_Int_Int") },
+      "expected call to instantiated findIndex, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
+      tac.none { it.contains("TypeRef") || it.contains("PrimitiveTypeSign") },
+      "unresolved/internal type leaked into TAC:\n${tac.joinToString("\n")}",
+    )
+  }
+
+  @Test
+  fun `bundled 3ac example compiles through tac builder with instantiated generic arrays`() {
+    val tac = formattedTac(Files.readString(Path.of("examples/3ac.bred")))
+
+    assertTrue(
+      tac.any { it == "func arrayToString_Array_Int_Int_String:" },
+      "expected instantiated arrayToString, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
+      tac.any { it == "func bubbleSort_Array_Int_Int_Unit:" },
+      "expected instantiated bubbleSort, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
+      tac.any { it == "func binarySearch_Array_Int_Int_Int_Int:" },
+      "expected instantiated binarySearch, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
+      tac.none { it.contains("TypeRef") || it.contains("PrimitiveTypeSign") },
+      "unresolved/internal type leaked into TAC:\n${tac.joinToString("\n")}",
     )
   }
 

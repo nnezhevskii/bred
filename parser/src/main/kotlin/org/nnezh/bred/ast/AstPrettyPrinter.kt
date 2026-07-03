@@ -224,10 +224,7 @@ class AstPrettyPrinter(
             }
 
         private fun type(node: TypeSign): String {
-            if (node.args.isEmpty()) {
-                return node.name
-            }
-            return node.args.joinToString(prefix = "${node.name}<", postfix = ">") { type(it) }
+            return node.render()
         }
 
         private fun line(level: Int, text: String) {

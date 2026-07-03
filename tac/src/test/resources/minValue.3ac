@@ -48,7 +48,7 @@ lbl6:
   PARAM var28:Int
   PARAM var29:Int
   CALL var27:Int random:Int 2:Int
-  STORE arr:Int var26:Int var27:Int
+  STORE arr:Array var26:Int var27:Int
   ASSIGN var31:Int 1:Int
   ADD i:Int i:Int var31:Int
   JMP lbl6

@@ -1,7 +1,7 @@
 func neverRuns_:
   ASSIGN marker:Int 99:Int
 lbl1:
-  ASSIGN var1:Boolean false:Bool
+  ASSIGN var1:Boolean false:Boolean
   JMP_IF_NOT lbl2 var1:Boolean
   ASSIGN marker:Int 0:Int
   JMP lbl1

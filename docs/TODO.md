@@ -9,10 +9,8 @@ Item IDs use the stable `G-NN` format.
 | ID | Item | Current state | Action |
 |----|------|---------------|--------|
 | G-47 | Typeclass and instance semantic validation is incomplete | `SemanticAnalyzer` does not visit `ProgramRoot.typeClasses` or `ProgramRoot.instances`; direct visit branches are `TODO()` | Decide which checks belong in analyzer versus `TemplateInstantiator`; validate duplicate typeclasses, missing methods, method signatures, and instance target types |
-| G-48 | Parser accepts unknown type names | `TypeSignParser` accepts any identifier/generic type sign; analyzer primarily relies on context and exact `TypeSign` equality | Decide whether unknown concrete types should be rejected before/inside semantic analysis; keep generic parameters valid in generic scopes |
 | G-49 | Mixed numeric comparison behavior is unclear | `TypeValidator.produceBinaryType` allows relational operators when both operands are numeric, including `Int < Double`; docs/tests otherwise emphasize no numeric promotion for arithmetic | Decide whether mixed numeric comparison is allowed; add tests and update docs/implementation accordingly |
 | G-50 | Global initializers cannot call user functions | `SemanticAnalyzer.analyze` visits global variables before registering user functions; only built-ins are registered at that point | Decide whether global initializers may call user functions; if yes, register user signatures before global variable analysis |
-| G-51 | Context built-ins and semantic built-ins are split | `ProgramContextCollector` adds only `println`; `SemanticAnalyzer` registers the larger `common.BuiltInMethods.functions` list separately | Consolidate or document the ownership boundary so template instantiation and semantic analysis cannot diverge |
 | G-52 | Empty array initializer has no expression type | `ArrayInitializationExpressionASTNode([])` stores no type; declarations rely on size checks and skip element-type comparison when type is null | Decide whether empty array list type should be derived from declaration context; add tests for non-zero size and wrong target contexts |
 
 ## Later - TAC and C backend
@@ -50,6 +48,8 @@ Item IDs use the stable `G-NN` format.
 | G-46 | Global static arrays are parsed but analyzed as scalar globals | Resolved by binding top-level `val name: T[n]` as `Array<T>` in semantic scope, validating initializer size/type, emitting `LLTACGlobalStaticArray`, and rendering global C storage before function prototypes |
 | G-60 | C backend does not escape string literals | Resolved by escaping newline, carriage return, tab, quote, and backslash before emitting C string literals for `create_string(...)` / `strlen(...)`; covered by `string assignment escapes c string literal contents` |
 | G-58 | Self-reference in local initializer is accepted | Resolved by tracking variables while their initializer is analyzed; self-reference now reports `UNKNOWN_VARIABLE`, including shadowing and array initializer cases |
+| G-48 | Parser accepts unknown type names | Resolved by keeping parser output as `TypeRef` and adding `ProgramTypeResolver`; unknown concrete types are rejected during resolution, while generic names resolve only in generic scopes |
+| G-51 | Context built-ins and semantic built-ins are split | Resolved by storing built-ins as specs and resolving `globalContext.builtInSignatures` through the same `ProgramGlobalContext` registry used by template instantiation and semantic analysis |
 
 ## Priority snapshot
 
@@ -57,6 +57,8 @@ Item IDs use the stable `G-NN` format.
 |------|-----|
 | Next pipeline | G-47 |
 | Backend correctness | G-61 |
-| Semantic design decisions | G-48, G-49, G-50, G-51, G-52 |
+| Semantic design decisions | G-49, G-50, G-52 |
 | Language growth | G-03, G-05, G-12, G-13, G-53, G-54, G-55 |
-| Optional cleanup | G-14, G-16, G-25, G-56, G-57, G-62 |
+| Optional cleanup | G-14, G-16, G-25, G-56, G-57 |
+
+
