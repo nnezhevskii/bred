@@ -9,6 +9,7 @@ import org.nnezh.bred.ast.BinaryExpressionASTNode
 import org.nnezh.bred.ast.BooleanLiteralExpressionASTNode
 import org.nnezh.bred.ast.DoubleLiteralExpressionASTNode
 import org.nnezh.bred.ast.ExpressionASTNode
+import org.nnezh.bred.ast.FieldAccessChainExpressionASTNode
 import org.nnezh.bred.ast.FunctionCallExpressionASTNode
 import org.nnezh.bred.ast.FunctionDeclAstNode
 import org.nnezh.bred.ast.IntLiteralExpressionASTNode
@@ -53,6 +54,7 @@ private fun ExpressionASTNode.expressionSummary(): String =
         is BinaryExpressionASTNode -> "${left.expressionSummary()} ${operator.lexeme} ${right.expressionSummary()}"
         is FunctionCallExpressionASTNode -> "$name(${arguments.joinToString(", ") { it.expressionSummary() }})"
         is UnaryExpressionASTNode -> "${operator.lexeme}${operand.expressionSummary()}"
+        is FieldAccessChainExpressionASTNode -> "$root${next?.let { "." + it.expressionSummary() } ?: ""}"
     }
 
 private fun String.escape(): String =

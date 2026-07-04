@@ -196,6 +196,11 @@ class AstPrettyPrinter(
                     line(level, "unary ${node.operator.lexeme}")
                     expression(node.operand, level + 1)
                 }
+
+                is FieldAccessChainExpressionASTNode -> {
+                    line(level, node.root)
+                    node.next?.let { expression(it, level + 1) }
+                }
             }
         }
 

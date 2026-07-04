@@ -2,8 +2,8 @@ type Person       (name: String, age: Int)
 type mut Counter  (person: Person, counter: Int)
 
 fun main(): Unit {
-    val p: Person = Person("Ann", 34)
-    val c: Counter = Counter(p, 0)
-    c.counter = c.counter + 1
+    val c: Counter = Counter(Person("Ann", 29), 0)
+
+    c.counter = 30
 
 }

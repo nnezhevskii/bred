@@ -18,6 +18,7 @@ data class ArrayInitializationExpressionASTNode(val args: List<ExpressionASTNode
 data class VariableExpressionASTNode(val token: Token) : ExpressionASTNode, LeftValue
 data class ArrayElementAccessASTNode(val name: String, val index: ExpressionASTNode) : ExpressionASTNode, LeftValue
 data class FunctionCallExpressionASTNode(val name: String, val arguments: List<ExpressionASTNode>, var isConstructorCalling: Boolean = true) : ExpressionASTNode
+data class FieldAccessChainExpressionASTNode(val root: String, val next: FieldAccessChainExpressionASTNode? = null) : ExpressionASTNode, LeftValue
 
 data class BinaryExpressionASTNode(
     val left: ExpressionASTNode,

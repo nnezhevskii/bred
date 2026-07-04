@@ -1,5 +1,6 @@
 package org.nnezh.org.nnezh.ICGenerator
 
+import arrow.core.raise.result
 import org.nnezh.bred.ast.ArrayElementAccessASTNode
 import org.nnezh.bred.ast.ArrayInitializationExpressionASTNode
 import org.nnezh.bred.ast.BinaryExpressionASTNode
@@ -7,6 +8,7 @@ import org.nnezh.bred.ast.BinaryOperator
 import org.nnezh.bred.ast.BooleanLiteralExpressionASTNode
 import org.nnezh.bred.ast.DoubleLiteralExpressionASTNode
 import org.nnezh.bred.ast.ExpressionASTNode
+import org.nnezh.bred.ast.FieldAccessChainExpressionASTNode
 import org.nnezh.bred.ast.FunctionCallExpressionASTNode
 import org.nnezh.bred.ast.IntLiteralExpressionASTNode
 import org.nnezh.bred.ast.LongLiteralExpressionASTNode
@@ -224,6 +226,23 @@ class LLTACExpressionSubgenerator(
                     finalVariable = destination,
                     finalType = elementType,
                 )
+            }
+
+            is FieldAccessChainExpressionASTNode -> {
+                expression as FieldAccessChainExpressionASTNode
+                // TODO
+                if (expression.next!!.next == null) {
+                    return LLTACExpressionSubgeneratorResult(
+                        instructions = emptyList(),
+                        finalVariable = "${expression.root}.${expression.next!!.root}",
+                        finalType = expression.tacType(),
+                    )
+                }
+
+//                val res = buildInstructionsForExpression(expression.next!!, )
+//                val instructions = mutableListOf<LLTACElement>()
+//                instructions.add()
+                TODO()
             }
         }
 

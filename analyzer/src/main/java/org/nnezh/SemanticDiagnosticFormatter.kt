@@ -12,6 +12,7 @@ import org.nnezh.bred.ast.CallFunctionStatementAstNode
 import org.nnezh.bred.ast.DeclareGlobalVariableASTNode
 import org.nnezh.bred.ast.DoubleLiteralExpressionASTNode
 import org.nnezh.bred.ast.ExpressionASTNode
+import org.nnezh.bred.ast.FieldAccessChainExpressionASTNode
 import org.nnezh.bred.ast.FunctionCallExpressionASTNode
 import org.nnezh.bred.ast.FunctionDeclAstNode
 import org.nnezh.bred.ast.IfStatementAstNode
@@ -163,6 +164,7 @@ class SemanticDiagnosticFormatter {
             is ArrayInitializationExpressionASTNode -> "[${args.joinToString(", ") { it.expressionSummary() }}]"
             is BinaryExpressionASTNode -> "${left.expressionSummary()} ${operator.lexeme} ${right.expressionSummary()}"
             is UnaryExpressionASTNode -> "${operator.lexeme}${operand.expressionSummary()}"
+            is FieldAccessChainExpressionASTNode -> this.root + this.next?.let { n -> "." + n.expressionSummary() }
         }
 
     private fun String.escape(): String =

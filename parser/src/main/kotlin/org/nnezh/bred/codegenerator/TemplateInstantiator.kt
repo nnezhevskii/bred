@@ -13,6 +13,7 @@ import org.nnezh.bred.ast.CallFunctionStatementAstNode
 import org.nnezh.bred.ast.DeclareGlobalVariableASTNode
 import org.nnezh.bred.ast.DoubleLiteralExpressionASTNode
 import org.nnezh.bred.ast.ExpressionASTNode
+import org.nnezh.bred.ast.FieldAccessChainExpressionASTNode
 import org.nnezh.bred.ast.ForStatementAstNode
 import org.nnezh.bred.ast.FunctionArgument
 import org.nnezh.bred.ast.FunctionCallExpressionASTNode
@@ -221,6 +222,7 @@ class TemplateInstantiator(
                 operand = transformExpression(expression.operand, scope, rewriteContext),
             )
             is FunctionCallExpressionASTNode -> transformCallExpression(expression, scope, rewriteContext)
+            is FieldAccessChainExpressionASTNode -> expression
         }
 
     private fun transformCallExpression(
@@ -319,6 +321,8 @@ class TemplateInstantiator(
                     null -> fail("Cannot infer return type for function ${expression.name}")
                 }
             }
+
+            is FieldAccessChainExpressionASTNode -> TODO()
         }
 
     private fun inferGenericMapping(

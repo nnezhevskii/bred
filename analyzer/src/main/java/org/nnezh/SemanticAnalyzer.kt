@@ -17,6 +17,7 @@ import org.nnezh.bred.ast.DeclareTypeASTNode
 import org.nnezh.bred.ast.DoubleLiteralExpressionASTNode
 import org.nnezh.bred.ast.EmptyNode
 import org.nnezh.bred.ast.ExpressionASTNode
+import org.nnezh.bred.ast.FieldAccessChainExpressionASTNode
 import org.nnezh.bred.ast.ForStatementAstNode
 import org.nnezh.bred.ast.FunctionCallExpressionASTNode
 import org.nnezh.bred.ast.FunctionDeclAstNode
@@ -683,13 +684,29 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                 return warnings.right()
             }
 
-            is TypeClassDeclAstNode -> {
-                TODO() /* Should not be there */
+            is FieldAccessChainExpressionASTNode -> {
+                val warnings = mutableListOf<SemanticError.SemanticWarning>()
+                // TODO What about SomeMethod().counter. << ... Can be not only variables here but also methods
+
+                var res = scope.findVariable(node.root)?.first ?: return buildError(node, SemanticErrorType.UNKNOWN_VARIABLE).left()
+                var root: FieldAccessChainExpressionASTNode = node
+                while (root.next != null) {
+                    val fields = globalContext.typeRegistry.getProductTypeFields(res.name)
+                    if (root.next!!.root !in fields.keys) {
+                        return buildError(root, SemanticErrorType.UNKNOWN_FIELD).left()
+                    }
+                    root = root.next as FieldAccessChainExpressionASTNode
+                    res = fields[root.root]!!
+                    val tmp = 0
+                }
+                scope.put(node, res)
+
+
+                return warnings.right()
             }
 
-            is TypeClassMethodDeclAstNode -> {
-                TODO() /* Should not be there */
-            }
+            is TypeClassDeclAstNode -> { TODO() /* Should not be there */ }
+            is TypeClassMethodDeclAstNode -> { TODO() /* Should not be there */ }
         }
     }
 
@@ -974,6 +991,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
             is BinaryExpressionASTNode -> "${left.renderExpression()} ${operator.lexeme} ${right.renderExpression()}"
             is FunctionCallExpressionASTNode -> "$name(${arguments.joinToString(", ") { it.renderExpression() }})"
             is UnaryExpressionASTNode -> "${operator.lexeme}${operand.renderExpression()}"
+            is FieldAccessChainExpressionASTNode -> this.root + this.next?.let { n -> "." + n.renderExpression() }
         }
 
     private fun String.escape(): String =

@@ -9,9 +9,12 @@ import org.nnezh.bred.ast.BlockAstNode
 import org.nnezh.bred.ast.BooleanLiteralExpressionASTNode
 import org.nnezh.bred.ast.CallFunctionStatementAstNode
 import org.nnezh.bred.ast.DeclareGlobalVariableASTNode
+import org.nnezh.bred.ast.DeclareProductTypeASTNode
+import org.nnezh.bred.ast.DeclareTypeASTNode
 import org.nnezh.bred.ast.DoubleLiteralExpressionASTNode
 import org.nnezh.bred.ast.EmptyNode
 import org.nnezh.bred.ast.ExpressionASTNode
+import org.nnezh.bred.ast.FieldAccessChainExpressionASTNode
 import org.nnezh.bred.ast.ForStatementAstNode
 import org.nnezh.bred.ast.FunctionArgument
 import org.nnezh.bred.ast.FunctionDeclAstNode
@@ -26,6 +29,9 @@ import org.nnezh.bred.ast.VariableExpressionASTNode
 import org.nnezh.bred.ast.WhileStatementAstNode
 import org.nnezh.bred.common.TypeSign
 import org.nnezh.bred.context.ProgramGlobalContext
+import org.nnezh.org.nnezh.ICGenerator.LLTACElement.Companion.endStructDef
+import org.nnezh.org.nnezh.ICGenerator.LLTACElement.Companion.field
+import org.nnezh.org.nnezh.ICGenerator.LLTACElement.Companion.structDef
 
 class LLTACGenerator(
     private val nameEmitter: TACNameEmitter = TACNameEmitter(),
@@ -49,6 +55,7 @@ class LLTACGenerator(
             is ProgramRoot -> {
                 node.globalVariables.forEach { instructions.addAll(visit(it)) }
                 node.functions.forEach { instructions.addAll(visit(it)) }
+                node.types.forEach { instructions.addAll(visit(it)) }
             }
 
             is FunctionDeclAstNode -> {
@@ -107,8 +114,26 @@ class LLTACGenerator(
                         }
                     }
 
+                    is FieldAccessChainExpressionASTNode -> {
+                        expressionLLTACGenerator.buildInstructionsForExpression(null, lValue.tacType(), node.lValue)
+                    }
+
                     else -> lltacError("unexpected lvalue for TAC generation", node)
                 }
+            }
+
+            is DeclareTypeASTNode -> {
+                when (node) {
+                    is DeclareProductTypeASTNode -> {
+                        instructions.add(structDef(globalContext.findType(node.name)!!))
+                        node.fields.forEach { f ->
+                            instructions.add(field(f.key, f.value))
+                        }
+                        instructions.add(endStructDef())
+                    }
+                }
+
+                val temp = 0
             }
 
             is CallFunctionStatementAstNode -> {

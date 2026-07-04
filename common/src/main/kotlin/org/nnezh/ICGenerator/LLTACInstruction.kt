@@ -72,6 +72,19 @@ sealed interface LLTACElement {
                 arg2 = Operand.Variable(index, intType),
             )
 
+        fun structDef(type: TypeSign) = LLTACInstruction(
+            opcode = LLTACOperation.LLTAC_STRUCT_DEF,
+            destination = Operand.TypeConst(type),
+        )
+        fun endStructDef() = LLTACInstruction(
+            opcode = LLTACOperation.LLTAC_STRUCT_DEF_END,
+            destination = null
+        )
+        fun field(name: String, type: TypeSign) = LLTACInstruction(
+            opcode = LLTACOperation.LLTAC_FIELD,
+            destination = Operand.Variable(name = name, type = type),
+        )
+
         fun assignVariable(name: String, type: TypeSign, arg: String): LLTACElement =
             LLTACInstruction(
                 opcode = LLTACOperation.LLTAC_ASSIGN,
@@ -110,6 +123,10 @@ sealed interface LLTACElement {
                 destination = Operand.Variable(name = name, type = type),
                 arg1 = Operand.BoolConst(value),
             )
+
+//        fun loadField(
+//
+//        )
 
         fun ret(name: String? = null, type: TypeSign? = null): LLTACElement =
             LLTACRetInstruction(if (name == null || type == null) null else Pair(name, type))

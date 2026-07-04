@@ -205,6 +205,12 @@ class CTranspile {
                 cCode.add("${left}[$index]=${value};")
 
             }
+
+            LLTACOperation.LLTAC_LDF -> TODO()
+            LLTACOperation.LLTAC_STF -> TODO()
+            LLTACOperation.LLTAC_STRUCT_DEF -> TODO()
+            LLTACOperation.LLTAC_STRUCT_DEF_END -> TODO()
+            LLTACOperation.LLTAC_FIELD -> TODO()
         }
         } catch (error: CTranspileException) {
             throw CTranspileException(

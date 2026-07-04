@@ -134,6 +134,7 @@ class AbstractSyntaxTreeExpressionParser : Parser<ExpressionASTNode> {
                 val node = when {
                     context.top() is Token.Punctuation.LParen -> parseCall(token, context)
                     context.top() is Token.Punctuation.LBracket -> parseArrayAccess(token, context)
+                    context.top() is Token.Punctuation.Dot -> parseFieldAccessChain(token, context)
                     else -> VariableExpressionASTNode(token)
                 }
                 if (node is ArrayElementAccessASTNode && context.top() is Token.Punctuation.LParen) {
@@ -174,6 +175,20 @@ class AbstractSyntaxTreeExpressionParser : Parser<ExpressionASTNode> {
 
             else -> raise(AstErrorFactory.expectedExpression(token))
         }
+
+    private fun Raise<ASTError>.parseFieldAccessChain(token: Token, context: TokensContext): FieldAccessChainExpressionASTNode {
+        val rootName = token.lexeme
+        var next: FieldAccessChainExpressionASTNode? = null
+
+        if (context.top() is Token.Punctuation.Dot) {
+            context.consumeToken()
+            val chain = match<Token.Identifier>(context.consumeToken()) { AstErrorFactory.buildError("identifier", it) }
+            next = parseFieldAccessChain(chain, context)
+        }
+
+
+        return FieldAccessChainExpressionASTNode(rootName, next)
+    }
 
     private fun Raise<ASTError>.parseArrayAccess(name: Token, context: TokensContext): ArrayElementAccessASTNode {
         context.consumeToken() // '['

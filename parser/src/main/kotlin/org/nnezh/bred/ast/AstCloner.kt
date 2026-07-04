@@ -177,6 +177,11 @@ object AstCloner {
                 operator = cloneLocatedUnaryOperator(node.operator),
                 operand = cloneExpression(node.operand, replacement),
             )
+
+            is FieldAccessChainExpressionASTNode -> FieldAccessChainExpressionASTNode(
+                root = node.root,
+                next = node.next?.let { cloneExpression(it, replacement) as FieldAccessChainExpressionASTNode }
+            )
         }
 
     private fun cloneTypeClass(

@@ -86,4 +86,23 @@ enum class LLTACOperation {
         override fun toString() = "STORE"
     },
 
+    LLTAC_LDF {
+        override fun toString() = "LOAD_FIELD"
+    },
+
+    LLTAC_STF {
+        override fun toString() = "STORE_FIELD"
+    },
+
+    LLTAC_STRUCT_DEF {
+        override fun toString() = "STRUCT_DEF"
+    },
+
+    LLTAC_STRUCT_DEF_END {
+        override fun toString() = "STRUCT_DEF_END"
+    },
+
+    LLTAC_FIELD {
+        override fun toString() = "FIELD"
+    }
 }
