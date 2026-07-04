@@ -85,6 +85,21 @@ internal data class NamedTypeSign internal constructor(
         get() = true
 }
 
+internal data class ProductTypeSign internal constructor(
+    override val name: String,
+    val fields: LinkedHashMap<String, TypeSign>
+): TypeSign {
+    override val isPrimitive: Boolean
+        get() = false
+    override val isArray: Boolean
+        get() = false
+    override val isResolved: Boolean
+        get() = true
+    override val arguments: List<TypeSign>
+        get() = fields.values.toSet().toList()
+
+}
+
 internal data class GenericTypeSign internal constructor(
     override val name: String,
 ) : TypeSign {
@@ -129,6 +144,16 @@ public class TypeRegistry {
         namedTypes.getOrPut(name) { NamedTypeSign(name) }.also { existing ->
             require(!existing.isPrimitive) { "Primitive type '$name' cannot be redeclared as user type" }
         }
+    fun declareProductType(name: String, fields: LinkedHashMap<String, TypeSign>): TypeSign {
+        require(fields.values.all { it.isResolved}) { "field type must me resolved, got unresolved in ${name}" }
+        require(name !in namedTypes.keys ) { "Type ${name} is not unique" }
+        namedTypes[name] = ProductTypeSign(name, fields)
+        return namedTypes[name]!!
+    }
+
+    fun getProductTypeFields(name: String): Map<String, TypeSign> {
+        return (namedTypes[name] as ProductTypeSign).fields
+    }
 
     public fun generic(name: String): TypeSign =
         GenericTypeSign(name)
@@ -206,6 +231,7 @@ public class TypeRegistry {
         val resolvedArgs = type.arguments.map { argument ->
             resolve(argument, genericScope).fold(ifLeft = { return it.left() }, ifRight = { it })
         }
-        return NamedTypeSign(type.name, resolvedArgs).right()
+        return namedTypes[type.name]!!.right()
+//        return NamedTypeSign(type.name, resolvedArgs).right()
     }
 }

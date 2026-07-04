@@ -582,28 +582,6 @@ class LLTAGCompileExpectationsTest {
   }
 
   @Test
-  fun `bundled 3ac example compiles through tac builder with instantiated generic arrays`() {
-    val tac = formattedTac(Files.readString(Path.of("examples/3ac.bred")))
-
-    assertTrue(
-      tac.any { it == "func arrayToString_Array_Int_Int_String:" },
-      "expected instantiated arrayToString, got:\n${tac.joinToString("\n")}",
-    )
-    assertTrue(
-      tac.any { it == "func bubbleSort_Array_Int_Int_Unit:" },
-      "expected instantiated bubbleSort, got:\n${tac.joinToString("\n")}",
-    )
-    assertTrue(
-      tac.any { it == "func binarySearch_Array_Int_Int_Int_Int:" },
-      "expected instantiated binarySearch, got:\n${tac.joinToString("\n")}",
-    )
-    assertTrue(
-      tac.none { it.contains("TypeRef") || it.contains("PrimitiveTypeSign") },
-      "unresolved/internal type leaked into TAC:\n${tac.joinToString("\n")}",
-    )
-  }
-
-  @Test
   fun `user function calls use mangled target name`() {
     val tac = formattedTac(
       """

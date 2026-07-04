@@ -83,6 +83,9 @@ sealed class Token {
         data class Typeclass(override val position: Position) : Keyword() {
             override val lexeme: String = "typeclass"
         }
+        data class Type(override val position: Position) : Keyword() {
+            override val lexeme: String = "type"
+        }
 
         data class Instance(override val position: Position) : Keyword() {
             override val lexeme: String = "instance"
@@ -91,6 +94,7 @@ sealed class Token {
         companion object {
             /** Maps reserved words to their token factories. */
             val byText: Map<String, (Position) -> Keyword> = mapOf(
+                "type" to :: Type,
                 "fun" to ::Fun,
                 "val" to ::Val,
                 "var" to ::Var,

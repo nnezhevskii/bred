@@ -5,6 +5,7 @@ import org.nnezh.bred.ast.ASTError
 import org.nnezh.bred.ast.ArrayDeclarationASTNode
 import org.nnezh.bred.ast.AstErrorFactory
 import org.nnezh.bred.ast.DeclareGlobalVariableASTNode
+import org.nnezh.bred.ast.DeclareTypeASTNode
 import org.nnezh.bred.ast.DeclareVariableASTNode
 import org.nnezh.bred.ast.FunctionDeclAstNode
 import org.nnezh.bred.ast.InstanceDeclAstNode
@@ -13,6 +14,7 @@ import org.nnezh.bred.ast.ProgramRoot
 import org.nnezh.bred.ast.ScalarVariableInitializationASTNode
 import org.nnezh.bred.ast.TokensContext
 import org.nnezh.bred.ast.TypeClassDeclAstNode
+import org.nnezh.bred.ast.TypeParser
 import org.nnezh.bred.ast.parseWith
 import org.nnezh.lexer.Token
 
@@ -21,12 +23,14 @@ class ProgramParser(
     private val globalVariableParser: Parser<DeclareVariableASTNode>,
     private val typeClassParser: TypeClassParser,
     private val instanceParser: InstanceParser,
+    private val typeParser: TypeParser
 ) : Parser<ProgramRoot> {
     override fun Raise<ASTError>.parse(context: TokensContext): ProgramRoot {
         val functions = mutableListOf<FunctionDeclAstNode>()
         val globalVariables = mutableListOf<DeclareGlobalVariableASTNode>()
         val typeClasses = mutableListOf<TypeClassDeclAstNode>()
         val instances = mutableListOf<InstanceDeclAstNode>()
+        val types = mutableListOf<DeclareTypeASTNode>()
 
         while (!context.endOfInput) {
             when (context.top()) {
@@ -34,6 +38,7 @@ class ProgramParser(
                 is Token.Keyword.Val -> globalVariables.add(parseWith(globalVariableParser, context).toGlobal())
                 is Token.Keyword.Typeclass -> typeClasses.add(parseWith(typeClassParser, context))
                 is Token.Keyword.Instance -> instances.add(parseWith(instanceParser, context))
+                is Token.Keyword.Type -> types.add(parseWith(typeParser, context))
                 else -> raise(AstErrorFactory.expectedFunOrVariableDeclarationError(context.top()))
             }
         }
@@ -41,7 +46,7 @@ class ProgramParser(
         return ProgramRoot(
             functions = functions,
             globalVariables = globalVariables,
-            types = emptyList(),
+            types = types,
             typeClasses = typeClasses,
             instances = instances,
         )

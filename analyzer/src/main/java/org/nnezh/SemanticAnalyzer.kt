@@ -356,53 +356,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
             }
 
             is FunctionCallExpressionASTNode -> {
-                val warnings = mutableListOf<SemanticError.SemanticWarning>()
-                node.arguments.forEach { argument ->
-                    visit(argument, scope).fold(
-                        ifLeft = { return it.left() },
-                        ifRight = { warnings.addAll(it) }
-                    )
-                }
-                val newScope = scope.innerScope()
-                val args = node.arguments.map { newScope.get(it) }
-                if (args.any { it == null }) {
-                    return singletonList(
-                        SemanticError.FunctionSemanticError(
-                            node,
-                            SemanticErrorType.COULDNT_RESOLVE_ARGUMENT_TYPE,
-                            SemanticDiagnosticDetail.ControlFlow("could not resolve all argument types for call '${node.name}'.")
-                        )
-                    ).left()
-                }
-
-                val actualArgs = args.filterNotNull()
-                val signature = newScope.getFunction(node.name, actualArgs)
-                if (signature == null) {
-                    return if (newScope.functionExist(node.name)) {
-                        singletonList(
-                            SemanticError.FunctionSemanticError(
-                                node,
-                                SemanticErrorType.FUNCTION_EXISTS_BUT_WRONG_ARGUMENTS,
-                                SemanticDiagnosticDetail.FunctionWrongArguments(
-                                    node.name,
-                                    actualArgs,
-                                    newScope.functionCandidates(node.name),
-                                )
-                            )
-                        ).left()
-                    } else {
-                        singletonList(
-                            SemanticError.FunctionSemanticError(
-                                node,
-                                SemanticErrorType.FUNCTION_NOT_FOUND,
-                                SemanticDiagnosticDetail.FunctionNotFound(node.name, actualArgs)
-                            )
-                        ).left()
-                    }
-                } else {
-                    newScope.put(node, signature.resultType)
-                    return emptyList<SemanticError.SemanticWarning>().right()
-                }
+                return handleFunctionCallExpression(node, scope)
             }
 
             is BooleanLiteralExpressionASTNode -> {
@@ -927,6 +881,82 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
 
     private fun blockContainsExplicitReturn(block: BlockAstNode): Boolean =
         block.statements.any { statementContainsExplicitReturn(it) }
+
+    private fun handleFunctionCallExpression(node: FunctionCallExpressionASTNode, scope: Scope): Either<List<SemanticError>, List<SemanticError.SemanticWarning>> {
+        val warnings = mutableListOf<SemanticError.SemanticWarning>()
+        node.arguments.forEach { argument ->
+            visit(argument, scope).fold(
+                ifLeft = { return it.left() },
+                ifRight = { warnings.addAll(it) }
+            )
+        }
+        val newScope = scope.innerScope()
+        val args = node.arguments.map { newScope.get(it) }
+        if (args.any { it == null }) {
+            return singletonList(
+                SemanticError.FunctionSemanticError(
+                    node,
+                    SemanticErrorType.COULDNT_RESOLVE_ARGUMENT_TYPE,
+                    SemanticDiagnosticDetail.ControlFlow("could not resolve all argument types for call '${node.name}'.")
+                )
+            ).left()
+        }
+
+        val actualArgs = args.filterNotNull()
+        val signature = newScope.getFunction(node.name, actualArgs)
+
+        // is constructor
+        if (node.name in globalContext.types) {
+            val constructor = globalContext.constructors[node.name] ?: return buildError(node, SemanticErrorType.CONSTRUCTOR_IS_EXPECTED).left()
+            if (constructor.arguments != actualArgs) {
+                return buildError(node, SemanticErrorType.CONSTRUCTOR_IS_FOUND_BUT_WRONG_ARGUMENTS).left()
+            }
+
+            // TODO: I'm not if it's good idea to set flag and change flags during analyzing
+            // Think about it later
+            node.isConstructorCalling = true
+            newScope.put(node, globalContext.findType(node.name)!!)
+            return emptyList<SemanticError.SemanticWarning>().right()
+        }
+
+        // is function
+        if (signature == null) {
+            return if (newScope.functionExist(node.name)) {
+                singletonList(
+                    SemanticError.FunctionSemanticError(
+                        node,
+                        SemanticErrorType.FUNCTION_EXISTS_BUT_WRONG_ARGUMENTS,
+                        SemanticDiagnosticDetail.FunctionWrongArguments(
+                            node.name,
+                            actualArgs,
+                            newScope.functionCandidates(node.name),
+                        )
+                    )
+                ).left()
+            } else {
+                singletonList(
+                    SemanticError.FunctionSemanticError(
+                        node,
+                        SemanticErrorType.FUNCTION_NOT_FOUND,
+                        SemanticDiagnosticDetail.FunctionNotFound(node.name, actualArgs)
+                    )
+                ).left()
+            }
+        } else {
+            newScope.put(node, signature.resultType)
+            return emptyList<SemanticError.SemanticWarning>().right()
+        }
+    }
+
+    private fun buildError(node: ASTNode, code: SemanticErrorType): List<SemanticError> {
+        return singletonList(
+            SemanticError.FunctionSemanticError(
+                node,
+                code
+            )
+        )
+
+    }
 
     private fun List<TypeSign>.renderArguments(): String =
         joinToString(prefix = "(", postfix = ")") { it.render() }

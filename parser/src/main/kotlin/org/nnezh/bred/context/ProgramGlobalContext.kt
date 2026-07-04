@@ -13,6 +13,7 @@ import org.nnezh.bred.common.TypeSign
 class ProgramGlobalContext(
     val typeRegistry: TypeRegistry = TypeRegistry(),
     val functions: MutableMap<String, FunctionMeta> = mutableMapOf(),
+    val constructors: MutableMap<String,ConstructorMeta> = mutableMapOf(),
     val typeclasses: MutableMap<String, TypeclassMeta> = mutableMapOf(),
     val instances: MutableMap<InstanceKey, InstanceMeta> = mutableMapOf(),
 ) {
@@ -45,8 +46,18 @@ class ProgramGlobalContext(
             typeRegistry.declareUserType(name)
         }
 
-    fun declareUserType(name: String): TypeSign =
-        typeRegistry.declareUserType(name)
+    fun declareProductType(name: String, fields: Map<String, TypeSign>): TypeSign {
+        val newFields: LinkedHashMap<String, TypeSign> = LinkedHashMap()
+        for (field in fields) {
+            newFields[field.key] = resolveOrThrow(field.value)
+        }
+        return typeRegistry.declareProductType(name, newFields)
+    }
+
+    fun addProductTypeConstructor(name: String) {
+        val args = typeRegistry.getProductTypeFields(name).map { it.value }
+        constructors[name] = ConstructorMeta(args)
+    }
 
     fun genericType(name: String): TypeSign =
         typeRegistry.generic(name)
@@ -114,22 +125,6 @@ class ProgramGlobalContext(
 }
 
 data class TypeMeta(val name: String, val isPrimitive: Boolean)
-
-sealed interface FunctionMeta {
-    val name: String
-    val isTemplate: Boolean
-}
-
-data class BuiltInFunctionMeta(
-    override val name: String,
-    override val isTemplate: Boolean
-): FunctionMeta
-
-data class DeclaredFunctionMeta(
-    override val name: String,
-    override val isTemplate: Boolean,
-    val astNode: FunctionDeclAstNode
-): FunctionMeta
 
 data class TypeclassMeta(
     val name: String,

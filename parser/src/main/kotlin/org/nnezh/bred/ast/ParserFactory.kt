@@ -43,8 +43,9 @@ class ParserFactory(
     private val functionParser: Parser<FunctionDeclAstNode> by lazy { FunctionParser(lazy { blockParser }, typeSignParser) }
     private val typeClassParser by lazy { TypeClassParser(typeSignParser) }
     private val instanceParser by lazy { InstanceParser(lazy { blockParser }, typeSignParser) }
+    private val typeParser by lazy { TypeParser() }
     private val programParser: Parser<ProgramRoot> by lazy {
-        ProgramParser(functionParser, variableInitializationParser, typeClassParser, instanceParser)
+        ProgramParser(functionParser, variableInitializationParser, typeClassParser, instanceParser, typeParser)
     }
 
     fun programParser(): Parser<ProgramRoot> = programParser

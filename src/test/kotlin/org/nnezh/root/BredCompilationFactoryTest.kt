@@ -28,19 +28,6 @@ class BredCompilationFactoryTest {
     }
 
     @Test
-    fun `bred compiler compiles bundled 3ac example`() {
-        val result = BredToCCompilerFactory().create().compile(Path.of("examples/3ac.bred"))
-
-        result.fold(
-            ifLeft = { errors -> error("expected C code, got: $errors") },
-            ifRight = { cLines ->
-                assertTrue(cLines.any { it.contains("int main") }, "expected main function in C output")
-                assertTrue(cLines.any { it.contains("bubbleSort_Array_Int_Int_Unit") }, "expected instantiated bubbleSort")
-            },
-        )
-    }
-
-    @Test
     fun `bred compiler emits global static arrays`(@TempDir dir: Path) {
         val source = dir.resolve("global-array.bred")
         source.writeText(

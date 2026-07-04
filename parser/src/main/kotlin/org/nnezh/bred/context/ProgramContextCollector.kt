@@ -1,6 +1,7 @@
 package org.nnezh.bred.context
 
 import org.nnezh.bred.ast.ASTNode
+import org.nnezh.bred.ast.DeclareProductTypeASTNode
 import org.nnezh.bred.ast.DeclareTypeASTNode
 import org.nnezh.bred.ast.FunctionDeclAstNode
 import org.nnezh.bred.ast.InstanceDeclAstNode
@@ -53,7 +54,12 @@ class ProgramContextCollector {
 
     private fun handleTypes(types: List<DeclareTypeASTNode>) {
         types.forEach { type ->
-            context.declareUserType(type.name)
+            when (type) {
+                is DeclareProductTypeASTNode -> {
+                    val productType = context.declareProductType(type.name, type.fields)
+                    context.addProductTypeConstructor(productType.name)
+                }
+            }
         }
     }
 

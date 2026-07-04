@@ -75,8 +75,15 @@ object AstCloner {
             size = node.size,
         )
 
-    private fun cloneTypeDeclaration(node: DeclareTypeASTNode): DeclareTypeASTNode =
-        DeclareTypeASTNode(node.name)
+    private fun cloneTypeDeclaration(node: DeclareTypeASTNode): DeclareTypeASTNode {
+        return when (node) {
+            is DeclareProductTypeASTNode -> DeclareProductTypeASTNode(
+                name = node.name,
+                isMutable = node.isMutable,
+                fields = node.fields.toMutableMap()
+            )
+        }
+    }
 
     private fun cloneFunction(
         node: FunctionDeclAstNode,
@@ -258,6 +265,7 @@ object AstCloner {
             is Token.Keyword.Var -> Token.Keyword.Var(clonePosition(token.position))
             is Token.Keyword.If -> Token.Keyword.If(clonePosition(token.position))
             is Token.Keyword.Else -> Token.Keyword.Else(clonePosition(token.position))
+            is Token.Keyword.Type -> Token.Keyword.Type(clonePosition(token.position))
             is Token.Keyword.Return -> Token.Keyword.Return(clonePosition(token.position))
             is Token.Keyword.While -> Token.Keyword.While(clonePosition(token.position))
             is Token.Keyword.For -> Token.Keyword.For(clonePosition(token.position))

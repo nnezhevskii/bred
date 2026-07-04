@@ -25,7 +25,7 @@ class AstPrettyPrinter(
             when (node) {
                 is ProgramRoot -> program(node, level)
                 is DeclareGlobalVariableASTNode -> globalVariable(node, level)
-                is DeclareTypeASTNode -> line(level, "type ${node.name}")
+                is DeclareTypeASTNode ->  type(node, level) //line(level, "type ${node.name}")
                 is FunctionDeclAstNode -> function(node, level)
                 is TypeClassDeclAstNode -> typeClass(node, level)
                 is TypeClassMethodDeclAstNode -> line(level, methodSignature(node))
@@ -54,6 +54,19 @@ class AstPrettyPrinter(
             node.expression?.let {
                 line(level + 1, "initializer:")
                 expression(it, level + 2)
+            }
+        }
+
+        private fun type(node: DeclareTypeASTNode, level: Int) {
+            line(level, "type ${node.name}")
+            when (node) {
+                is DeclareProductTypeASTNode -> {
+                    line(level + 1, "isMutable = ${node.isMutable}")
+                    line(level + 1, "fields:")
+                    for (field in node.fields) {
+                        line(level + 2, "${field.key}: ${field.value}")
+                    }
+                }
             }
         }
 

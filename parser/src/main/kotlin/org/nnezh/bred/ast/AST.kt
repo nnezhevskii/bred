@@ -10,7 +10,18 @@ data class ProgramRoot(
     val instances: List<InstanceDeclAstNode> = emptyList(),
 ) : ASTNode
 
-data class DeclareTypeASTNode(val name: String) : ASTNode
+//data class DeclareTypeASTNode(val name: String) : ASTNode
+sealed interface DeclareTypeASTNode: ASTNode {
+    val name: String
+}
+
+data class DeclareProductTypeASTNode(
+    override val name: String,
+    val isMutable: Boolean,
+    val fields: Map<String, TypeSign>
+) : DeclareTypeASTNode
+
+
 
 sealed interface LeftValue
 
