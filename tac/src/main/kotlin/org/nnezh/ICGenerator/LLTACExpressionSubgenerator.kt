@@ -31,6 +31,7 @@ class LLTACExpressionSubgenerator(
     private val typeTable: Map<ExpressionASTNode, TypeSign>,
     private val globalContext: ProgramGlobalContext,
     private val mangledFunctionsCallback: () -> Map<String, String>,
+    private val variableTypeLookup: (String) -> TypeSign?,
 ) {
 
     private val binaryOperatorToTACCommand = mapOf(
@@ -229,20 +230,81 @@ class LLTACExpressionSubgenerator(
             }
 
             is FieldAccessChainExpressionASTNode -> {
-                expression as FieldAccessChainExpressionASTNode
-                // TODO
-                if (expression.next!!.next == null) {
-                    return LLTACExpressionSubgeneratorResult(
-                        instructions = emptyList(),
-                        finalVariable = "${expression.root}.${expression.next!!.root}",
-                        finalType = expression.tacType(),
-                    )
-                }
+                val destination = variable ?: lltacError("field access TAC destination is required", expression)
+                val target = expression.fieldAccessTarget()
+                LLTACExpressionSubgeneratorResult(
+                    instructions = listOf(
+                        LLTACElement.loadField(
+                            ownerPath = target.ownerPath,
+                            ownerType = target.ownerType,
+                            fieldName = target.fieldName,
+                            fieldType = target.fieldType,
+                            destination = destination,
+                        )
+                    ),
+                    finalVariable = destination,
+                    finalType = target.fieldType,
+                )
+            }
+        }
 
-//                val res = buildInstructionsForExpression(expression.next!!, )
-//                val instructions = mutableListOf<LLTACElement>()
-//                instructions.add()
-                TODO()
+    fun buildStoreInstructionsForFieldAccess(
+        expression: FieldAccessChainExpressionASTNode,
+        source: String,
+    ): List<LLTACElement> {
+        val target = expression.fieldAccessTarget()
+        return listOf(
+            LLTACElement.storeField(
+                ownerPath = target.ownerPath,
+                ownerType = target.ownerType,
+                fieldName = target.fieldName,
+                fieldType = target.fieldType,
+                source = source,
+            )
+        )
+    }
+
+    private fun FieldAccessChainExpressionASTNode.fieldAccessTarget(): FieldAccessTarget {
+        val names = flatten()
+        if (names.size < 2) {
+            lltacError("field access chain must contain at least one field", this)
+        }
+
+        var ownerType = variableTypeLookup(names.first())
+            ?: lltacError("missing TAC type for field access root '${names.first()}'", this)
+        var ownerPath = names.first()
+
+        for (fieldName in names.drop(1).dropLast(1)) {
+            val fieldType = fieldType(ownerType, fieldName, this)
+            ownerPath = "$ownerPath.$fieldName"
+            ownerType = fieldType
+        }
+
+        val fieldName = names.last()
+        val fieldType = fieldType(ownerType, fieldName, this)
+        return FieldAccessTarget(
+            ownerPath = ownerPath,
+            ownerType = ownerType,
+            fieldName = fieldName,
+            fieldType = fieldType,
+        )
+    }
+
+    private fun fieldType(ownerType: TypeSign, fieldName: String, expression: FieldAccessChainExpressionASTNode): TypeSign {
+        val fields = try {
+            globalContext.typeRegistry.getProductTypeFields(ownerType.name)
+        } catch (error: Throwable) {
+            lltacError("type '${ownerType.render()}' has no fields", expression)
+        }
+        return fields[fieldName] ?: lltacError("type '${ownerType.render()}' has no field '$fieldName'", expression)
+    }
+
+    private fun FieldAccessChainExpressionASTNode.flatten(): List<String> =
+        buildList {
+            var current: FieldAccessChainExpressionASTNode? = this@flatten
+            while (current != null) {
+                add(current.root)
+                current = current.next
             }
         }
 
@@ -258,4 +320,11 @@ class LLTACExpressionSubgenerator(
             is StringLiteralExpressionASTNode -> globalContext.stringType
             else -> lltacError("missing semantic type for expression", expression)
         }
+
+    private data class FieldAccessTarget(
+        val ownerPath: String,
+        val ownerType: TypeSign,
+        val fieldName: String,
+        val fieldType: TypeSign,
+    )
 }

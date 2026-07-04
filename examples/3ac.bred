@@ -1,9 +1,81 @@
 type Person       (name: String, age: Int)
-type mut Counter  (person: Person, counter: Int)
+
+typeclass Printable<A> {
+    fun toString(a: A): String
+}
+
+typeclass Ordered<A> {
+    fun less(a: A, b: A): Boolean
+}
+
+instance Printable<Int> {
+    fun toString(value: Int): String {
+        return intToString(value)
+    }
+}
+
+instance Printable<Person> {
+    fun toString(person: Person): String {
+        return "name: " + person.name + " age: " + person.age
+    }
+}
+
+instance Ordered<Int> {
+    fun less(a: Int, b: Int): Boolean {
+        return a < b
+    }
+}
+
+fun printValue<T: Printable>(value: T) {
+    println(toString(value))
+}
+
+fun arrayToString<T: Printable>(arr: Array<T>, size: Int): String {
+    var buff: String = ""
+
+    if (size == 0) {
+        return ""
+    }
+    if (size == 1) {
+        return intToString(arr[0])
+    }
+
+    for (i in 0 to size - 1) {
+        buff = buff + intToString(arr[i]) + " "
+    }
+    buff = buff + intToString(arr[size - 1])
+
+    return buff
+}
+
+fun bubbleSort<T: Ordered>(a: Array<T>, size: Int) {
+    for (i in 0 to size) {
+        for (j in 0 to size) {
+            if (less(a[i], a[j])) {
+                val temp: Int = a[j]
+                a[j] = a[i]
+                a[i] = temp
+            }
+        }
+    }
+}
 
 fun main(): Unit {
-    val c: Counter = Counter(Person("Ann", 29), 0)
+/*
+    val arrSize: Int = readInt()
+    val arr: Array<Int>[1024]
 
-    c.counter = 30
+    for (i in 0 to arrSize) {
+         arr[i] = random(0, 100)
+    }
 
+  println(arrayToString(arr, arrSize))
+
+    bubbleSort(arr, arrSize)
+    println("After sorting:")
+    println(arrayToString(arr, arrSize))
+*/
+
+    printValue(Person("John Doe", 33))
+    readInt()
 }

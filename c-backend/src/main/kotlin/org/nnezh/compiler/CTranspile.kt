@@ -27,9 +27,12 @@ class CTranspile {
     fun compile(instructions: List<LLTACElement>): List<String> {
         firstFunctionWasProceeded = false
         val context = Context(instructions)
-        val cCode = collectGlobalStaticArrays(instructions)
-            .map { renderGlobalStaticArray(it) }
+        val cCode = collectStructDefinitions(instructions)
+            .map { renderStructDefinition(it) }
             .toMutableList()
+        cCode.addAll(collectGlobalStaticArrays(instructions)
+            .map { renderGlobalStaticArray(it) }
+        )
         cCode.addAll(collectFunctionHeaders(instructions)
             .map { renderPrototype(it) }
         )
@@ -78,6 +81,48 @@ class CTranspile {
 
     private fun collectGlobalStaticArrays(instructions: List<LLTACElement>): List<LLTACGlobalStaticArray> =
         instructions.filterIsInstance<LLTACGlobalStaticArray>()
+
+    private fun collectStructDefinitions(instructions: List<LLTACElement>): List<StructDefinition> {
+        val definitions = mutableListOf<StructDefinition>()
+        var index = 0
+        while (index < instructions.size) {
+            val instruction = instructions[index] as? LLTACInstruction
+            if (instruction?.opcode != LLTACOperation.LLTAC_STRUCT_DEF) {
+                index++
+                continue
+            }
+
+            val type = instruction.expectTypeConst(instruction.destination, "destination").type
+            val fields = mutableListOf<Operand.Variable>()
+            index++
+            while (index < instructions.size) {
+                val fieldInstruction = instructions[index] as? LLTACInstruction
+                    ?: throw CTranspileException("Malformed struct definition '${type.name}': expected FIELD or STRUCT_DEF_END")
+                when (fieldInstruction.opcode) {
+                    LLTACOperation.LLTAC_FIELD -> {
+                        fields.add(fieldInstruction.expectVariable(fieldInstruction.destination, "destination"))
+                        index++
+                    }
+                    LLTACOperation.LLTAC_STRUCT_DEF_END -> {
+                        definitions.add(StructDefinition(type, fields))
+                        index++
+                        break
+                    }
+                    else -> throw CTranspileException(
+                        "Malformed struct definition '${type.name}': unexpected ${fieldInstruction.opcode}"
+                    )
+                }
+            }
+        }
+        return definitions
+    }
+
+    private fun renderStructDefinition(definition: StructDefinition): String {
+        val fields = definition.fields.joinToString(" ") { field ->
+            "${typeToStringInInitialization(field.type)} ${field.name};"
+        }
+        return "typedef struct ${definition.type.name} { $fields } ${definition.type.name};"
+    }
 
     private fun skipGlobalStaticArray(context: Context): List<String> {
         context.consume()
@@ -150,6 +195,7 @@ class CTranspile {
             LLTACOperation.LLTAC_CALL -> {
                 val callingFunctionName = instruction.expectFunctionCall(instruction.arg1, "arg1").name
                 val destination = instruction.destination as? LeftValue
+                val destinationVariable = instruction.destination as? Operand.Variable
                 val amountOfArgs: Int = instruction.expectIntConst(instruction.arg2, "arg2").value.toInt()
                 val paramInstructions = (1.until(amountOfArgs + 1))
                     .map { i ->
@@ -157,7 +203,15 @@ class CTranspile {
                     }
                 val args: String = paramInstructions.reversed().joinToString(",")
 
-                val callingFunctionStr = "$callingFunctionName(${args})"
+                val callingFunctionStr = if (
+                    destinationVariable != null &&
+                    destinationVariable.type.isProductType() &&
+                    callingFunctionName == destinationVariable.type.name
+                ) {
+                    "(${destinationVariable.type.name}){$args}"
+                } else {
+                    "$callingFunctionName(${args})"
+                }
                 var finalLine = callingFunctionStr
                 destination?.let {
                     finalLine = "${it.asLeftValue()} = $callingFunctionStr"
@@ -206,11 +260,21 @@ class CTranspile {
 
             }
 
-            LLTACOperation.LLTAC_LDF -> TODO()
-            LLTACOperation.LLTAC_STF -> TODO()
-            LLTACOperation.LLTAC_STRUCT_DEF -> TODO()
-            LLTACOperation.LLTAC_STRUCT_DEF_END -> TODO()
-            LLTACOperation.LLTAC_FIELD -> TODO()
+            LLTACOperation.LLTAC_LDF -> {
+                val destination = instruction.expectLeftValue(instruction.destination, "destination").asLeftValue()
+                val owner = instruction.expectRightValue(instruction.arg1, "arg1").asRightValue()
+                val field = instruction.expectVariable(instruction.arg2, "arg2").name
+                cCode.add("$destination = $owner.$field;")
+            }
+            LLTACOperation.LLTAC_STF -> {
+                val owner = instruction.expectLeftValue(instruction.destination, "destination").asLeftValue()
+                val field = instruction.expectVariable(instruction.arg1, "arg1").name
+                val value = instruction.expectRightValue(instruction.arg2, "arg2").asRightValue()
+                cCode.add("$owner.$field = $value;")
+            }
+            LLTACOperation.LLTAC_STRUCT_DEF,
+            LLTACOperation.LLTAC_STRUCT_DEF_END,
+            LLTACOperation.LLTAC_FIELD -> { /* emitted before function prototypes */ }
         }
         } catch (error: CTranspileException) {
             throw CTranspileException(
@@ -242,7 +306,14 @@ class CTranspile {
             }
             val destination = (localTop as? LLTACInstruction)?.destination as? Operand.Variable
             if (localTop is LLTACInstruction && destination != null) {
-                if (localTop.opcode == LLTACOperation.LLTAC_PARAM) {
+                if (localTop.opcode in setOf(
+                        LLTACOperation.LLTAC_PARAM,
+                        LLTACOperation.LLTAC_STRUCT_DEF,
+                        LLTACOperation.LLTAC_STRUCT_DEF_END,
+                        LLTACOperation.LLTAC_FIELD,
+                        LLTACOperation.LLTAC_STF,
+                    )
+                ) {
                     continue
                 }
                 if (localTop.opcode == LLTACOperation.LLTAC_ALLOC) {
@@ -336,6 +407,10 @@ class CTranspile {
         operand as? Operand.FunctionCall
             ?: throw CTranspileException("expected $role to be a function call operand, got ${operand.describe()}")
 
+    private fun LLTACInstruction.expectTypeConst(operand: Operand?, role: String): Operand.TypeConst =
+        operand as? Operand.TypeConst
+            ?: throw CTranspileException("expected $role to be a type constant operand, got ${operand.describe()}")
+
     private fun LLTACInstruction.expectIntConst(operand: Operand?, role: String): Operand.IntConst =
         operand as? Operand.IntConst
             ?: throw CTranspileException("expected $role to be an Int constant operand, got ${operand.describe()}")
@@ -408,6 +483,7 @@ class CTranspile {
             type.isArray -> throw CTranspileException("Cannot render static array type as scalar C declaration: ${type.render()}")
             type.isStringType() -> "String"
             type.isUnitType() -> "void"
+            type.isProductType() -> type.name
             else -> throw CTranspileException("Unsupported C initialization type: ${type.render()}")
         }
     }
@@ -421,6 +497,7 @@ class CTranspile {
             type.isArray -> "${typeToStringInArguments(type.elementTypeOrNull!!)}*"
             type.isStringType() -> "String"
             type.isUnitType() -> "void"
+            type.isProductType() -> type.name
             else -> throw CTranspileException("Unsupported C argument type: ${type.render()}")
         }
     }
@@ -443,10 +520,18 @@ class CTranspile {
     private fun TypeSign.isUnitType(): Boolean =
         isPrimitive && name == TypeNames.UNIT
 
+    private fun TypeSign.isProductType(): Boolean =
+        isResolved && !isPrimitive && !isArray
+
     private data class FunctionHeader(
         val name: String,
         val returnType: TypeSign,
         val params: List<Pair<String, TypeSign>>,
+    )
+
+    private data class StructDefinition(
+        val type: TypeSign,
+        val fields: List<Operand.Variable>,
     )
 
     private class Context(private val tacLines: List<LLTACElement>) {

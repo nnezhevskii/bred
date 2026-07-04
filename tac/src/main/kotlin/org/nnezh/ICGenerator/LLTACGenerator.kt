@@ -39,11 +39,13 @@ class LLTACGenerator(
     private val globalContext: ProgramGlobalContext,
 ) {
     private val mangledFunctions: MutableMap<String, String> = hashMapOf()
+    private val localVariableTypes: MutableMap<String, TypeSign> = mutableMapOf()
     private val expressionLLTACGenerator = LLTACExpressionSubgenerator(
         nameEmitter = nameEmitter,
         typeTable = typeTable,
         globalContext = globalContext,
         mangledFunctionsCallback = { mangledFunctions },
+        variableTypeLookup = { name -> localVariableTypes[name] },
     )
 
     fun build(root: ASTNode): List<LLTACElement> =
@@ -53,16 +55,21 @@ class LLTACGenerator(
         val instructions = mutableListOf<LLTACElement>()
         when (node) {
             is ProgramRoot -> {
+                node.types.forEach { instructions.addAll(visit(it)) }
                 node.globalVariables.forEach { instructions.addAll(visit(it)) }
                 node.functions.forEach { instructions.addAll(visit(it)) }
-                node.types.forEach { instructions.addAll(visit(it)) }
             }
 
             is FunctionDeclAstNode -> {
+                localVariableTypes.clear()
                 val functionName = mangleFunctionName(node)
                 mangledFunctions[node.name] = functionName
                 instructions.add(LLTACElement.function(functionName, node.result))
-                instructions.addAll(node.arguments.map { LLTACElement.getParam(it.name, it.scopeType()) })
+                instructions.addAll(node.arguments.map {
+                    val type = it.scopeType()
+                    localVariableTypes[it.name] = type
+                    LLTACElement.getParam(it.name, type)
+                })
                 instructions.addAll(visit(node.body))
             }
 
@@ -115,7 +122,20 @@ class LLTACGenerator(
                     }
 
                     is FieldAccessChainExpressionASTNode -> {
-                        expressionLLTACGenerator.buildInstructionsForExpression(null, lValue.tacType(), node.lValue)
+                        val rightValueName = nameEmitter.nextVar()
+                        val rightType = node.rValue.tacType()
+                        val rightValue = expressionLLTACGenerator.buildInstructionsForExpression(
+                            variable = rightValueName,
+                            type = rightType,
+                            expression = node.rValue,
+                        )
+                        instructions.addAll(rightValue.instructions)
+                        instructions.addAll(
+                            expressionLLTACGenerator.buildStoreInstructionsForFieldAccess(
+                                expression = lValue,
+                                source = rightValue.finalVariable!!,
+                            )
+                        )
                     }
 
                     else -> lltacError("unexpected lvalue for TAC generation", node)
@@ -125,15 +145,14 @@ class LLTACGenerator(
             is DeclareTypeASTNode -> {
                 when (node) {
                     is DeclareProductTypeASTNode -> {
-                        instructions.add(structDef(globalContext.findType(node.name)!!))
-                        node.fields.forEach { f ->
+                        val type = globalContext.findType(node.name)!!
+                        instructions.add(structDef(type))
+                        globalContext.typeRegistry.getProductTypeFields(node.name).forEach { f ->
                             instructions.add(field(f.key, f.value))
                         }
                         instructions.add(endStructDef())
                     }
                 }
-
-                val temp = 0
             }
 
             is CallFunctionStatementAstNode -> {
@@ -185,6 +204,7 @@ class LLTACGenerator(
             }
 
             is ScalarVariableInitializationASTNode -> {
+                localVariableTypes[node.name] = node.type
                 val result = expressionLLTACGenerator.buildInstructionsForExpression(
                     variable = node.name,
                     type = node.type,
@@ -199,6 +219,7 @@ class LLTACGenerator(
             is ArrayDeclarationASTNode -> {
                 val elementType = node.type.arrayElementType()
                 val arrayType = globalContext.arrayOf(elementType)
+                localVariableTypes[node.name] = arrayType
                 instructions.add(LLTACElement.alloc(node.name, arrayType, node.size))
 
                 val initializer = node.expression

@@ -85,6 +85,34 @@ sealed interface LLTACElement {
             destination = Operand.Variable(name = name, type = type),
         )
 
+        fun loadField(
+            ownerPath: String,
+            ownerType: TypeSign,
+            fieldName: String,
+            fieldType: TypeSign,
+            destination: String,
+        ): LLTACElement =
+            LLTACInstruction(
+                opcode = LLTACOperation.LLTAC_LDF,
+                destination = Operand.Variable(name = destination, type = fieldType),
+                arg1 = Operand.Variable(name = ownerPath, type = ownerType),
+                arg2 = Operand.Variable(name = fieldName, type = fieldType),
+            )
+
+        fun storeField(
+            ownerPath: String,
+            ownerType: TypeSign,
+            fieldName: String,
+            fieldType: TypeSign,
+            source: String,
+        ): LLTACElement =
+            LLTACInstruction(
+                opcode = LLTACOperation.LLTAC_STF,
+                destination = Operand.Variable(name = ownerPath, type = ownerType),
+                arg1 = Operand.Variable(name = fieldName, type = fieldType),
+                arg2 = Operand.Variable(name = source, type = fieldType),
+            )
+
         fun assignVariable(name: String, type: TypeSign, arg: String): LLTACElement =
             LLTACInstruction(
                 opcode = LLTACOperation.LLTAC_ASSIGN,
