@@ -209,6 +209,18 @@ class SemanticAnalyzerTest {
     }
 
     @Test
+    fun `current time millis builtin returns Long`() {
+        assertNoSemanticDiagnostics(
+            """
+            fun main(): Unit {
+                val now: Long = currentTimeMillis()
+                val later: Boolean = now >= 0L
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
     fun `int literal cannot initialize Long without long suffix`() {
         assertSingleSemanticError(
             """

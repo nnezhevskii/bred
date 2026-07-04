@@ -11,6 +11,7 @@ object BuiltInMethods {
     private val boolean = TypeRef(TypeNames.BOOLEAN)
     private val double = TypeRef(TypeNames.DOUBLE)
     private val int = TypeRef(TypeNames.INT)
+    private val long = TypeRef(TypeNames.LONG)
     private val unit = TypeRef(TypeNames.UNIT)
 
     val specs: List<BuiltInFunctionSpec> = listOf(
@@ -30,12 +31,12 @@ object BuiltInMethods {
         BuiltInFunctionSpec(name = "intToString", args = listOf(int), string),
         BuiltInFunctionSpec(name = "doubleToString", args = listOf(double), string),
         BuiltInFunctionSpec(name = "random", args = listOf(int, int), int),
+        BuiltInFunctionSpec(name = "currentTimeMillis", args = listOf(), long),
 
 //        BuiltInFunctionSpec(name = "stringLength", args = listOf(string), int),
 //        BuiltInFunctionSpec(name = "stringConcat", args = listOf(string, string, string, int), unit),
 //        BuiltInFunctionSpec(name = "intToString", args = listOf(int, string, int), unit),
 //        BuiltInFunctionSpec(name = "substring", args = listOf(string, int, int, string, int), unit),
-//        BuiltInFunctionSpec(name = "currentTimeMillis", args = listOf(), int),
     )
 
     fun signatures(resolve: (TypeRef) -> TypeSign): List<FunctionSignature> =

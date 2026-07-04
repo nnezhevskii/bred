@@ -72,9 +72,12 @@ class ProgramGlobalContextTest {
             it.name == "println" && it.args == listOf(context.stringType)
         }
         val readInt = context.builtInSignatures.single { it.name == "readInt" }
+        val currentTimeMillis = context.builtInSignatures.single { it.name == "currentTimeMillis" }
 
         assertEquals(context.unitType, println.resultType)
         assertEquals(context.intType, readInt.resultType)
+        assertTrue(currentTimeMillis.args.isEmpty())
+        assertEquals(context.longType, currentTimeMillis.resultType)
     }
 
     private fun parse(source: String): ProgramRoot {

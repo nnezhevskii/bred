@@ -6,7 +6,7 @@
 #include <math.h>
 
 #ifdef _WIN32
-#include <sys/timeb.h>
+#include <windows.h>
 #else
 #include <sys/time.h>
 #endif
@@ -233,4 +233,23 @@ String doubleToString(double val) {
 // 18. random(min, max) -> Int
 int random(int min, int max) {
     return rand() % (max - min + 1) + min;
+}
+
+long long currentTimeMillis() {
+#ifdef _WIN32
+    FILETIME file_time;
+    ULARGE_INTEGER ticks;
+    const unsigned long long unix_epoch_offset = 116444736000000000ULL;
+
+    GetSystemTimeAsFileTime(&file_time);
+    ticks.LowPart = file_time.dwLowDateTime;
+    ticks.HighPart = file_time.dwHighDateTime;
+
+    return (long long)((ticks.QuadPart - unix_epoch_offset) / 10000ULL);
+#else
+    struct timeval time_value;
+
+    gettimeofday(&time_value, NULL);
+    return (long long)time_value.tv_sec * 1000LL + (long long)time_value.tv_usec / 1000LL;
+#endif
 }

@@ -277,6 +277,22 @@ class LLTAGCompileExpectationsTest {
   }
 
   @Test
+  fun `current time millis builtin emits Long typed call`() {
+    val tac = formattedTac(
+      """
+      fun main(): Unit {
+          val startedAt: Long = currentTimeMillis()
+      }
+      """.trimIndent(),
+    )
+
+    assertTrue(
+      tac.any { it.startsWith("CALL ") && it.contains("startedAt:Long") && it.contains("currentTimeMillis:Long") },
+      "expected Long currentTimeMillis call, got:\n${tac.joinToString("\n")}",
+    )
+  }
+
+  @Test
   fun `zero-trip for loop compiles`() {
     assertCompiles(
       """

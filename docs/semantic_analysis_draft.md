@@ -439,10 +439,11 @@ readString(): String
 intToString(Int): String
 doubleToString(Double): String
 random(Int, Int): Int
+currentTimeMillis(): Long
 ```
 
 The semantic tests cover representative built-ins such as `println`,
-`readInt`, and `stringEquals`.
+`readInt`, `stringEquals`, and `currentTimeMillis`.
 
 ## 12. Known Gaps
 

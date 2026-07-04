@@ -232,6 +232,28 @@ class CTranspileTest {
     }
 
     @Test
+    fun `currentTimeMillis call result transpiles as long long`() {
+        val tac = listOf(
+            LLTACElement.function("main", unit),
+            LLTACElement.call("currentTimeMillis", "now", long, 0),
+            LLTACElement.ret(),
+        )
+
+        assertEquals(
+            listOf(
+                "int main(int size, char** arg);",
+                "int main(int size, char** arg) {",
+                "init_runtime();",
+                "long long now;",
+                "now = currentTimeMillis();",
+                "return;",
+                "}",
+            ),
+            CTranspile().compile(tac),
+        )
+    }
+
+    @Test
     fun `emits global static array without initializer`() {
         val tac = listOf(
             LLTACElement.globalArray(
