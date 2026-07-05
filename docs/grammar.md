@@ -9,6 +9,7 @@ Source of truth:
 - `lexer/src/test/kotlin/org/nnezh/lexer`
 - `parser/src/main/kotlin/org/nnezh/bred/ast`
 - `parser/src/test/kotlin/org/nnezh/bred/ast/ParserTest.kt`
+- `parser/src/main/kotlin/org/nnezh/bred/context`
 
 Semantic checks are documented in `docs/semantic_analysis_draft.md`.
 The compiler-wide type model and resolution pipeline are documented in
@@ -31,13 +32,14 @@ identifier is scanned, exact text is matched against the keyword table.
 ### 1.1 Keywords
 
 ```text
-fun val var if else return while for in to true false mut typeclass instance
+fun val var if else return while for in to true false mut type typeclass instance
 ```
 
 Keywords are case-sensitive. Prefixes and longer words are identifiers:
 `function`, `valuable`, `typeclasses`, `instanceOf`.
 
-`mut` is lexed as a keyword but is not consumed by the current parser.
+`mut` is consumed only by product type declarations: `type mut Name(...)`.
+No later compiler phase currently gives `mut` a distinct semantic effect.
 
 ### 1.2 Literals
 
@@ -84,8 +86,8 @@ a lexer error with a hint for `&&` or `||`.
 ( ) { } [ ] , : .
 ```
 
-`;` is rejected by the lexer. The dot token exists but is not part of the
-current expression grammar.
+`;` is rejected by the lexer. The dot token is used by identifier-rooted product
+field access chains.
 
 ### 1.5 Whitespace and Comments
 
@@ -104,13 +106,15 @@ Comments do not produce tokens. Block comments are not nested.
 program      ::= { topLevelDecl } EOF ;
 topLevelDecl ::= functionDecl
                | globalValDecl
+               | productTypeDecl
                | typeclassDecl
                | instanceDecl ;
 ```
 
 Top-level `var`, statements, assignments, and call statements are rejected.
-Top-level declarations are stored in separate `ProgramRoot` lists; the AST does
-not preserve one combined top-level declaration order.
+Top-level declarations are stored in separate `ProgramRoot` lists
+(`types`, `functions`, `globalVariables`, `typeClasses`, `instances`); the AST
+does not preserve one combined top-level declaration order.
 
 ## 3. Types
 
@@ -140,7 +144,58 @@ Empty type argument lists are invalid: `Box<>`. Trailing commas are invalid:
 Primitive names initialized by `ProgramGlobalContext` and used by tests and
 built-ins are `Int`, `Long`, `Double`, `String`, `Boolean`, and `Unit`.
 
-## 4. Functions
+## 4. Product Types
+
+```ebnf
+productTypeDecl ::= "type" [ "mut" ] identifier "(" [ productField { "," productField } ] ")" ;
+productField    ::= identifier ":" identifier ;
+```
+
+Examples:
+
+```bred
+type Person(name: String, age: Int)
+type Address(city: String)
+type Person(name: String, age: Int, address: Address)
+type mut Counter(value: Int)
+type Empty()
+```
+
+Product declarations are represented as `DeclareProductTypeASTNode` values in
+`ProgramRoot.types`. The optional `mut` keyword is stored as
+`DeclareProductTypeASTNode.isMutable`.
+
+Field type syntax is currently a bare identifier, not the full `typeSign`
+grammar. Therefore these forms are not parsed as product field declarations:
+
+```bred
+type Box(value: Array<Int>)
+type Box(value: Int[])
+type PairBox(value: Pair<Int, String>)
+```
+
+The parser rejects duplicate field names inside one product type declaration.
+Trailing commas are invalid.
+
+Product type names are registered by `ProgramContextCollector`. Constructor
+calls use normal call syntax; during semantic analysis a call whose name matches
+a product type is treated as a constructor and its argument types are matched
+against the declared field types in field order.
+
+```bred
+val person: Person = Person("Nika", 7, Address("Berlin"))
+```
+
+Product field access is part of the expression grammar. Product field
+assignment is part of the assignment grammar. The current compiler parses,
+analyzes, lowers, and renders nested field chains whose root is an identifier,
+for example `person.address.city`.
+
+`mut` currently has no enforced semantic effect. In particular, field
+assignment is checked for type compatibility, but product mutability is not
+checked by the semantic analyzer.
+
+## 5. Functions
 
 ```ebnf
 functionDecl  ::= "fun" identifier genericParams? functionParams returnType? block ;
@@ -174,7 +229,7 @@ Sized parameter arrays such as `Int[3]` are not supported.
 Trailing commas in generic parameter lists and function parameter lists are
 invalid.
 
-### 4.1 Synthetic Return
+### 5.1 Synthetic Return
 
 After parsing a function body, if the top-level block has no
 `ReturnFunctionStatementAstNode`, the parser appends:
@@ -187,7 +242,7 @@ This happens regardless of the declared return type. The semantic analyzer must
 reject a non-`Unit` function whose only function-level return is synthetic.
 Nested returns do not suppress the synthetic return.
 
-## 5. Typeclasses and Instances
+## 6. Typeclasses and Instances
 
 ```ebnf
 typeclassDecl ::= "typeclass" identifier "<" identifier ">"
@@ -235,7 +290,7 @@ instance Printable { }
 instance Printable<Int, String> { }
 ```
 
-## 6. Variables and Arrays
+## 7. Variables and Arrays
 
 ```ebnf
 globalValDecl ::= valDecl ;
@@ -283,7 +338,7 @@ Global static arrays are emitted as C global storage. The current TAC/C lowering
 supports absent global array initializers and initializer lists made of literal
 elements; richer compile-time expressions are tracked in `docs/TODO.md`.
 
-## 7. Blocks and Statements
+## 8. Blocks and Statements
 
 ```ebnf
 block     ::= "{" { statement } "}" ;
@@ -316,19 +371,25 @@ Statement dispatch is based on the first token:
 Bare expression statements, indirect call statements such as `(f)()`, and
 literal-starting statements are rejected.
 
-### 7.1 Assignment
+### 8.1 Assignment
 
 ```ebnf
 assignment  ::= lvalue "=" expression ;
-lvalue      ::= identifier | arrayAccess ;
+lvalue      ::= identifier | arrayAccess | fieldAccess ;
 arrayAccess ::= identifier "[" expression "]" ;
+fieldAccess ::= identifier "." identifier { "." identifier } ;
 ```
 
 The assignment parser first parses the left side as an expression and then
 requires it to be either `VariableExpressionASTNode` or
-`ArrayElementAccessASTNode`.
+`ArrayElementAccessASTNode` or `FieldAccessChainExpressionASTNode`.
 
-### 7.2 Return
+The semantic analyzer checks field assignment type compatibility. It currently
+checks scalar binding mutability only for `VariableExpressionASTNode` lvalues;
+array element and product field assignments are not rejected merely because the
+root binding or product type was declared with `val` / without `mut`.
+
+### 8.2 Return
 
 ```ebnf
 returnStmt ::= "return" [ "Unit" | expression ] ;
@@ -341,7 +402,7 @@ returnStmt ::= "return" [ "Unit" | expression ] ;
 `Unit` is not a keyword; this rule is a parser special case for an identifier
 whose lexeme is `Unit`.
 
-### 7.3 If
+### 8.3 If
 
 ```ebnf
 ifStmt ::= "if" "(" expression ")" block [ "else" block ] ;
@@ -349,13 +410,13 @@ ifStmt ::= "if" "(" expression ")" block [ "else" block ] ;
 
 `else if` is invalid because `else` must be followed by a block.
 
-### 7.4 While
+### 8.4 While
 
 ```ebnf
 whileStmt ::= "while" "(" expression ")" block ;
 ```
 
-### 7.5 For
+### 8.5 For
 
 ```ebnf
 forStmt ::= "for" "(" identifier "in" expression "to" expression ")" block ;
@@ -380,7 +441,7 @@ indexes `0` through `size - 1`.
 The right-border variable name is `_right_border` plus the counter name. The
 counter and right-border declarations are both typed as `Int`.
 
-## 8. Expressions
+## 9. Expressions
 
 ```ebnf
 expression     ::= logicalOr ;
@@ -396,12 +457,13 @@ primary        ::= intLiteral
                  | doubleLiteral
                  | stringLiteral
                  | booleanLiteral
-                 | identifier [ callSuffix | arrayAccessSuffix ]
+                 | identifier [ callSuffix | arrayAccessSuffix | fieldAccessSuffix ]
                  | arrayInitList
                  | "(" expression ")" ;
 
 callSuffix        ::= "(" [ expression { "," expression } ] ")" ;
 arrayAccessSuffix ::= "[" expression "]" ;
+fieldAccessSuffix ::= "." identifier { "." identifier } ;
 ```
 
 All binary operators are left-associative. Unary operators are
@@ -416,29 +478,35 @@ right-associative and bind tighter than multiplicative operators.
 | 5 | `+`, `-` |
 | 6 | `*`, `/`, `%` |
 | 7 | unary `-`, `!` |
-| 8 | primary, calls, array access |
+| 8 | primary, calls, array access, field access |
 
-Function call suffixes attach only to identifiers. Array access may not be
-called directly: `arr[0](1)` is invalid. Indirect calls such as `(f)()` are not
-part of the grammar.
+Function call, array access, and field access suffixes attach only to
+identifier primaries. Array access may not be called directly: `arr[0](1)` is
+invalid. Field access may not be applied to arbitrary expressions:
+`makePerson().age`, `(person).age`, `people[0].age`, and `person.names[0]` are
+not part of the current grammar. Indirect calls such as `(f)()` are not part of
+the grammar.
 
 Function call arguments reject trailing commas. Array initialization lists
 permit `[]` but reject `[1,]` and `[1,, 2]`.
 
-## 9. Known Restrictions
+## 10. Known Restrictions
 
 - No semicolon syntax.
 - No top-level `var`.
 - No top-level statements.
 - No `else if` syntax.
-- No member access despite the lexer having a dot token.
+- No general member/method access beyond identifier-rooted product field
+  chains.
 - No indirect calls or first-class function syntax.
 - No parser-level semantic validation of type names. Type syntax is accepted
   as `TypeRef`; unknown concrete names are rejected later by
   `ProgramTypeResolver`.
 - No mutable static array declaration syntax.
-- No user-defined type declarations in the current parser grammar despite
-  `ProgramRoot.types` existing in the AST.
+- Product field declarations accept only bare identifier field types, not the
+  full `typeSign` grammar.
+- Product type declaration ordering, forward references, recursive products,
+  and `mut` semantics are not fully specified.
 
 
 
