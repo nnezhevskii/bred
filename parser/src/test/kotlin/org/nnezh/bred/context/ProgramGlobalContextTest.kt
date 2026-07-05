@@ -65,19 +65,20 @@ class ProgramGlobalContextTest {
     }
 
     @Test
-    fun `built in signatures are resolved from context registry`() {
+    fun `extern function signatures are resolved from context registry`() {
         val context = ProgramGlobalContext()
 
-        val println = context.builtInSignatures.single {
+        val println = context.externFunctionSignatures.single {
             it.name == "println" && it.args == listOf(context.stringType)
         }
-        val readInt = context.builtInSignatures.single { it.name == "readInt" }
-        val currentTimeMillis = context.builtInSignatures.single { it.name == "currentTimeMillis" }
+        val readInt = context.externFunctionSignatures.single { it.name == "readInt" }
+        val currentTimeMillis = context.externFunctionSignatures.single { it.name == "currentTimeMillis" }
 
         assertEquals(context.unitType, println.resultType)
         assertEquals(context.intType, readInt.resultType)
         assertTrue(currentTimeMillis.args.isEmpty())
         assertEquals(context.longType, currentTimeMillis.resultType)
+        assertEquals(context.externFunctionSignatures, context.builtInSignatures)
     }
 
     private fun parse(source: String): ProgramRoot {

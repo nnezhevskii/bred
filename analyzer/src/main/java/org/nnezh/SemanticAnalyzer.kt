@@ -64,7 +64,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
     fun analyzeWithResult(root: ProgramRoot): Either<List<SemanticError>, SemanticAnalysisResult> {
         val scope = Scope()
 
-        globalContext.builtInSignatures.forEach { scope.registerFunction(it) }
+        globalContext.externFunctionSignatures.forEach { scope.registerFunction(it) }
 
         root.globalVariables.forEach {
             visit(it, scope).fold(

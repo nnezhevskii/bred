@@ -8,13 +8,15 @@ import org.nnezh.bred.ast.InstanceDeclAstNode
 import org.nnezh.bred.ast.ProgramRoot
 import org.nnezh.bred.ast.TokensContext
 import org.nnezh.bred.ast.TypeClassDeclAstNode
-import org.nnezh.bred.common.BuiltInMethods
+import org.nnezh.bred.common.ExternalFunctionSpecs
 
-class ProgramContextCollector {
-    private var context: ProgramGlobalContext = ProgramGlobalContext()
+class ProgramContextCollector(
+    private val externalFunctionSpecs: List<ExternalFunctionSpecs.ExternalFunctionSpec> = ExternalFunctionSpecs.specs,
+) {
+    private var context: ProgramGlobalContext = ProgramGlobalContext(externalFunctionSpecs = externalFunctionSpecs)
 
     fun collect(root: ProgramRoot): ProgramGlobalContext {
-        context = ProgramGlobalContext()
+        context = ProgramGlobalContext(externalFunctionSpecs = externalFunctionSpecs)
         assembleRuntimeContext(context)
 
         visit(root)
@@ -65,7 +67,7 @@ class ProgramContextCollector {
 
 
     private fun assembleRuntimeContext(context: ProgramGlobalContext) {
-        BuiltInMethods.specs.forEach { spec ->
+        externalFunctionSpecs.forEach { spec ->
             context.addFunction(spec.name, BuiltInFunctionMeta(spec.name, false))
         }
     }

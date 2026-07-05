@@ -314,7 +314,7 @@ class TemplateInstantiator(
                 resolveTypeClassMethod(expression.name, argumentTypes.firstOrNull(), rewriteContext)?.let { return it.result }
                 when (val meta = context.functions[expression.name]) {
                     is DeclaredFunctionMeta -> meta.astNode.result
-                    is BuiltInFunctionMeta -> context.builtInSignatures
+                    is BuiltInFunctionMeta -> context.externFunctionSignatures
                         .firstOrNull { it.name == meta.name && it.args == argumentTypes }
                         ?.resultType
                         ?: context.unitType

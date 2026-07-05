@@ -5,7 +5,7 @@ Kotlin compiler for the **bred** language (`.bred` files): lexer -> AST -> seman
 ## Pipeline
 
 ```text
-.bred source -> Lexer -> Parser / AST -> TemplateInstantiator -> SemanticAnalyzer -> LLTACGenerator -> CTranspile -> MSVC cl.exe
+.bred source + implicit stdlib.bred -> Lexer -> Parser / AST -> TemplateInstantiator -> SemanticAnalyzer -> LLTACGenerator -> CTranspile -> runtime.c + MSVC cl.exe
 ```
 
 | Stage | Package | Entry |
@@ -15,6 +15,7 @@ Kotlin compiler for the **bred** language (`.bred` files): lexer -> AST -> seman
 | Semantic | `org.nnezh` | `SemanticAnalyzer` |
 | TAC | `org.nnezh.org.nnezh.ICGenerator` | `LLTACGenerator`, `TACCompilerImpl` |
 | C backend | `org.nnezh.org.nnezh.compiler` | `CTranspile` |
+| Standard library/runtime wiring | `org.nnezh` | `StandardLibraryProvider` |
 | Root compile API | `org.nnezh` | `BredToCCompilerFactory`, `CExecutableBuilder` |
 | CLI | `org.nnezh` | `Main.kt` |
 
@@ -101,6 +102,10 @@ Result shape:
 - `Left(List<String>)`: source read errors, lexer errors, parser errors, template instantiation errors, semantic errors, or C generation errors.
 - `Right(List<String>)`: generated C body lines, without `runtime.c` prepended.
 
+Before type resolution, this layer parses root-level `stdlib.bred` and merges
+its declarations before the user program. Stdlib read, lexer, or parser
+failures are returned with a `Standard library error:` prefix.
+
 This layer only compiles to C lines. It does not write files and does not call a C compiler.
 
 ### C Lines -> `.exe`
@@ -116,7 +121,7 @@ val messages: List<String> = CExecutableBuilder().build(
 
 What it does:
 
-1. Reads `runtime.c`.
+1. Reads `runtime.c` from the active `StandardLibraryProvider`.
 2. Prepends the runtime to `cLines`.
 3. Writes an intermediate `.c` file next to the output executable.
 4. Runs MSVC `cl.exe` through `vcvars64.bat` with `/Od`.
@@ -128,7 +133,7 @@ The builder reports ordinary build problems in the returned message list: missin
 
 ## Language Status
 
-**Implemented:** functions, `val`/`var`, `if`/`while`/`for`, assignments, calls, operators, built-in functions, static arrays (`val arr: Int[n]`, `arr[i]`, `fun f(a: Int[])`), immutable global static arrays (`val arr: Int[n]` at top level), typeclass/instance parsing and template instantiation.
+**Implemented:** functions, `val`/`var`, `if`/`while`/`for`, assignments, calls, operators, implicit `stdlib.bred`, extern C function signatures, static arrays (`val arr: Int[n]`, `arr[i]`, `fun f(a: Int[])`), immutable global static arrays (`val arr: Int[n]` at top level), typeclass/instance parsing and template instantiation.
 
 **Not implemented / restricted:** global `var`, `else if`, member access, user-defined type declarations, type inference for `val x = expr`, mutable static array declarations.
 

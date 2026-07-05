@@ -18,6 +18,7 @@ Item IDs use the stable `G-NN` format.
 | ID | Item | Current state | Action |
 |----|------|---------------|--------|
 | G-61 | Global static array initializers only lower literal elements | `LLTACGenerator` can emit global C storage for top-level static arrays with absent initializer or literal elements; non-literal element expressions are still not lowered as compile-time C initializers | Decide whether global array initializers should be literals-only at semantic level or support a compile-time expression renderer; add tests for the chosen rule |
+| G-62 | Extern signature/runtime parity is incomplete | `ExternalFunctionSpecs` migrates the legacy built-in list, but `runtime.c` visibly implements only part of that surface, and the legacy `doubleToString(Double, String, Int): Unit` overload cannot be represented directly as the same C symbol as `doubleToString(Double): String` | Decide whether to remove legacy buffer-style externs, add backend name mapping, or implement distinct C symbols; add a parity test that prevents extern specs and runtime exports from drifting |
 
 ## Later - language expansion
 
@@ -56,7 +57,7 @@ Item IDs use the stable `G-NN` format.
 | When | IDs |
 |------|-----|
 | Next pipeline | G-47 |
-| Backend correctness | G-61 |
+| Backend correctness | G-61, G-62 |
 | Semantic design decisions | G-49, G-50, G-52 |
 | Language growth | G-03, G-05, G-12, G-13, G-53, G-54, G-55 |
 | Optional cleanup | G-14, G-16, G-25, G-56, G-57 |

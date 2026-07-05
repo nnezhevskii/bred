@@ -6,7 +6,7 @@ analysis, template instantiation, TAC, and the C backend.
 Source of truth:
 
 - `common/src/main/kotlin/org/nnezh/bred/common/TypeSign.kt`
-- `common/src/main/kotlin/org/nnezh/bred/common/BuiltInMethods.kt`
+- `common/src/main/kotlin/org/nnezh/bred/common/ExternalFunctionSpecs.kt`
 - `parser/src/main/kotlin/org/nnezh/bred/context/ProgramGlobalContext.kt`
 - `parser/src/main/kotlin/org/nnezh/bred/context/ProgramTypeResolver.kt`
 - `parser/src/main/kotlin/org/nnezh/bred/codegenerator/TemplateInstantiator.kt`
@@ -54,7 +54,8 @@ sealed interface TypeSign {
 - `allTypes()`;
 - `resolve(ref, genericScope)`;
 - `resolveOrThrow(ref, genericScope)`;
-- `builtInSignatures`.
+- `externFunctionSignatures`.
+- `builtInSignatures` as a compatibility alias.
 
 Primitive names are `Int`, `Long`, `Double`, `String`, `Boolean`, and `Unit`.
 
@@ -78,6 +79,8 @@ The normal pipeline is:
 source
 -> Lexer
 -> AbstractSyntaxTreeBuilder
+-> parse root-level stdlib.bred
+-> merge stdlib ProgramRoot before user ProgramRoot
 -> ProgramContextCollector
 -> ProgramTypeResolver
 -> ProgramContextCollector
@@ -119,15 +122,22 @@ Static array size is not part of `Array<T>` equality. Size belongs to the
 declaration/storage layer and is carried by TAC instructions such as `ALLOC`
 and `globalArray`.
 
-## 5. Built-ins
+## 5. Standard Library and Extern Functions
 
-`BuiltInMethods` stores built-ins as specs on `TypeRef` values. A
-`ProgramGlobalContext` resolves those specs to `FunctionSignature` values via
-`builtInSignatures`.
+Every root compile implicitly parses root-level `stdlib.bred` and prepends its
+AST declarations to the user program before type resolution. Bred stdlib
+functions, typeclasses, instances, and globals participate in the same
+resolution, template instantiation, semantic analysis, TAC generation, and C
+rendering as user declarations.
+
+`ExternalFunctionSpecs` stores C runtime function signatures as specs on
+`TypeRef` values. A `ProgramGlobalContext` resolves those specs to
+`FunctionSignature` values via `externFunctionSignatures`; `builtInSignatures`
+is retained as a compatibility alias.
 
 Semantic analysis and template instantiation use these resolved signatures from
-the same context. This avoids separate built-in registries drifting apart.
-Runtime string conversion built-ins include `intToString(Int): String`,
+the same context. This avoids separate extern registries drifting apart.
+Runtime string conversion externs include `intToString(Int): String`,
 `longToString(Long): String`, and `doubleToString(Double): String`.
 
 ## 6. Template Instantiation

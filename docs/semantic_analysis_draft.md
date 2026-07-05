@@ -57,11 +57,15 @@ source -> Lexer -> AbstractSyntaxTreeBuilder -> ProgramContextCollector
 - declared functions;
 - typeclasses;
 - instances;
-- built-in function metadata whose signatures are resolved through the same
+- extern C function metadata whose signatures are resolved through the same
   context registry.
 
-`SemanticAnalyzer` registers `globalContext.builtInSignatures` before analyzing
-the program, so built-ins used by semantic analysis and template instantiation
+The root compiler parses root-level `stdlib.bred` and merges it before the user
+program before this pipeline starts. The semantic analyzer therefore sees bred
+stdlib declarations as ordinary declarations that happen to appear first.
+
+`SemanticAnalyzer` registers `globalContext.externFunctionSignatures` before analyzing
+the program, so externs used by semantic analysis and template instantiation
 come from the same registry.
 
 The analyzer expects a resolved AST. Running it directly on parser output can
@@ -418,10 +422,15 @@ This component:
 Because this is outside the current analyzer traversal, semantic validation of
 raw typeclass and instance declarations remains incomplete.
 
-## 11. Built-ins
+## 11. Standard Library and Extern Functions
 
-`common.BuiltInMethods` defines built-in specs as `TypeRef` values. The active
-`ProgramGlobalContext` resolves them to semantic signatures for:
+Root compilation implicitly prepends declarations from `stdlib.bred` before
+the user program. These declarations are parsed, resolved, instantiated,
+checked, lowered, and rendered like user code.
+
+`common.ExternalFunctionSpecs` defines C runtime extern specs as `TypeRef`
+values. The active `ProgramGlobalContext` resolves them to semantic signatures
+for:
 
 ```text
 println(String): Unit
@@ -443,7 +452,7 @@ random(Int, Int): Int
 currentTimeMillis(): Long
 ```
 
-The semantic tests cover representative built-ins such as `println`,
+The semantic tests cover representative externs such as `println`,
 `readInt`, `stringEquals`, `longToString`, and `currentTimeMillis`.
 
 ## 12. Known Gaps

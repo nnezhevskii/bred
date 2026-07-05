@@ -7,6 +7,7 @@ import org.junit.jupiter.api.io.TempDir
 import org.nnezh.BredToCCompilerFactory
 import org.nnezh.CCompilerInvocationResult
 import org.nnezh.CExecutableBuilder
+import org.nnezh.StandardLibraryProvider
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.writeText
@@ -24,6 +25,99 @@ class BredCompilationFactoryTest {
             ifRight = { cLines ->
                 assertTrue(cLines.any { it.contains("int main") }, "expected main function in C output: $cLines")
             },
+        )
+    }
+
+    @Test
+    fun `bred compiler injects stdlib functions before user program`(@TempDir dir: Path) {
+        val source = dir.resolve("uses-stdlib.bred")
+        source.writeText(
+            """
+            fun main(): Unit {
+                printInt(42)
+            }
+            """.trimIndent(),
+        )
+
+        val result = BredToCCompilerFactory().create().compile(source)
+
+        result.fold(
+            ifLeft = { errors -> error("expected C code, got: $errors") },
+            ifRight = { cLines ->
+                assertTrue(
+                    cLines.any { it == "void printInt(int value);" },
+                    "expected stdlib function prototype in C output: $cLines",
+                )
+                assertTrue(
+                    cLines.any { it == "void printInt(int value) {" },
+                    "expected stdlib function body in C output: $cLines",
+                )
+                assertTrue(
+                    cLines.any { it.contains("intToString(") },
+                    "expected stdlib function to call extern intToString: $cLines",
+                )
+            },
+        )
+    }
+
+    @Test
+    fun `user function cannot redefine stdlib signature`(@TempDir dir: Path) {
+        val source = dir.resolve("duplicate-stdlib.bred")
+        source.writeText(
+            """
+            fun printInt(value: Int): Unit { }
+
+            fun main(): Unit { }
+            """.trimIndent(),
+        )
+
+        val result = BredToCCompilerFactory().create().compile(source)
+
+        result.fold(
+            ifLeft = { errors ->
+                val message = errors.joinToString("\n")
+                assertTrue(message.contains("Semantic error REDEFINE_FUNCTION"), message)
+                assertTrue(message.contains("printInt"), message)
+            },
+            ifRight = { cLines -> error("expected stdlib redefinition error, got C code: $cLines") },
+        )
+    }
+
+    @Test
+    fun `missing stdlib returns readable compiler error`(@TempDir dir: Path) {
+        val source = dir.resolve("main.bred")
+        source.writeText("fun main(): Unit { }")
+        val provider = StandardLibraryProvider(stdlibPath = dir.resolve("missing-stdlib.bred"))
+
+        val result = BredToCCompilerFactory(standardLibraryProvider = provider).create().compile(source)
+
+        result.fold(
+            ifLeft = { errors ->
+                val message = errors.joinToString("\n")
+                assertTrue(message.contains("Standard library error:"), message)
+                assertTrue(message.contains("missing-stdlib.bred"), message)
+            },
+            ifRight = { cLines -> error("expected stdlib read error, got C code: $cLines") },
+        )
+    }
+
+    @Test
+    fun `invalid stdlib returns readable compiler error`(@TempDir dir: Path) {
+        val source = dir.resolve("main.bred")
+        val stdlib = dir.resolve("stdlib.bred")
+        source.writeText("fun main(): Unit { }")
+        stdlib.writeText("fun broken(: Unit { }")
+        val provider = StandardLibraryProvider(stdlibPath = stdlib)
+
+        val result = BredToCCompilerFactory(standardLibraryProvider = provider).create().compile(source)
+
+        result.fold(
+            ifLeft = { errors ->
+                val message = errors.joinToString("\n")
+                assertTrue(message.contains("Standard library error:"), message)
+                assertTrue(message.contains("Parser error"), message)
+            },
+            ifRight = { cLines -> error("expected stdlib parser error, got C code: $cLines") },
         )
     }
 
@@ -222,5 +316,34 @@ class CExecutableBuilderTest {
             listOf("/* runtime */", "int main(void) {", "return 0;", "}"),
             Files.readAllLines(cFile),
         )
+    }
+
+    @Test
+    fun `builder can use runtime path from standard library provider`(@TempDir dir: Path) {
+        val runtime = dir.resolve("custom-runtime.c")
+        val vcvars = dir.resolve("vcvars64.bat")
+        val cFile = dir.resolve("provider-runtime.c")
+        val exeFile = dir.resolve("provider-runtime.exe")
+        val provider = StandardLibraryProvider(runtimePath = runtime)
+        runtime.writeText("/* provider runtime */")
+        vcvars.writeText("@echo off")
+
+        val builder = CExecutableBuilder(
+            runtimePath = provider.runtimePath,
+            vcvarsPath = vcvars.toString(),
+            compilerInvoker = { _, _, exePath ->
+                Files.writeString(exePath, "exe")
+                CCompilerInvocationResult(0, emptyList())
+            },
+        )
+
+        builder.build(
+            cLines = listOf("int main(void) {", "return 0;", "}"),
+            outputExe = exeFile,
+            keepIntermediateC = true,
+            intermediateCFile = cFile,
+        )
+
+        assertTrue(Files.readString(cFile).startsWith("/* provider runtime */"))
     }
 }

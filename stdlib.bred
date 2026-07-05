@@ -1,0 +1,11 @@
+fun printInt(value: Int): Unit {
+    println(intToString(value))
+}
+
+fun printLong(value: Long): Unit {
+    println(longToString(value))
+}
+
+fun printDouble(value: Double): Unit {
+    println(doubleToString(value))
+}

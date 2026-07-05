@@ -6,6 +6,7 @@ import org.nnezh.bred.ast.AbstractSyntaxTreeBuilder
 import org.nnezh.bred.ast.ASTError
 import org.nnezh.bred.ast.ProgramRoot
 import org.nnezh.bred.codegenerator.TemplateInstantiator
+import org.nnezh.bred.common.ExternalFunctionSpecs
 import org.nnezh.bred.context.ProgramContextCollector
 import org.nnezh.bred.context.ProgramTypeResolver
 import org.nnezh.lexer.Lexer
@@ -18,8 +19,10 @@ import java.nio.file.Path
 class BredToCCompilerFactory(
     private val lexerFactory: (String) -> Lexer = { source -> Lexer(source) },
     private val astBuilderFactory: () -> AbstractSyntaxTreeBuilder = { AbstractSyntaxTreeBuilder() },
-    private val contextCollectorFactory: () -> ProgramContextCollector = { ProgramContextCollector() },
     private val cTranspilerFactory: () -> CTranspile = { CTranspile() },
+    private val standardLibraryProvider: StandardLibraryProvider = StandardLibraryProvider(),
+    private val contextCollectorFactory: (List<ExternalFunctionSpecs.ExternalFunctionSpec>) -> ProgramContextCollector =
+        { externFunctions -> ProgramContextCollector(externFunctions) },
 ) {
     fun create(): BredToCCompiler =
         BredToCCompiler(
@@ -27,14 +30,16 @@ class BredToCCompilerFactory(
             astBuilder = astBuilderFactory(),
             contextCollectorFactory = contextCollectorFactory,
             cTranspiler = cTranspilerFactory(),
+            standardLibraryProvider = standardLibraryProvider,
         )
 }
 
 class BredToCCompiler(
     private val lexerFactory: (String) -> Lexer,
     private val astBuilder: AbstractSyntaxTreeBuilder,
-    private val contextCollectorFactory: () -> ProgramContextCollector,
+    private val contextCollectorFactory: (List<ExternalFunctionSpecs.ExternalFunctionSpec>) -> ProgramContextCollector,
     private val cTranspiler: CTranspile,
+    private val standardLibraryProvider: StandardLibraryProvider,
 ) {
     private val semanticFormatter = SemanticDiagnosticFormatter()
 
@@ -55,30 +60,22 @@ class BredToCCompiler(
             .mapLeft { listOf(it.message) }
             .bind()
 
-        val tokens = lexerFactory(source)
-            .tokenize()
-            .mapLeft { listOf(it.describe()) }
-            .bind()
+        val userRoot = parseRoot(source, errorPrefix = null).bind()
+        val stdlibRoot = loadStandardLibraryRoot().bind()
+        val root = mergeProgramRoots(stdlibRoot, userRoot)
 
-        val ast = astBuilder
-            .build(tokens)
-            .mapLeft { listOf(it.describe()) }
-            .bind()
-        val root = ast as? ProgramRoot
-            ?: raise(listOf("Parser returned ${ast::class.simpleName}, expected ProgramRoot"))
-
-        val initialContext = contextCollectorFactory().collect(root)
+        val initialContext = contextCollectorFactory(standardLibraryProvider.externFunctions).collect(root)
         val resolvedRoot = ProgramTypeResolver(initialContext)
             .resolve(root)
             .mapLeft { listOf(it.describe()) }
             .bind()
-        val context = contextCollectorFactory().collect(resolvedRoot)
+        val context = contextCollectorFactory(standardLibraryProvider.externFunctions).collect(resolvedRoot)
         val instantiatedRoot = TemplateInstantiator(context)
             .instantiate(resolvedRoot)
             .mapLeft { listOf(it.describe()) }
             .bind()
 
-        val instantiatedContext = contextCollectorFactory().collect(instantiatedRoot)
+        val instantiatedContext = contextCollectorFactory(standardLibraryProvider.externFunctions).collect(instantiatedRoot)
         val resolvedInstantiatedRoot = ProgramTypeResolver(instantiatedContext)
             .resolve(instantiatedRoot)
             .mapLeft { listOf(it.describe()) }
@@ -101,10 +98,45 @@ class BredToCCompiler(
         }.bind()
     }
 
+    private fun loadStandardLibraryRoot(): Either<List<String>, ProgramRoot> = either {
+        val source = readSource(standardLibraryProvider.stdlibPath)
+            .mapLeft { listOf("Standard library error: ${it.message}") }
+            .bind()
+
+        parseRoot(source, errorPrefix = "Standard library error:").bind()
+    }
+
+    private fun parseRoot(source: String, errorPrefix: String?): Either<List<String>, ProgramRoot> = either {
+        val tokens = lexerFactory(source)
+            .tokenize()
+            .mapLeft { listOf(it.describe().withOptionalPrefix(errorPrefix)) }
+            .bind()
+
+        val ast = astBuilder
+            .build(tokens)
+            .mapLeft { listOf(it.describe().withOptionalPrefix(errorPrefix)) }
+            .bind()
+
+        ast as? ProgramRoot
+            ?: raise(listOf("Parser returned ${ast::class.simpleName}, expected ProgramRoot".withOptionalPrefix(errorPrefix)))
+    }
+
+    private fun mergeProgramRoots(stdlibRoot: ProgramRoot, userRoot: ProgramRoot): ProgramRoot =
+        ProgramRoot(
+            functions = (stdlibRoot.functions + userRoot.functions).toMutableList(),
+            globalVariables = stdlibRoot.globalVariables + userRoot.globalVariables,
+            types = stdlibRoot.types + userRoot.types,
+            typeClasses = stdlibRoot.typeClasses + userRoot.typeClasses,
+            instances = stdlibRoot.instances + userRoot.instances,
+        )
+
     private fun LexerError.describe(): String =
         "Lexer error at $position: $message"
 
     private fun ASTError.describe(): String =
         "Parser error: $message"
+
+    private fun String.withOptionalPrefix(prefix: String?): String =
+        prefix?.let { "$it $this" } ?: this
 
 }

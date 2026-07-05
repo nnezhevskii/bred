@@ -9,8 +9,9 @@ fun main(args: Array<String>) {
     val sourcePath = args.getOrNull(0) ?: DEFAULT_SOURCE_PATH
     val exeOutputPath = args.getOrNull(1) ?: DEFAULT_EXE_OUTPUT_PATH
     val keepIntermediateC = args.getOrNull(2)?.toBooleanStrictOrNull() ?: false
+    val standardLibraryProvider = StandardLibraryProvider()
 
-    val cLines = BredToCCompilerFactory()
+    val cLines = BredToCCompilerFactory(standardLibraryProvider = standardLibraryProvider)
         .create()
         .compile(sourcePath)
         .fold(
@@ -21,10 +22,10 @@ fun main(args: Array<String>) {
             ifRight = { it },
         )
 
-    val messages = CExecutableBuilder().build(
+    val messages = CExecutableBuilder(runtimePath = standardLibraryProvider.runtimePath).build(
         cLines = cLines,
         outputExe = exeOutputPath,
-        keepIntermediateC = true,
+        keepIntermediateC = keepIntermediateC,
     )
 
     messages.forEach(::println)

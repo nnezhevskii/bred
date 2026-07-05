@@ -3,7 +3,7 @@ package org.nnezh.bred.context
 import org.nnezh.bred.ast.FunctionDeclAstNode
 import org.nnezh.bred.ast.FunctionArgument
 import org.nnezh.bred.ast.GenericParam
-import org.nnezh.bred.common.BuiltInMethods
+import org.nnezh.bred.common.ExternalFunctionSpecs
 import org.nnezh.bred.common.FunctionSignature
 import org.nnezh.bred.common.TypeNames
 import org.nnezh.bred.common.TypeRef
@@ -16,6 +16,7 @@ class ProgramGlobalContext(
     val constructors: MutableMap<String,ConstructorMeta> = mutableMapOf(),
     val typeclasses: MutableMap<String, TypeclassMeta> = mutableMapOf(),
     val instances: MutableMap<InstanceKey, InstanceMeta> = mutableMapOf(),
+    val externalFunctionSpecs: List<ExternalFunctionSpecs.ExternalFunctionSpec> = ExternalFunctionSpecs.specs,
 ) {
     val intType: TypeSign
     val longType: TypeSign
@@ -36,8 +37,11 @@ class ProgramGlobalContext(
         unitType = typeRegistry.declarePrimitive(TypeNames.UNIT)
     }
 
+    val externFunctionSignatures: List<FunctionSignature>
+        get() = ExternalFunctionSpecs.signatures(externalFunctionSpecs) { ref -> resolveOrThrow(ref) }
+
     val builtInSignatures: List<FunctionSignature>
-        get() = BuiltInMethods.signatures { ref -> resolveOrThrow(ref) }
+        get() = externFunctionSignatures
 
     fun addType(name: String, isPrimitive: Boolean): TypeSign =
         if (isPrimitive) {
