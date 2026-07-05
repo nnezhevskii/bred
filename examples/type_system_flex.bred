@@ -1,0 +1,381 @@
+val pulseWeights: Int[6] = [11, 17, 23, 31, 41, 53]
+
+type mut Signal(name: String, base: Int, trend: Int, volatility: Int, trust: Int, score: Int, online: Boolean, salt: Long)
+type Strategy(name: String, primary: Signal, backup: Signal, budget: Long, confidence: Double, score: Int)
+type Verdict(title: String, champion: Signal, runnerUp: Signal, strategy: Strategy, total: Int, risk: Int, stamp: Long)
+
+typeclass Describe<T> {
+    fun describe(value: T): String
+}
+
+typeclass Scored<T> {
+    fun scoreOf(value: T): Int
+}
+
+typeclass Ranked<T> {
+    fun outranks(a: T, b: T): Boolean
+}
+
+typeclass Evolvable<T> {
+    fun evolve(value: T, tick: Int): Unit
+}
+
+typeclass Hashable<T> {
+    fun hashOf(value: T): Long
+}
+
+instance Describe<Int> {
+    fun describe(value: Int): String {
+        return intToString(value)
+    }
+}
+
+instance Scored<Int> {
+    fun scoreOf(value: Int): Int {
+        return value
+    }
+}
+
+instance Ranked<Int> {
+    fun outranks(a: Int, b: Int): Boolean {
+        return a > b
+    }
+}
+
+instance Hashable<Int> {
+    fun hashOf(value: Int): Long {
+        return currentTimeMillis() + 13L
+    }
+}
+
+instance Describe<Signal> {
+    fun describe(value: Signal): String {
+        return value.name +
+            " base=" + intToString(value.base) +
+            " trend=" + intToString(value.trend) +
+            " volatility=" + intToString(value.volatility) +
+            " trust=" + intToString(value.trust) +
+            " score=" + intToString(value.score) +
+            " online=" + boolText(value.online) +
+            " salt=" + longToString(value.salt)
+    }
+}
+
+instance Scored<Signal> {
+    fun scoreOf(value: Signal): Int {
+        return value.score
+    }
+}
+
+instance Ranked<Signal> {
+    fun outranks(a: Signal, b: Signal): Boolean {
+        if (a.score > b.score) {
+            return true
+        }
+        if (a.score == b.score) {
+            return a.trust > b.trust
+        }
+        return false
+    }
+}
+
+instance Evolvable<Signal> {
+    fun evolve(value: Signal, tick: Int): Unit {
+        val pulse: Int = pulseWeights[tick % 6] + random(0, 30)
+        value.trend = value.trend + pulse % 19
+        value.volatility = value.volatility + random(0, 17)
+        value.trust = clampInt(value.trust + value.trend % 7 - value.volatility % 5, 0, 99)
+        value.score = value.base * 8 + value.trend * 5 + value.trust * 3 - value.volatility * 2 + pulse
+        value.online = value.score > 450 && value.volatility < 95
+    }
+}
+
+instance Hashable<Signal> {
+    fun hashOf(value: Signal): Long {
+        return value.salt + 131L
+    }
+}
+
+instance Describe<Strategy> {
+    fun describe(value: Strategy): String {
+        return value.name +
+            " primary=" + value.primary.name +
+            " backup=" + value.backup.name +
+            " score=" + intToString(value.score) +
+            " budget=" + longToString(value.budget) +
+            " confidence=" + doubleToString(value.confidence)
+    }
+}
+
+instance Scored<Strategy> {
+    fun scoreOf(value: Strategy): Int {
+        return value.score
+    }
+}
+
+instance Ranked<Strategy> {
+    fun outranks(a: Strategy, b: Strategy): Boolean {
+        if (a.score > b.score) {
+            return true
+        }
+        if (a.score == b.score) {
+            return a.budget < b.budget
+        }
+        return false
+    }
+}
+
+instance Hashable<Strategy> {
+    fun hashOf(value: Strategy): Long {
+        return value.budget + value.primary.salt + value.backup.salt
+    }
+}
+
+instance Describe<Verdict> {
+    fun describe(value: Verdict): String {
+        return value.title +
+            " champion=" + value.champion.name +
+            " runnerUp=" + value.runnerUp.name +
+            " strategy=" + value.strategy.name +
+            " total=" + intToString(value.total) +
+            " risk=" + intToString(value.risk) +
+            " stamp=" + longToString(value.stamp)
+    }
+}
+
+instance Scored<Verdict> {
+    fun scoreOf(value: Verdict): Int {
+        return value.total - value.risk
+    }
+}
+
+instance Ranked<Verdict> {
+    fun outranks(a: Verdict, b: Verdict): Boolean {
+        return a.total - a.risk > b.total - b.risk
+    }
+}
+
+instance Hashable<Verdict> {
+    fun hashOf(value: Verdict): Long {
+        return value.stamp + value.strategy.budget
+    }
+}
+
+fun boolText(value: Boolean): String {
+    if (value) {
+        return "true"
+    }
+    return "false"
+}
+
+fun clampInt(value: Int, low: Int, high: Int): Int {
+    if (value < low) {
+        return low
+    }
+    if (value > high) {
+        return high
+    }
+    return value
+}
+
+fun banner(title: String): Unit {
+    println("")
+    println("===== " + title + " =====")
+}
+
+fun printAny<T: Describe>(label: String, value: T): Unit {
+    println(label + describe(value))
+}
+
+fun fingerprint<T: Hashable>(label: String, value: T): Unit {
+    println(label + longToString(hashOf(value)))
+}
+
+fun betterOf<T: Ranked>(a: T, b: T): T {
+    if (outranks(a, b)) {
+        return a
+    }
+    return b
+}
+
+fun swapIfOutranked<T: Ranked>(items: Array<T>, left: Int, right: Int): Unit {
+    if (outranks(items[right], items[left])) {
+        val temp: T = items[left]
+        items[left] = items[right]
+        items[right] = temp
+    }
+}
+
+fun rankAll<T: Ranked>(items: Array<T>, count: Int): Unit {
+    for (pass in 0 to count) {
+        for (i in 0 to count - 1) {
+            swapIfOutranked(items, i, i + 1)
+        }
+    }
+}
+
+fun evolveAll<T: Evolvable>(items: Array<T>, count: Int, cycles: Int): Unit {
+    for (cycle in 0 to cycles) {
+        for (i in 0 to count) {
+            evolve(items[i], cycle + i)
+        }
+    }
+}
+
+fun totalScore<T: Scored>(items: Array<T>, count: Int): Int {
+    var total: Int = 0
+    for (i in 0 to count) {
+        total = total + scoreOf(items[i])
+    }
+    return total
+}
+
+fun topScore<T: Scored + Ranked>(items: Array<T>, count: Int): Int {
+    rankAll(items, count)
+    return scoreOf(items[0])
+}
+
+fun renderBoard<T: Describe + Scored + Hashable>(items: Array<T>, count: Int): String {
+    var text: String = ""
+    for (i in 0 to count) {
+        val item: T = items[i]
+        text = text +
+            "\n#" + intToString(i + 1) +
+            " score=" + intToString(scoreOf(item)) +
+            " hash=" + longToString(hashOf(item)) +
+            " :: " + describe(item)
+    }
+    return text
+}
+
+fun auditChampion<T: Describe + Scored + Ranked + Hashable>(label: String, items: Array<T>, count: Int): Unit {
+    rankAll(items, count)
+    printAny(label + " champion: ", items[0])
+    println(label + " champion score: " + intToString(scoreOf(items[0])))
+    fingerprint(label + " champion hash: ", items[0])
+}
+
+fun makeSignal(name: String, base: Int, trend: Int, volatility: Int, trust: Int): Signal {
+    val seed: Int = random(0, 40)
+    val score: Int = base * 8 + trend * 5 + trust * 3 - volatility * 2 + seed
+    val online: Boolean = score > 430 && volatility < 90
+    val salt: Long = currentTimeMillis() + 1009L
+    return Signal(name, base, trend, volatility, trust, score, online, salt)
+}
+
+fun recalibrate(signal: Signal, lift: Int): Unit {
+    signal.trend = signal.trend + lift
+    signal.trust = clampInt(signal.trust + lift % 11, 0, 99)
+    signal.score = signal.base * 8 + signal.trend * 5 + signal.trust * 3 - signal.volatility * 2
+    signal.online = signal.score > 440 && signal.volatility < 90
+}
+
+fun riskOf(signal: Signal): Int {
+    return signal.volatility * 2 + (100 - signal.trust)
+}
+
+fun maxRisk(signals: Array<Signal>, count: Int): Int {
+    var risk: Int = 0
+    for (i in 0 to count) {
+        val signal: Signal = signals[i]
+        val current: Int = riskOf(signal)
+        if (current > risk) {
+            risk = current
+        }
+    }
+    return risk
+}
+
+fun confidenceFrom(score: Int, risk: Int): Double {
+    if (score > 6500 && risk < 100) {
+        return 99.70
+    }
+    if (score > 5900 && risk < 130) {
+        return 94.40
+    }
+    if (score > 5200) {
+        return 88.80
+    }
+    return 71.25
+}
+
+fun makeStrategy(name: String, primary: Signal, backup: Signal, budget: Long, risk: Int): Strategy {
+    val score: Int = primary.score * 2 + backup.score - risk
+    val confidence: Double = confidenceFrom(score, risk)
+    return Strategy(name, primary, backup, budget, confidence, score)
+}
+
+fun buildVerdict(title: String, signals: Array<Signal>, count: Int, strategy: Strategy): Verdict {
+    rankAll(signals, count)
+    val champion: Signal = signals[0]
+    val runnerUp: Signal = signals[1]
+    val total: Int = totalScore(signals, count) + strategy.score
+    val risk: Int = maxRisk(signals, count)
+    val stamp: Long = currentTimeMillis() + hashOf(strategy)
+    return Verdict(title, champion, runnerUp, strategy, total, risk, stamp)
+}
+
+fun main(): Unit {
+    val signalCount: Int = 6
+    val strategyCount: Int = 3
+    val verdictCount: Int = 2
+    val signals: Array<Signal>[6]
+    val strategies: Array<Strategy>[3]
+    val verdicts: Array<Verdict>[2]
+    val rawNumbers: Array<Int>[5]
+
+    signals[0] = makeSignal("CompilerOracle", 81, 42, 18, 91)
+    signals[1] = makeSignal("TypeNinja", 77, 54, 23, 88)
+    signals[2] = makeSignal("InstanceForge", 84, 39, 28, 84)
+    signals[3] = makeSignal("GenericLaser", 73, 61, 21, 93)
+    signals[4] = makeSignal("BackendPulse", 79, 48, 34, 82)
+    signals[5] = makeSignal("RuntimeSpark", 75, 58, 26, 86)
+
+    rawNumbers[0] = 41
+    rawNumbers[1] = 99
+    rawNumbers[2] = 17
+    rawNumbers[3] = 88
+    rawNumbers[4] = 73
+
+    banner("raw signals")
+    println(renderBoard(signals, signalCount))
+
+    evolveAll(signals, signalCount, 7)
+    recalibrate(signals[2], 13)
+    recalibrate(signals[4], 9)
+    rankAll(signals, signalCount)
+
+    banner("after generic evolvable pipeline")
+    println(renderBoard(signals, signalCount))
+    auditChampion("signal", signals, signalCount)
+
+    val bestSignal: Signal = betterOf(signals[0], signals[1])
+    val total: Int = totalScore(signals, signalCount)
+    val risk: Int = maxRisk(signals, signalCount)
+    strategies[0] = makeStrategy("zero-cost abstraction squad", bestSignal, signals[2], 9001L, risk)
+    strategies[1] = makeStrategy("monomorphized thunder", signals[1], signals[3], 7777L, risk + 11)
+    strategies[2] = makeStrategy("constraint solver deluxe", signals[2], signals[4], 6666L, risk + 19)
+
+    banner("generic ranking over product strategies")
+    rankAll(strategies, strategyCount)
+    println(renderBoard(strategies, strategyCount))
+    auditChampion("strategy", strategies, strategyCount)
+
+    verdicts[0] = buildVerdict("typeclass flex accepted", signals, signalCount, strategies[0])
+    verdicts[1] = buildVerdict("fallback reality check", signals, signalCount, strategies[1])
+
+    banner("same generic board, different product type")
+    rankAll(verdicts, verdictCount)
+    println(renderBoard(verdicts, verdictCount))
+    auditChampion("verdict", verdicts, verdictCount)
+
+    banner("primitive instances use the same algorithms")
+    rankAll(rawNumbers, 5)
+    println(renderBoard(rawNumbers, 5))
+    auditChampion("int", rawNumbers, 5)
+
+    println("")
+    println("top signal score via constrained generic: " + intToString(topScore(signals, signalCount)))
+    println("total signal score via Scored<T>: " + intToString(total))
+    println("final message: one code path ranked Int, Signal, Strategy and Verdict through instances")
+}

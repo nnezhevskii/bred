@@ -16,13 +16,15 @@ Item IDs use the stable `G-NN` format.
 | G-64 | Product mutability and field assignment rules are undefined | `type mut Counter(...)` is parsed, but `DeclareProductTypeASTNode.isMutable` is not used by semantic analysis, TAC, or C backend; fields can be assigned through both mutable and immutable product declarations, and field assignment bypasses scalar variable mutability checks | Define whether `mut` controls field assignment, binding mutability, or future layout rules; reject or document field writes on non-`mut` product types and add positive/negative tests |
 | G-65 | Field access type inference is incomplete in template instantiation | `TemplateInstantiator.transformExpression` preserves `FieldAccessChainExpressionASTNode`, but `inferType(FieldAccessChainExpressionASTNode)` is `TODO()`; generic/template calls that must infer an argument type from `person.age` can crash instead of returning `ASTError` | Implement field-chain type inference using the template scope and `ProgramGlobalContext.typeRegistry.getProductTypeFields`; cover template calls, typeclass method calls, and error reporting |
 | G-66 | Resolved generic named type arguments can be dropped | `TypeRegistry.resolveResolved` resolves arguments for a non-array resolved type but returns `namedTypes[type.name]!!` instead of preserving `resolvedArgs`; this is latent while user generic named type declarations are absent, but conflicts with documented `TypeSign.arguments` behavior | Preserve generic arguments for resolved named types or explicitly restrict named generic containers; add registry tests before enabling user generic product/container types |
+| G-68 | Typeclass calls inside instance methods are not reliably instantiated | The `examples/difficult.bred` stress program had to avoid nested calls such as `show(team.captain)` from inside `instance Printable<Team>`; `examples/type_system_flex.bred` likewise had to avoid `scoreOf(a)` from inside `instance Ranked<Verdict>`. Instance method bodies can keep unresolved typeclass-style calls after template instantiation/lowering | Define whether instance bodies may call other typeclass methods; if yes, make `TemplateInstantiator`/semantic analysis rewrite and validate those calls with the active instance context; add regression tests for nested typeclass calls in instance methods |
 
 ## Later - TAC and C backend
 
 | ID | Item | Current state | Action |
 |----|------|---------------|--------|
 | G-61 | Global static array initializers only lower literal elements | `LLTACGenerator` can emit global C storage for top-level static arrays with absent initializer or literal elements; non-literal element expressions are still not lowered as compile-time C initializers | Decide whether global array initializers should be literals-only at semantic level or support a compile-time expression renderer; add tests for the chosen rule |
-| G-62 | Extern signature/runtime parity is incomplete | `ExternalFunctionSpecs` migrates the legacy built-in list, but `runtime.c` visibly implements only part of that surface, and the legacy `doubleToString(Double, String, Int): Unit` overload cannot be represented directly as the same C symbol as `doubleToString(Double): String` | Decide whether to remove legacy buffer-style externs, add backend name mapping, or implement distinct C symbols; add a parity test that prevents extern specs and runtime exports from drifting |
+| G-62 | Extern signature/runtime parity is incomplete | `ExternalFunctionSpecs` migrates the legacy built-in list, but `runtime.c` visibly implements only part of that surface; `examples/difficult.bred` also had to avoid `intToDouble` because the call can get through frontend stages but has no matching runtime implementation, and the legacy `doubleToString(Double, String, Int): Unit` overload cannot be represented directly as the same C symbol as `doubleToString(Double): String` | Decide whether to remove legacy buffer-style externs, add backend name mapping, or implement distinct C symbols; add a parity test that prevents extern specs and runtime exports from drifting |
+| G-69 | C backend can collide with user locals in `main` | The generated C entry wrapper/signature reserves names such as `size`; a Bred `main` local declared as `val size: Int = ...` can render into C as a duplicate `int size` declaration | Mangle generated helper/parameter names or emit the user `main` body into a separately named function; add a C backend regression test for user locals named like generated wrapper variables |
 
 ## Later - language expansion
 
@@ -30,11 +32,12 @@ Item IDs use the stable `G-NN` format.
 |----|------|---------------|--------|
 | G-03 | Type inference for variable declarations | `val x = expr` and `var x = expr` are rejected; explicit `: Type` is required | Implement inference only if the language design wants it; otherwise keep this as a permanent restriction and add negative tests |
 | G-05 | `else if` chains | Parser requires `else` followed by a block | Add desugaring to nested `if` or keep unsupported with explicit negative tests |
-| G-12 | Member access beyond product field chains | Lexer emits `.`, and the expression parser now consumes identifier-based product field chains such as `person.address.city`; there is still no member/method dispatch, no field access after arbitrary expressions like `makePerson().age`, and no array/member chaining | Decide whether current product-field-only access is the intended final scope; document restrictions or extend expression grammar and lowering |
+| G-12 | Member access beyond product field chains | Lexer emits `.`, and the expression parser now consumes identifier-based product field chains such as `person.address.city`; there is still no member/method dispatch, no field access after arbitrary expressions like `makePerson().age`, and no array/member chaining such as `fighters[i].score`, which `examples/difficult.bred` had to spell via a temporary local | Decide whether current product-field-only access is the intended final scope; document restrictions or extend expression grammar and lowering |
 | G-13 | Indirect calls and first-class functions | Calls attach only to identifier primaries; `(f)()` is rejected; bare function names are variables semantically | Implement first-class functions only with a full type/signature model |
 | G-53 | Mutable static arrays | Only `val name: Type[n]` enters the array declaration parser branch; `var name: Type[n]` is not supported | Decide whether mutable array bindings are needed; define binding mutability versus element mutability |
 | G-54 | `mut` keyword semantics | Lexer reserves `mut` and `TypeParser` consumes it only in `type mut Name(...)`; no later compiler phase observes the flag | Decide whether `mut` is product-type mutability, field mutability, or a reserved no-op; update grammar docs and semantic rules accordingly |
 | G-55 | Product type declarations need remaining type-system decisions | `docs/grammar.md` now documents current product type syntax, constructors, field access, field assignment, and parser restrictions; `TypeParser` still accepts only bare identifier field types rather than full `typeSign` syntax | Update `docs/type_system.md` if product types become a stable public type-system feature; decide whether fields should use full `typeSign` and whether constructor/field behavior belongs in semantic docs beyond the current implementation notes |
+| G-70 | Numeric conversion story is missing | Arithmetic is strict about exact numeric types, and there is no stable `Int -> Long` conversion helper; `examples/type_system_flex.bred` could not implement `Hashable<Int>.hashOf(value): Long` as a deterministic expression derived from `value` without mixed `Int * Long` arithmetic or an explicit conversion, so it had to use `currentTimeMillis()` instead | Decide whether the language wants explicit conversion built-ins, cast syntax, or limited widening rules; add tests for `Int` to `Long`/`Double` conversions, mixed arithmetic rejection/acceptance, and typeclass methods whose result type is wider than an input field |
 
 ## Nice to have
 
@@ -62,9 +65,9 @@ Item IDs use the stable `G-NN` format.
 | When | IDs |
 |------|-----|
 | Next pipeline | G-47 |
-| Backend correctness | G-61, G-62 |
-| Semantic design decisions | G-49, G-50, G-52, G-63, G-64, G-66 |
-| Language growth | G-03, G-05, G-12, G-13, G-53, G-54, G-55, G-65 |
+| Backend correctness | G-61, G-62, G-69 |
+| Semantic design decisions | G-49, G-50, G-52, G-63, G-64, G-66, G-68 |
+| Language growth | G-03, G-05, G-12, G-13, G-53, G-54, G-55, G-65, G-70 |
 | Optional cleanup | G-14, G-16, G-25, G-56, G-57 |
 
 
