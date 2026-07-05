@@ -14,9 +14,7 @@ lbl1:
 lbl2:
   LT var6:Boolean i:Int _right_borderi:Int
   JMP_IF_NOT lbl3 var6:Boolean
-  ASSIGN var12:Int 0:Int
   LOAD var12:Int arr:Array i:Int
-  ASSIGN var15:Int 0:Int
   LOAD var15:Int arr:Array result:Int
   LT var9:Boolean var12:Int var15:Int
   JMP_IF_NOT lbl4 var9:Boolean
@@ -43,9 +41,7 @@ lbl5:
 lbl6:
   LT var24:Boolean i:Int _right_borderi:Int
   JMP_IF_NOT lbl7 var24:Boolean
-  ASSIGN var30:Int 0:Int
   LOAD var30:Int arr:Array i:Int
-  ASSIGN var33:Int 0:Int
   LOAD var33:Int arr:Array result:Int
   GT var27:Boolean var30:Int var33:Int
   JMP_IF_NOT lbl8 var27:Boolean

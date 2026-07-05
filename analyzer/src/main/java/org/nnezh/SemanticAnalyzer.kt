@@ -691,13 +691,10 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                 var res = scope.findVariable(node.root)?.first ?: return buildError(node, SemanticErrorType.UNKNOWN_VARIABLE).left()
                 var root: FieldAccessChainExpressionASTNode = node
                 while (root.next != null) {
-                    val fields = globalContext.typeRegistry.getProductTypeFields(res.name)
-                    if (root.next!!.root !in fields.keys) {
-                        return buildError(root, SemanticErrorType.UNKNOWN_FIELD).left()
-                    }
-                    root = root.next as FieldAccessChainExpressionASTNode
-                    res = fields[root.root]!!
-                    val tmp = 0
+                    val fields = productFields(res) ?: return buildError(root, SemanticErrorType.UNKNOWN_FIELD).left()
+                    val next = root.next!!
+                    res = fields[next.root] ?: return buildError(next, SemanticErrorType.UNKNOWN_FIELD).left()
+                    root = next
                 }
                 scope.put(node, res)
 
@@ -803,6 +800,9 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
 
     private fun TypeSign.arrayElementType(): TypeSign =
         if (isArray) elementTypeOrNull!! else this
+
+    private fun productFields(type: TypeSign): Map<String, TypeSign>? =
+        runCatching { globalContext.typeRegistry.getProductTypeFields(type.name) }.getOrNull()
 
     private fun unitType(): TypeSign = globalContext.unitType
 
@@ -991,7 +991,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
             is BinaryExpressionASTNode -> "${left.renderExpression()} ${operator.lexeme} ${right.renderExpression()}"
             is FunctionCallExpressionASTNode -> "$name(${arguments.joinToString(", ") { it.renderExpression() }})"
             is UnaryExpressionASTNode -> "${operator.lexeme}${operand.renderExpression()}"
-            is FieldAccessChainExpressionASTNode -> this.root + this.next?.let { n -> "." + n.renderExpression() }
+            is FieldAccessChainExpressionASTNode -> this.root + (this.next?.let { n -> "." + n.renderExpression() } ?: "")
         }
 
     private fun String.escape(): String =

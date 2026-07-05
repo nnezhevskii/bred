@@ -49,6 +49,15 @@ class ParserTest {
         return TemplateInstantiator(context).instantiate(resolved)
     }
 
+    private fun FieldAccessChainExpressionASTNode.fieldNames(): List<String> =
+        buildList {
+            var current: FieldAccessChainExpressionASTNode? = this@fieldNames
+            while (current != null) {
+                add(current.root)
+                current = current.next
+            }
+        }
+
     @Test
     fun `empty program produces empty ProgramRoot`() {
         val root = parse("")
@@ -117,6 +126,55 @@ class ParserTest {
         assertEquals(TypeRef("Array", listOf(TypeRef("Int"))), values.type)
         assertEquals(2, values.size)
         assertInstanceOf(ArrayInitializationExpressionASTNode::class.java, values.expression)
+    }
+
+    @Test
+    fun `product type declaration is parsed`() {
+        val root = parse("type Person(name: String, age: Int)")
+
+        val person = assertInstanceOf(DeclareProductTypeASTNode::class.java, root.types.single())
+        assertEquals("Person", person.name)
+        assertFalse(person.isMutable)
+        assertEquals(linkedMapOf("name" to TypeRef("String"), "age" to TypeRef("Int")), person.fields)
+    }
+
+    @Test
+    fun `mutable product type declaration is parsed`() {
+        val root = parse("type mut Counter(value: Int)")
+
+        val counter = assertInstanceOf(DeclareProductTypeASTNode::class.java, root.types.single())
+        assertEquals("Counter", counter.name)
+        assertTrue(counter.isMutable)
+        assertEquals(linkedMapOf("value" to TypeRef("Int")), counter.fields)
+    }
+
+    @Test
+    fun `constructor call and field access chain are parsed`() {
+        val root = parse(
+            """
+            type Address(city: String)
+            type Person(name: String, address: Address)
+            fun main(): Unit {
+                val person: Person = Person("Nika", Address("Berlin"))
+                val city: String = person.address.city
+                person.address.city = "Paris"
+            }
+            """.trimIndent()
+        )
+
+        val statements = root.functions.single().body.statements
+        val person = assertInstanceOf(ScalarVariableInitializationASTNode::class.java, statements[0])
+        val personConstructor = assertInstanceOf(FunctionCallExpressionASTNode::class.java, person.expression)
+        val addressConstructor = assertInstanceOf(FunctionCallExpressionASTNode::class.java, personConstructor.arguments[1])
+        val city = assertInstanceOf(ScalarVariableInitializationASTNode::class.java, statements[1])
+        val cityAccess = assertInstanceOf(FieldAccessChainExpressionASTNode::class.java, city.expression)
+        val assignment = assertInstanceOf(AssignmentStatementAstNode::class.java, statements[2])
+        val assignmentAccess = assertInstanceOf(FieldAccessChainExpressionASTNode::class.java, assignment.lValue)
+
+        assertEquals("Person", personConstructor.name)
+        assertEquals("Address", addressConstructor.name)
+        assertEquals(listOf("person", "address", "city"), cityAccess.fieldNames())
+        assertEquals(listOf("person", "address", "city"), assignmentAccess.fieldNames())
     }
 
     @Test
@@ -471,6 +529,19 @@ class ParserTest {
         assertTrue(parseFails("fun broken<T: Ordered +>(a: T): Unit { }"))
         assertTrue(parseFails("fun broken<T: + Ordered>(a: T): Unit { }"))
         assertTrue(parseFails("fun broken<T: Ordered + Printable,>(a: T): Unit { }"))
+    }
+
+    @Test
+    fun `product type rejects malformed field list`() {
+        assertTrue(parseFails("type Person(name: String, name: String)"))
+        assertTrue(parseFails("type Person(name: String,)"))
+        assertTrue(parseFails("type Person(name String)"))
+    }
+
+    @Test
+    fun `field access rejects missing target and call suffix`() {
+        assertTrue(parseFails("fun main(): Unit { val city: String = person. }"))
+        assertTrue(parseFails("fun main(): Unit { val age: Int = person.age() }"))
     }
 
     @Test

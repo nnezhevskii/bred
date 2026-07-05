@@ -18,7 +18,6 @@ lbl2:
   SUB var10:Int arrSize:Int var12:Int
   ASSIGN var17:Int 1:Int
   SUB var15:Int arrSize:Int var17:Int
-  ASSIGN var18:Int 0:Int
   LOAD var18:Int arr:Array var15:Int
   ASSIGN var19:Int 11:Int
   MUL var13:Int var18:Int var19:Int
@@ -70,7 +69,6 @@ lbl3:
   EQ var42:Boolean size:Int var44:Int
   JMP_IF_NOT lbl4 var42:Boolean
   ASSIGN var47:Int 0:Int
-  ASSIGN var48:Int 0:Int
   LOAD var48:Int arr:Array var47:Int
   PARAM var48:Int
   CALL var45:String intToString:String 1:Int
@@ -82,7 +80,6 @@ lbl4:
 lbl5:
   LT var51:Boolean i:Int _right_borderi:Int
   JMP_IF_NOT lbl6 var51:Boolean
-  ASSIGN var59:Int 0:Int
   LOAD var59:Int arr:Array i:Int
   PARAM var59:Int
   CALL var56:String intToString:String 1:Int
@@ -95,7 +92,6 @@ lbl5:
 lbl6:
   ASSIGN var68:Int 1:Int
   SUB var66:Int size:Int var68:Int
-  ASSIGN var69:Int 0:Int
   LOAD var69:Int arr:Array var66:Int
   PARAM var69:Int
   CALL var64:String intToString:String 1:Int
@@ -121,7 +117,6 @@ lbl8:
   ADD var81:Int left:Int right:Int
   ASSIGN var84:Int 2:Int
   DIV mid:Int var81:Int var84:Int
-  ASSIGN var88:Int 0:Int
   LOAD var88:Int arr:Array mid:Int
   PARAM var88:Int
   PARAM element:Int
@@ -129,7 +124,6 @@ lbl8:
   JMP_IF_NOT lbl10 var85:Boolean
   RET mid:Int
 lbl10:
-  ASSIGN var95:Int 0:Int
   LOAD var95:Int arr:Array mid:Int
   PARAM element:Int
   PARAM var95:Int

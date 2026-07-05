@@ -1,6 +1,7 @@
 package org.nnezh.lltag
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
@@ -199,6 +200,31 @@ class LLTAGCompileExpectationsTest {
     )
   }
 
+  @Test
+  fun `product constructor with wrong arguments is a semantic rejection`() {
+    assertSemanticRejects(
+      """
+      type Person(name: String, age: Int)
+
+      fun main(): Unit {
+          val person: Person = Person("Nika", "wrong")
+      }
+      """.trimIndent(),
+    )
+  }
+
+  @Test
+  fun `field access on scalar is a semantic rejection`() {
+    assertSemanticRejects(
+      """
+      fun main(): Unit {
+          val n: Int = 1
+          val broken: Int = n.value
+      }
+      """.trimIndent(),
+    )
+  }
+
   // endregion
 
   // region Expected success — must compile to 3AC
@@ -309,6 +335,70 @@ class LLTAGCompileExpectationsTest {
     assertTrue(
       tac.any { it.startsWith("CALL ") && it.contains("startedAt:Long") && it.contains("currentTimeMillis:Long") },
       "expected Long currentTimeMillis call, got:\n${tac.joinToString("\n")}",
+    )
+  }
+
+  @Test
+  fun `product types emit struct field load and store TAC`() {
+    val tac = formattedTac(
+      """
+      type Address(city: String)
+      type Person(name: String, age: Int, address: Address)
+
+      fun main(): Unit {
+          var address: Address = Address("Berlin")
+          var person: Person = Person("Nika", 7, address)
+          val age: Int = person.age
+          val city: String = person.address.city
+          person.age = age + 1
+          person.address.city = "Paris"
+      }
+      """.trimIndent(),
+    )
+
+    assertTrue(
+      tac.any { it.startsWith("STRUCT_DEF") && it.contains("Address") },
+      "expected Address struct definition, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
+      tac.any { it.startsWith("STRUCT_DEF") && it.contains("Person") },
+      "expected Person struct definition, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
+      tac.any { it.startsWith("FIELD") && it.contains("city:String") },
+      "expected city field definition, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
+      tac.any { it.startsWith("FIELD") && it.contains("address:Address") },
+      "expected address field definition, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
+      tac.any { it.startsWith("CALL") && it.contains("address:Address") && it.contains("Address:Address") },
+      "expected Address constructor call, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
+      tac.any { it.startsWith("CALL") && it.contains("person:Person") && it.contains("Person:Person") },
+      "expected Person constructor call, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
+      tac.any { it.startsWith("LOAD_FIELD") && it.contains("person:Person") && it.contains("age:Int") },
+      "expected person.age LOAD_FIELD, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
+      tac.any { it.startsWith("LOAD_FIELD") && it.contains("person.address:Address") && it.contains("city:String") },
+      "expected person.address.city LOAD_FIELD, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
+      tac.any { it.startsWith("STORE_FIELD") && it.contains("person:Person") && it.contains("age:Int") },
+      "expected person.age STORE_FIELD, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
+      tac.any { it.startsWith("STORE_FIELD") && it.contains("person.address:Address") && it.contains("city:String") },
+      "expected person.address.city STORE_FIELD, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
+      tac.none { it.contains("TypeRef") || it.contains("PrimitiveTypeSign") },
+      "unresolved/internal type leaked into TAC:\n${tac.joinToString("\n")}",
     )
   }
 
@@ -493,6 +583,30 @@ class LLTAGCompileExpectationsTest {
       "expected global array declaration in 3AC output, got:\n${tac.joinToString("\n")}",
     )
     assertTrue(tac.any { it.startsWith("LOAD ") }, "expected LOAD from global array, got:\n${tac.joinToString("\n")}")
+  }
+
+  @Test
+  fun `array load does not emit dummy zero assignment before load`() {
+    val tac = formattedTac(
+      """
+      fun main(): Unit {
+          val values: Int[1] = [7]
+          val first: Int = values[0]
+      }
+      """.trimIndent(),
+    )
+    val loadIndex = tac.indexOfFirst { it.startsWith("LOAD ") && it.contains("values:Array") }
+
+    assertTrue(loadIndex > 0, "expected LOAD from values, got:\n${tac.joinToString("\n")}")
+    val loadDestination = Regex("""LOAD\s+(\S+:Int)\s+values:Array""")
+      .find(tac[loadIndex])
+      ?.groupValues
+      ?.get(1)
+      ?: error("expected LOAD destination in: ${tac[loadIndex]}")
+    assertFalse(
+      tac.take(loadIndex).any { Regex("""ASSIGN\s+${Regex.escape(loadDestination)}\s+0:Int""").matches(it) },
+      "array LOAD should not be preceded by dummy zero assignment, got:\n${tac.joinToString("\n")}",
+    )
   }
 
   @Test

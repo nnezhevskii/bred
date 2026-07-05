@@ -8,6 +8,7 @@ import org.nnezh.bred.ast.ArrayInitializationExpressionASTNode
 import org.nnezh.bred.ast.AssignmentStatementAstNode
 import org.nnezh.bred.ast.BinaryExpressionASTNode
 import org.nnezh.bred.ast.BlockAstNode
+import org.nnezh.bred.ast.FieldAccessChainExpressionASTNode
 import org.nnezh.bred.ast.FunctionCallExpressionASTNode
 import org.nnezh.bred.ast.FunctionDeclAstNode
 import org.nnezh.bred.ast.ReturnFunctionStatementAstNode
@@ -506,6 +507,103 @@ class SemanticAnalyzerTest {
             fun main(): Unit {
                 var n: Int = 1
                 n = "wrong"
+            }
+            """.trimIndent(),
+            SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
+            AssignmentStatementAstNode::class.java,
+        )
+    }
+
+    // endregion
+
+    // region Product types and fields
+
+    @Test
+    fun `product constructor and nested field reads are valid`() {
+        assertNoSemanticDiagnostics(
+            """
+            type Address(city: String)
+            type Person(name: String, age: Int, address: Address)
+
+            fun main(): Unit {
+                val address: Address = Address("Berlin")
+                val person: Person = Person("Nika", 7, address)
+                val city: String = person.address.city
+                val age: Int = person.age
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `product field assignment with matching type is valid`() {
+        assertNoSemanticDiagnostics(
+            """
+            type Counter(value: Int)
+
+            fun main(): Unit {
+                var counter: Counter = Counter(1)
+                counter.value = 2
+                val value: Int = counter.value
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `constructor with wrong argument type is a semantic error`() {
+        assertSingleSemanticError(
+            """
+            type Person(name: String, age: Int)
+
+            fun main(): Unit {
+                val person: Person = Person("Nika", "wrong")
+            }
+            """.trimIndent(),
+            SemanticErrorType.CONSTRUCTOR_IS_FOUND_BUT_WRONG_ARGUMENTS,
+            FunctionCallExpressionASTNode::class.java,
+        )
+    }
+
+    @Test
+    fun `unknown product field is a semantic error`() {
+        assertSingleSemanticError(
+            """
+            type Person(name: String)
+
+            fun main(): Unit {
+                val person: Person = Person("Nika")
+                val age: Int = person.age
+            }
+            """.trimIndent(),
+            SemanticErrorType.UNKNOWN_FIELD,
+            FieldAccessChainExpressionASTNode::class.java,
+        )
+    }
+
+    @Test
+    fun `field access on scalar is a semantic error`() {
+        assertSingleSemanticError(
+            """
+            fun main(): Unit {
+                val n: Int = 1
+                val broken: Int = n.value
+            }
+            """.trimIndent(),
+            SemanticErrorType.UNKNOWN_FIELD,
+            FieldAccessChainExpressionASTNode::class.java,
+        )
+    }
+
+    @Test
+    fun `product field assignment checks rhs type`() {
+        assertSingleSemanticError(
+            """
+            type Counter(value: Int)
+
+            fun main(): Unit {
+                var counter: Counter = Counter(1)
+                counter.value = "wrong"
             }
             """.trimIndent(),
             SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,

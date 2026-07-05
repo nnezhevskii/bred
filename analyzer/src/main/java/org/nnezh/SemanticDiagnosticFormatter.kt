@@ -164,7 +164,7 @@ class SemanticDiagnosticFormatter {
             is ArrayInitializationExpressionASTNode -> "[${args.joinToString(", ") { it.expressionSummary() }}]"
             is BinaryExpressionASTNode -> "${left.expressionSummary()} ${operator.lexeme} ${right.expressionSummary()}"
             is UnaryExpressionASTNode -> "${operator.lexeme}${operand.expressionSummary()}"
-            is FieldAccessChainExpressionASTNode -> this.root + this.next?.let { n -> "." + n.expressionSummary() }
+            is FieldAccessChainExpressionASTNode -> this.root + (this.next?.let { n -> "." + n.expressionSummary() } ?: "")
         }
 
     private fun String.escape(): String =

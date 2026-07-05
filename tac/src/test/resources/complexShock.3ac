@@ -59,7 +59,6 @@ lbl6:
   LT var34:Boolean i:Int _right_borderi:Int
   JMP_IF_NOT lbl7 var34:Boolean
   ASSIGN var37:Int i:Int
-  ASSIGN var40:Int 0:Int
   LOAD var40:Int source:Array i:Int
   STORE target:Array var37:Int var40:Int
   ASSIGN var42:Int 1:Int
@@ -76,7 +75,6 @@ func sumArray:
 lbl8:
   LT var43:Boolean i:Int _right_borderi:Int
   JMP_IF_NOT lbl9 var43:Boolean
-  ASSIGN var49:Int 0:Int
   LOAD var49:Int arr:Array i:Int
   ADD total:Int total:Int var49:Int
   ASSIGN var51:Int 1:Int
@@ -94,18 +92,15 @@ func minArray:
   RET var56:Int
 lbl10:
   ASSIGN var57:Int 0:Int
-  ASSIGN var58:Int 0:Int
   LOAD var58:Int arr:Array var57:Int
   ASSIGN result:Int var58:Int
   ASSIGN i:Int 1:Int
 lbl11:
   LT var59:Boolean i:Int size:Int
   JMP_IF_NOT lbl12 var59:Boolean
-  ASSIGN var65:Int 0:Int
   LOAD var65:Int arr:Array i:Int
   LT var62:Boolean var65:Int result:Int
   JMP_IF_NOT lbl13 var62:Boolean
-  ASSIGN var68:Int 0:Int
   LOAD var68:Int arr:Array i:Int
   ASSIGN result:Int var68:Int
 lbl13:
@@ -124,18 +119,15 @@ func maxArray:
   RET var75:Int
 lbl14:
   ASSIGN var76:Int 0:Int
-  ASSIGN var77:Int 0:Int
   LOAD var77:Int arr:Array var76:Int
   ASSIGN result:Int var77:Int
   ASSIGN i:Int 1:Int
 lbl15:
   LT var78:Boolean i:Int size:Int
   JMP_IF_NOT lbl16 var78:Boolean
-  ASSIGN var84:Int 0:Int
   LOAD var84:Int arr:Array i:Int
   GT var81:Boolean var84:Int result:Int
   JMP_IF_NOT lbl17 var81:Boolean
-  ASSIGN var87:Int 0:Int
   LOAD var87:Int arr:Array i:Int
   ASSIGN result:Int var87:Int
 lbl17:
@@ -154,7 +146,6 @@ func countLessThan:
 lbl18:
   LT var91:Boolean i:Int _right_borderi:Int
   JMP_IF_NOT lbl19 var91:Boolean
-  ASSIGN var97:Int 0:Int
   LOAD var97:Int arr:Array i:Int
   LT var94:Boolean var97:Int threshold:Int
   JMP_IF_NOT lbl20 var94:Boolean
@@ -176,7 +167,6 @@ func countGreaterOrEqual:
 lbl21:
   LT var104:Boolean i:Int _right_borderi:Int
   JMP_IF_NOT lbl22 var104:Boolean
-  ASSIGN var110:Int 0:Int
   LOAD var110:Int arr:Array i:Int
   GE var107:Boolean var110:Int threshold:Int
   JMP_IF_NOT lbl23 var107:Boolean
@@ -197,7 +187,6 @@ func countEven:
 lbl24:
   LT var117:Boolean i:Int _right_borderi:Int
   JMP_IF_NOT lbl25 var117:Boolean
-  ASSIGN var124:Int 0:Int
   LOAD var124:Int arr:Array i:Int
   ASSIGN var125:Int 2:Int
   MOD var121:Int var124:Int var125:Int
@@ -221,7 +210,6 @@ func checksum:
 lbl27:
   LT var132:Boolean i:Int _right_borderi:Int
   JMP_IF_NOT lbl28 var132:Boolean
-  ASSIGN var139:Int 0:Int
   LOAD var139:Int arr:Array i:Int
   ASSIGN var142:Int 1:Int
   ADD var140:Int i:Int var142:Int
@@ -530,7 +518,6 @@ lbl38:
   ASSIGN var335:Int 0:Int
   EQ var333:Boolean i:Int var335:Int
   JMP_IF_NOT lbl40 var333:Boolean
-  ASSIGN var340:Int 0:Int
   LOAD var340:Int arr:Array i:Int
   PARAM var340:Int
   CALL var337:String toString_Int_String:String 1:Int
@@ -539,7 +526,6 @@ lbl38:
 lbl40:
   ASSIGN var343:String , :String
   ADD var341:String text:String var343:String
-  ASSIGN var347:Int 0:Int
   LOAD var347:Int arr:Array i:Int
   PARAM var347:Int
   CALL var344:String toString_Int_String:String 1:Int
@@ -562,23 +548,19 @@ lbl44:
   SUB var356:Int size:Int pass:Int
   LT var354:Boolean j:Int var356:Int
   JMP_IF_NOT lbl45 var354:Boolean
-  ASSIGN var362:Int 0:Int
   LOAD var362:Int arr:Array j:Int
   ASSIGN var366:Int 1:Int
   SUB var364:Int j:Int var366:Int
-  ASSIGN var367:Int 0:Int
   LOAD var367:Int arr:Array var364:Int
   PARAM var362:Int
   PARAM var367:Int
   CALL var359:Boolean less_Int_Int_Boolean:Boolean 2:Int
   JMP_IF_NOT lbl46 var359:Boolean
-  ASSIGN var369:Int 0:Int
   LOAD var369:Int arr:Array j:Int
   ASSIGN tmp:Int var369:Int
   ASSIGN var370:Int j:Int
   ASSIGN var374:Int 1:Int
   SUB var372:Int j:Int var374:Int
-  ASSIGN var375:Int 0:Int
   LOAD var375:Int arr:Array var372:Int
   STORE arr:Array var370:Int var375:Int
   ASSIGN var378:Int 1:Int
@@ -614,7 +596,6 @@ lbl48:
   ADD var394:Int left:Int right:Int
   ASSIGN var397:Int 2:Int
   DIV middle:Int var394:Int var397:Int
-  ASSIGN var401:Int 0:Int
   LOAD var401:Int arr:Array middle:Int
   PARAM var401:Int
   PARAM target:Int
@@ -622,7 +603,6 @@ lbl48:
   JMP_IF_NOT lbl50 var398:Boolean
   RET middle:Int
 lbl50:
-  ASSIGN var408:Int 0:Int
   LOAD var408:Int arr:Array middle:Int
   PARAM target:Int
   PARAM var408:Int
@@ -647,11 +627,9 @@ func isSorted_Array_Int_Int_Boolean:
 lbl53:
   LT var415:Boolean i:Int size:Int
   JMP_IF_NOT lbl54 var415:Boolean
-  ASSIGN var421:Int 0:Int
   LOAD var421:Int arr:Array i:Int
   ASSIGN var425:Int 1:Int
   SUB var423:Int i:Int var425:Int
-  ASSIGN var426:Int 0:Int
   LOAD var426:Int arr:Array var423:Int
   PARAM var421:Int
   PARAM var426:Int
