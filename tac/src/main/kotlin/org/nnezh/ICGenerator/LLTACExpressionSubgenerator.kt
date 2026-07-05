@@ -210,7 +210,6 @@ class LLTACExpressionSubgenerator(
                 val destination = nameEmitter.nextVar()
                 val elementType = type
                 val arrayType = globalContext.arrayOf(elementType)
-                instructions.add(LLTACElement.assign(destination, elementType, 0))
                 instructions.add(
                     LLTACElement.load(
                         array = expression.name,

@@ -37,7 +37,7 @@ public sealed interface TypeSign {
         if (arguments.isEmpty()) {
             name
         } else {
-            arguments.joinToString(prefix = "${name}_") { it.toManglePart() }
+            arguments.joinToString(prefix = "${name}_", separator = "_") { it.toManglePart() }
         }
 }
 
@@ -96,7 +96,14 @@ internal data class ProductTypeSign internal constructor(
     override val isResolved: Boolean
         get() = true
     override val arguments: List<TypeSign>
-        get() = fields.values.toSet().toList()
+        get() = emptyList()
+
+    override fun toManglePart(): String =
+        if (fields.isEmpty()) {
+            name
+        } else {
+            fields.values.joinToString(prefix = "${name}_", separator = "_") { it.toManglePart() }
+        }
 
 }
 

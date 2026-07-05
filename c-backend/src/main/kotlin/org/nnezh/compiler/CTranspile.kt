@@ -118,10 +118,11 @@ class CTranspile {
     }
 
     private fun renderStructDefinition(definition: StructDefinition): String {
+        val name = typeToStringInInitialization(definition.type)
         val fields = definition.fields.joinToString(" ") { field ->
             "${typeToStringInInitialization(field.type)} ${field.name};"
         }
-        return "typedef struct ${definition.type.name} { $fields } ${definition.type.name};"
+        return "typedef struct $name { $fields } $name;"
     }
 
     private fun skipGlobalStaticArray(context: Context): List<String> {
@@ -208,7 +209,7 @@ class CTranspile {
                     destinationVariable.type.isProductType() &&
                     callingFunctionName == destinationVariable.type.name
                 ) {
-                    "(${destinationVariable.type.name}){$args}"
+                    "(${typeToStringInInitialization(destinationVariable.type)}){$args}"
                 } else {
                     "$callingFunctionName(${args})"
                 }
@@ -483,7 +484,7 @@ class CTranspile {
             type.isArray -> throw CTranspileException("Cannot render static array type as scalar C declaration: ${type.render()}")
             type.isStringType() -> "String"
             type.isUnitType() -> "void"
-            type.isProductType() -> type.name
+            type.isProductType() -> type.toManglePart()
             else -> throw CTranspileException("Unsupported C initialization type: ${type.render()}")
         }
     }
@@ -497,7 +498,7 @@ class CTranspile {
             type.isArray -> "${typeToStringInArguments(type.elementTypeOrNull!!)}*"
             type.isStringType() -> "String"
             type.isUnitType() -> "void"
-            type.isProductType() -> type.name
+            type.isProductType() -> type.toManglePart()
             else -> throw CTranspileException("Unsupported C argument type: ${type.render()}")
         }
     }

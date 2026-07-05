@@ -318,7 +318,9 @@ class TemplateInstantiator(
                         .firstOrNull { it.name == meta.name && it.args == argumentTypes }
                         ?.resultType
                         ?: context.unitType
-                    null -> fail("Cannot infer return type for function ${expression.name}")
+                    null -> context.constructors[expression.name]?.let { context.typeRegistry.findType(expression.name) }
+                        ?: fail("Cannot infer return type for function ${expression.name}")
+                //
                 }
             }
 
