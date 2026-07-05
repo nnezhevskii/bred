@@ -82,6 +82,15 @@ class ParserTest {
     }
 
     @Test
+    fun `generic parameter can have multiple constraints`() {
+        val root = parse("fun f<T: Ordered + Printable>(x: T) { }")
+
+        val function = root.functions.single()
+        assertEquals(listOf(GenericParam("T", listOf("Ordered", "Printable"))), function.genericParams)
+        assertEquals(FunctionArgument("x", TypeRef("T")), function.arguments.single())
+    }
+
+    @Test
     fun `global scalar and static array vals are parsed`() {
         val root = parse(
             """
@@ -458,6 +467,13 @@ class ParserTest {
     }
 
     @Test
+    fun `generic constraints reject malformed plus lists`() {
+        assertTrue(parseFails("fun broken<T: Ordered +>(a: T): Unit { }"))
+        assertTrue(parseFails("fun broken<T: + Ordered>(a: T): Unit { }"))
+        assertTrue(parseFails("fun broken<T: Ordered + Printable,>(a: T): Unit { }"))
+    }
+
+    @Test
     fun `type sign rejects empty generic argument list`() {
         assertTrue(parseFails("fun broken(a: Box<>): Unit { }"))
     }
@@ -789,6 +805,60 @@ class ParserTest {
         assertEquals(context.intType, generated.arguments[1].type)
         assertEquals(context.intType, generated.result)
         assertEquals("findIndex_Array_Int_Int_Int", call.name)
+    }
+
+    @Test
+    fun `template instantiator supports multiple constraints on one generic`() {
+        val root = parse(
+            """
+            typeclass Ordered<T> {
+                fun less(a: T, b: T): Boolean
+            }
+
+            typeclass Printable<T> {
+                fun toText(a: T): String
+            }
+
+            instance Ordered<Int> {
+                fun less(a: Int, b: Int): Boolean {
+                    return a < b
+                }
+            }
+
+            instance Printable<Int> {
+                fun toText(a: Int): String {
+                    return intToString(a)
+                }
+            }
+
+            fun describeMin<T: Ordered + Printable>(a: T, b: T): String {
+                if (less(a, b)) {
+                    return toText(a)
+                }
+
+                return toText(b)
+            }
+
+            fun main(): Unit {
+                val text: String = describeMin(1, 2)
+            }
+            """.trimIndent()
+        )
+
+        val instantiated = instantiate(root)
+        val generated = instantiated.functions.single { it.name == "describeMin_Int_Int_String" }
+        val firstReturn = assertInstanceOf(
+            ReturnFunctionStatementAstNode::class.java,
+            assertInstanceOf(IfStatementAstNode::class.java, generated.body.statements.first()).thenBlock.statements.single(),
+        )
+        val firstCall = assertInstanceOf(FunctionCallExpressionASTNode::class.java, firstReturn.expression)
+        val secondReturn = assertInstanceOf(ReturnFunctionStatementAstNode::class.java, generated.body.statements[1])
+        val secondCall = assertInstanceOf(FunctionCallExpressionASTNode::class.java, secondReturn.expression)
+
+        assertNotNull(instantiated.functions.singleOrNull { it.name == "less_Int_Int_Boolean" })
+        assertNotNull(instantiated.functions.singleOrNull { it.name == "toText_Int_String" })
+        assertEquals("toText_Int_String", firstCall.name)
+        assertEquals("toText_Int_String", secondCall.name)
     }
 
     @Test

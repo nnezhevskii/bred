@@ -145,7 +145,7 @@ built-ins are `Int`, `Long`, `Double`, `String`, `Boolean`, and `Unit`.
 ```ebnf
 functionDecl  ::= "fun" identifier genericParams? functionParams returnType? block ;
 genericParams ::= "<" genericParam { "," genericParam } ">" ;
-genericParam  ::= identifier [ ":" identifier ] ;
+genericParam  ::= identifier [ ":" identifier { "+" identifier } ] ;
 functionParams ::= "(" [ functionParam { "," functionParam } ] ")" ;
 functionParam ::= identifier ":" typeSign [ "[]" ] ;
 returnType    ::= ":" typeSign ;
@@ -162,6 +162,7 @@ fun main() { }
 fun id(value: Int): Int { return value }
 fun first(values: Int[]): Int { return values[0] }
 fun prettyPrint<A: Printable>(a: A) { println(toPrettyPrinter(a)) }
+fun sortAndPrint<A: Ordered + Printable>(a: A) { prettyPrint(a) }
 fun pair<A: Printable, B>(a: A, b: B): Pair<A, B> { return makePair(a, b) }
 ```
 

@@ -29,6 +29,7 @@ object BuiltInMethods {
         BuiltInFunctionSpec(name = "stringEquals", args = listOf(string, string), boolean),
         BuiltInFunctionSpec(name = "readString", args = listOf(), string),
         BuiltInFunctionSpec(name = "intToString", args = listOf(int), string),
+        BuiltInFunctionSpec(name = "longToString", args = listOf(long), string),
         BuiltInFunctionSpec(name = "doubleToString", args = listOf(double), string),
         BuiltInFunctionSpec(name = "random", args = listOf(int, int), int),
         BuiltInFunctionSpec(name = "currentTimeMillis", args = listOf(), long),

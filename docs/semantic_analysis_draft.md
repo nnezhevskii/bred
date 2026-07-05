@@ -437,13 +437,14 @@ booleanToString(Boolean, String, Int): Unit
 stringEquals(String, String): Boolean
 readString(): String
 intToString(Int): String
+longToString(Long): String
 doubleToString(Double): String
 random(Int, Int): Int
 currentTimeMillis(): Long
 ```
 
 The semantic tests cover representative built-ins such as `println`,
-`readInt`, `stringEquals`, and `currentTimeMillis`.
+`readInt`, `stringEquals`, `longToString`, and `currentTimeMillis`.
 
 ## 12. Known Gaps
 

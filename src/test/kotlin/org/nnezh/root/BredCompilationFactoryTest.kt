@@ -88,6 +88,36 @@ class BredCompilationFactoryTest {
     }
 
     @Test
+    fun `bred compiler emits long arithmetic and longToString call`(@TempDir dir: Path) {
+        val source = dir.resolve("long-math.bred")
+        source.writeText(
+            """
+            fun main(): Unit {
+                val a: Long = 40L
+                val b: Long = 2L
+                val total: Long = (a + b - 10L) / 2L % 9L
+                val text: String = longToString(total)
+                println(text)
+            }
+            """.trimIndent(),
+        )
+
+        val result = BredToCCompilerFactory().create().compile(source)
+
+        result.fold(
+            ifLeft = { errors -> error("expected C code, got: $errors") },
+            ifRight = { cLines ->
+                assertTrue(cLines.any { it.contains("long long") }, "expected long long declarations: $cLines")
+                assertTrue(cLines.any { it.contains("+") && it.contains("=") }, "expected Long addition: $cLines")
+                assertTrue(cLines.any { it.contains("-") && it.contains("=") }, "expected Long subtraction: $cLines")
+                assertTrue(cLines.any { it.contains("/") && it.contains("=") }, "expected Long division: $cLines")
+                assertTrue(cLines.any { it.contains("%") && it.contains("=") }, "expected Long modulo: $cLines")
+                assertTrue(cLines.any { it.contains("longToString(") }, "expected longToString call: $cLines")
+            },
+        )
+    }
+
+    @Test
     fun `bred compiler returns parser errors on the left`(@TempDir dir: Path) {
         val source = dir.resolve("broken.bred")
         source.writeText("fun main(: Unit { }")

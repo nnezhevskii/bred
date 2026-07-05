@@ -67,12 +67,12 @@ fun bubbleSort<T: Ordered>(a: Array<T>, size: Int) {
     }
 }
 
-fun doWork<T: Ordered, Printable>(a: Array<T>, size: Int) {
+fun doWork<T: Ordered + Printable>(a: Array<T>, size: Int) {
     println("before: ")
-    println(arrayToString(arr, arrSize))
-    bubbleSort(arr, arrSize)
+    println(arrayToString(a, size))
+    bubbleSort(a, size)
     println("After sorting:")
-    println(arrayToString(arr, arrSize))
+    println(arrayToString(a, size))
 }
 
 fun main(): Unit {

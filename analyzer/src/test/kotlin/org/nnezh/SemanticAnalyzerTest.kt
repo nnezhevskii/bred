@@ -124,9 +124,11 @@ class SemanticAnalyzerTest {
                 var total: Long = 1L
                 val delta: Long = 2L
                 total = total + delta * 3L
+                total = total - 1L
+                val half: Long = total / 2L
                 val remainder: Long = total % 2L
                 val negated: Long = -remainder
-                val ok: Boolean = negated <= 0L
+                val ok: Boolean = negated <= half
             }
             """.trimIndent(),
         )
@@ -201,8 +203,9 @@ class SemanticAnalyzerTest {
                 val input: String = readString()
                 val n: Int = stringToInt("42")
                 val intText: String = intToString(n)
+                val longText: String = longToString(42L)
                 val doubleText: String = doubleToString(1.5)
-                println(input + intText + doubleText)
+                println(input + intText + longText + doubleText)
             }
             """.trimIndent(),
         )

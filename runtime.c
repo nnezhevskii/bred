@@ -164,6 +164,59 @@ String intToString(int val) {
     return s;
 }
 
+static unsigned long long unsigned_abs_long_long(long long val) {
+    if (val < 0) {
+        return (unsigned long long)(-(val + 1)) + 1ULL;
+    }
+    return (unsigned long long)val;
+}
+
+static size_t get_long_string_len(long long val) {
+    unsigned long long n = unsigned_abs_long_long(val);
+    size_t len = val < 0 ? 1 : 0;
+
+    if (n == 0) return len + 1;
+
+    while (n > 0) {
+        len++;
+        n /= 10ULL;
+    }
+    return len;
+}
+
+String longToString(long long val) {
+    size_t len = get_long_string_len(val);
+    size_t needed = len + 1;
+
+    if (string_pool_offset + needed > POOL_SIZE) {
+        fprintf(stderr, "run out of poll!\n");
+        exit(1);
+    }
+
+    char* result = STRING_POOL + string_pool_offset;
+    string_pool_offset += needed;
+
+    result[len] = '\0';
+
+    unsigned long long n = unsigned_abs_long_long(val);
+    size_t i = len;
+    if (n == 0) {
+        result[0] = '0';
+    } else {
+        while (n > 0) {
+            i--;
+            result[i] = '0' + (n % 10ULL);
+            n /= 10ULL;
+        }
+        if (val < 0) {
+            result[0] = '-';
+        }
+    }
+
+    String s = { .data = result, .length = len };
+    return s;
+}
+
 String doubleToString(double val) {
     const int precision = 6;
 

@@ -53,6 +53,12 @@ class TypeSignParser {
                 constraints += match<Token.Identifier>(context.consumeToken()) {
                     AstErrorFactory.buildError("generic constraint", it)
                 }.lexeme
+                while (context.top() is Token.Operator.Plus) {
+                    context.consumeToken()
+                    constraints += match<Token.Identifier>(context.consumeToken()) {
+                        AstErrorFactory.buildError("generic constraint", it)
+                    }.lexeme
+                }
             }
             params += GenericParam(name.lexeme, constraints)
             when (context.top()) {

@@ -249,7 +249,11 @@ class LLTAGCompileExpectationsTest {
       fun main(): Unit {
           val first: Long = values[0]
           val result: Long = addOne(first + 1L)
+          val diff: Long = result - first
+          val half: Long = diff / 2L
+          val remainder: Long = result % 2L
           val ok: Boolean = result > 5L
+          val text: String = longToString(half + remainder)
       }
       """.trimIndent(),
     )
@@ -267,8 +271,24 @@ class LLTAGCompileExpectationsTest {
       "expected Long ADD instruction, got:\n${tac.joinToString("\n")}",
     )
     assertTrue(
+      tac.any { it.startsWith("SUB") && it.contains(":Long") && it.contains("result:Long") },
+      "expected Long SUB instruction, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
+      tac.any { it.startsWith("DIV") && it.contains(":Long") },
+      "expected Long DIV instruction, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
+      tac.any { it.startsWith("MOD") && it.contains(":Long") },
+      "expected Long MOD instruction, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
       tac.any { it.startsWith("CALL") && it.contains("result:Long") && it.contains("addOne:Long") },
       "expected Long function call result, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
+      tac.any { it.startsWith("CALL") && it.contains("text:String") && it.contains("longToString:String") },
+      "expected longToString call result, got:\n${tac.joinToString("\n")}",
     )
     assertTrue(
       tac.none { it.contains("TypeRef") || it.contains("PrimitiveTypeSign") },

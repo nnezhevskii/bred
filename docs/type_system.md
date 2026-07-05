@@ -127,6 +127,8 @@ and `globalArray`.
 
 Semantic analysis and template instantiation use these resolved signatures from
 the same context. This avoids separate built-in registries drifting apart.
+Runtime string conversion built-ins include `intToString(Int): String`,
+`longToString(Long): String`, and `doubleToString(Double): String`.
 
 ## 6. Template Instantiation
 
