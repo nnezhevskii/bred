@@ -179,7 +179,7 @@ class Lexer(private val source: String) {
             '|' -> if (match('|')) {
                 Token.Operator.Or(start)
             } else {
-                raise(LexerError.UnexpectedCharacter(start, '|', "did you mean '||'?"))
+                Token.Punctuation.Pipe(start)
             }
             else -> raise(LexerError.UnexpectedCharacter(start, char))
         }

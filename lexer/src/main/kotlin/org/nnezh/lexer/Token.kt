@@ -254,6 +254,11 @@ sealed class Token {
         data class Dot(override val position: Position) : Punctuation() {
             override val lexeme: String = "."
         }
+
+        data class Pipe(override val position: Position) : Punctuation() {
+            override val lexeme: String = "|"
+        }
+
     }
     // endregion
 

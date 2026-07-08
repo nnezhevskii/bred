@@ -13,13 +13,32 @@ data class ProgramRoot(
 //data class DeclareTypeASTNode(val name: String) : ASTNode
 sealed interface DeclareTypeASTNode: ASTNode {
     val name: String
+    val genericParams: List<GenericParam>
 }
 
 data class DeclareProductTypeASTNode(
     override val name: String,
     val isMutable: Boolean,
-    val fields: Map<String, TypeSign>
+    val fields: Map<String, TypeSign>,
+    override val genericParams: List<GenericParam> = listOf(), // TODO: support it later
 ) : DeclareTypeASTNode
+
+data class DeclareSumTypeASTNode(
+    override val name: String,
+    override val genericParams: List<GenericParam>,
+    val variants: List<SumTypeVariantASTNode>,
+) : DeclareTypeASTNode
+
+data class SumTypeVariantASTNode(
+    val name: String,
+    val typeArguments: List<TypeSign> = emptyList(),
+    val fields: List<SumTypeVariantFieldASTNode> = emptyList(),
+) : ASTNode
+
+data class SumTypeVariantFieldASTNode(
+    val name: String,
+    val type: TypeSign,
+) : ASTNode
 
 
 

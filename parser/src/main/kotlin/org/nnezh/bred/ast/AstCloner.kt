@@ -53,6 +53,8 @@ object AstCloner {
             )
             is DeclareGlobalVariableASTNode -> cloneGlobalVariable(node, replacement)
             is DeclareTypeASTNode -> cloneTypeDeclaration(node)
+            is SumTypeVariantASTNode -> cloneSumTypeVariant(node, replacement)
+            is SumTypeVariantFieldASTNode -> cloneSumTypeVariantField(node, replacement)
             is FunctionDeclAstNode -> cloneFunction(node, replacement)
             is BlockAstNode -> cloneBlock(node, replacement)
             is StatementAstNode -> cloneStatement(node, replacement)
@@ -82,8 +84,32 @@ object AstCloner {
                 isMutable = node.isMutable,
                 fields = node.fields.toMutableMap()
             )
+            is DeclareSumTypeASTNode -> DeclareSumTypeASTNode(
+                name = node.name,
+                genericParams = node.genericParams.map { cloneGenericParam(it) },
+                variants = node.variants.map { cloneSumTypeVariant(it, null) },
+            )
         }
     }
+
+    private fun cloneSumTypeVariant(
+        node: SumTypeVariantASTNode,
+        replacement: TypeReplacement?,
+    ): SumTypeVariantASTNode =
+        SumTypeVariantASTNode(
+            name = node.name,
+            typeArguments = node.typeArguments.map { cloneTypeSign(it, replacement) },
+            fields = node.fields.map { cloneSumTypeVariantField(it, replacement) },
+        )
+
+    private fun cloneSumTypeVariantField(
+        node: SumTypeVariantFieldASTNode,
+        replacement: TypeReplacement?,
+    ): SumTypeVariantFieldASTNode =
+        SumTypeVariantFieldASTNode(
+            name = node.name,
+            type = cloneTypeSign(node.type, replacement),
+        )
 
     private fun cloneFunction(
         node: FunctionDeclAstNode,
@@ -167,6 +193,8 @@ object AstCloner {
             is FunctionCallExpressionASTNode -> FunctionCallExpressionASTNode(
                 name = node.name,
                 arguments = node.arguments.map { cloneExpression(it, replacement) },
+                typeArguments = node.typeArguments.map { cloneTypeSign(it, replacement) },
+                isConstructorCalling = node.isConstructorCalling,
             )
             is BinaryExpressionASTNode -> BinaryExpressionASTNode(
                 left = cloneExpression(node.left, replacement),
@@ -311,6 +339,7 @@ object AstCloner {
             is Token.Punctuation.Colon -> Token.Punctuation.Colon(clonePosition(token.position))
             is Token.Punctuation.Dot -> Token.Punctuation.Dot(clonePosition(token.position))
             is Token.Eof -> Token.Eof(clonePosition(token.position))
+            is Token.Punctuation.Pipe -> Token.Punctuation.Pipe(clonePosition(token.position))
         }
 
     private fun clonePosition(position: Position): Position =

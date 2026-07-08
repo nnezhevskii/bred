@@ -2,6 +2,7 @@ package org.nnezh.bred.context
 
 import org.nnezh.bred.ast.ASTNode
 import org.nnezh.bred.ast.DeclareProductTypeASTNode
+import org.nnezh.bred.ast.DeclareSumTypeASTNode
 import org.nnezh.bred.ast.DeclareTypeASTNode
 import org.nnezh.bred.ast.FunctionDeclAstNode
 import org.nnezh.bred.ast.InstanceDeclAstNode
@@ -60,6 +61,9 @@ class ProgramContextCollector(
                 is DeclareProductTypeASTNode -> {
                     val productType = context.declareProductType(type.name, type.fields)
                     context.addProductTypeConstructor(productType.name)
+                }
+                is DeclareSumTypeASTNode -> {
+                    context.addType(type.name, isPrimitive = false)
                 }
             }
         }

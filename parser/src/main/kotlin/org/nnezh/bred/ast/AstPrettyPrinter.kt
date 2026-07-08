@@ -27,6 +27,8 @@ class AstPrettyPrinter(
                 is DeclareGlobalVariableASTNode -> globalVariable(node, level)
                 is DeclareTypeASTNode ->  type(node, level) //line(level, "type ${node.name}")
                 is FunctionDeclAstNode -> function(node, level)
+                is SumTypeVariantASTNode -> sumTypeVariant(node, level)
+                is SumTypeVariantFieldASTNode -> line(level, "${node.name}: ${type(node.type)}")
                 is TypeClassDeclAstNode -> typeClass(node, level)
                 is TypeClassMethodDeclAstNode -> line(level, methodSignature(node))
                 is InstanceDeclAstNode -> instance(node, level)
@@ -67,7 +69,31 @@ class AstPrettyPrinter(
                         line(level + 2, "${field.key}: ${field.value}")
                     }
                 }
+                is DeclareSumTypeASTNode -> {
+                    if (node.genericParams.isNotEmpty()) {
+                        line(level + 1, "generic params:")
+                        node.genericParams.forEach { line(level + 2, genericParam(it)) }
+                    }
+                    line(level + 1, "variants:")
+                    node.variants.forEach { variant ->
+                        val args = variant.typeArguments.takeIf { it.isNotEmpty() }
+                            ?.joinToString(prefix = "<", postfix = ">") { type(it) }
+                            .orEmpty()
+                        line(level + 2, "${variant.name}$args")
+                        variant.fields.forEach { field ->
+                            line(level + 3, "${field.name}: ${type(field.type)}")
+                        }
+                    }
+                }
             }
+        }
+
+        private fun sumTypeVariant(node: SumTypeVariantASTNode, level: Int) {
+            val args = node.typeArguments.takeIf { it.isNotEmpty() }
+                ?.joinToString(prefix = "<", postfix = ">") { type(it) }
+                .orEmpty()
+            line(level, "${node.name}$args")
+            node.fields.forEach { node(it, level + 1) }
         }
 
         private fun function(node: FunctionDeclAstNode, level: Int) {
@@ -180,7 +206,10 @@ class AstPrettyPrinter(
                     expression(node.index, level + 2)
                 }
                 is FunctionCallExpressionASTNode -> {
-                    line(level, "call ${node.name}")
+                    val typeArguments = node.typeArguments.takeIf { it.isNotEmpty() }
+                        ?.joinToString(prefix = "<", postfix = ">") { type(it) }
+                        .orEmpty()
+                    line(level, "call ${node.name}$typeArguments")
                     section(level + 1, "arguments", node.arguments) { arg, argLevel ->
                         expression(arg, argLevel)
                     }

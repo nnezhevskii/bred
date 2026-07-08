@@ -149,6 +149,83 @@ class ParserTest {
     }
 
     @Test
+    fun `sum type declaration with generic variant argument is parsed`() {
+        val root = parse("type MaybeInt = Nothing | Just<Int>")
+
+        val maybe = assertInstanceOf(DeclareSumTypeASTNode::class.java, root.types.single())
+        assertEquals("MaybeInt", maybe.name)
+        assertTrue(maybe.genericParams.isEmpty())
+        assertEquals(listOf("Nothing", "Just"), maybe.variants.map { it.name })
+        assertTrue(maybe.variants[0].typeArguments.isEmpty())
+        assertTrue(maybe.variants[0].fields.isEmpty())
+        assertEquals(listOf(TypeRef("Int")), maybe.variants[1].typeArguments)
+        assertTrue(maybe.variants[1].fields.isEmpty())
+    }
+
+    @Test
+    fun `generic sum type declaration with constructor fields is parsed`() {
+        val root = parse("type Maybe<T> = Nothing | Just<T>(a: T)")
+
+        val maybe = assertInstanceOf(DeclareSumTypeASTNode::class.java, root.types.single())
+        assertEquals("Maybe", maybe.name)
+        assertEquals(listOf(GenericParam("T", emptyList())), maybe.genericParams)
+
+        val just = maybe.variants[1]
+        assertEquals("Just", just.name)
+        assertEquals(listOf(TypeRef("T")), just.typeArguments)
+        assertEquals(listOf(SumTypeVariantFieldASTNode("a", TypeRef("T"))), just.fields)
+    }
+
+    @Test
+    fun `generic sum type constructor call is parsed`() {
+        val root = parse(
+            """
+            type Maybe<T> = Just<T>(v: T) | Nothing
+
+            fun main() {
+                val x: Maybe<Int> = Just<Int>(1)
+            }
+            """.trimIndent()
+        )
+
+        val declaration = assertInstanceOf(
+            ScalarVariableInitializationASTNode::class.java,
+            root.functions.single().body.statements.first(),
+        )
+        val call = assertInstanceOf(FunctionCallExpressionASTNode::class.java, declaration.expression)
+
+        assertEquals(TypeRef("Maybe", listOf(TypeRef("Int"))), declaration.type)
+        assertEquals("Just", call.name)
+        assertEquals(listOf(TypeRef("Int")), call.typeArguments)
+        assertEquals(1, call.arguments.size)
+    }
+
+    @Test
+    fun `enum-like and payload sum type declarations are parsed`() {
+        val root = parse(
+            """
+            type Color = RED | GREEN | BLUE
+            type Response = NOT_FOUND | SUCCESS(value: Int) | FAIL(reason: String, code: Int) | UNATHORIZED
+            """.trimIndent()
+        )
+
+        val color = assertInstanceOf(DeclareSumTypeASTNode::class.java, root.types[0])
+        val response = assertInstanceOf(DeclareSumTypeASTNode::class.java, root.types[1])
+
+        assertEquals(listOf("RED", "GREEN", "BLUE"), color.variants.map { it.name })
+        assertTrue(color.variants.all { it.typeArguments.isEmpty() && it.fields.isEmpty() })
+        assertEquals(listOf("NOT_FOUND", "SUCCESS", "FAIL", "UNATHORIZED"), response.variants.map { it.name })
+        assertEquals(listOf(SumTypeVariantFieldASTNode("value", TypeRef("Int"))), response.variants[1].fields)
+        assertEquals(
+            listOf(
+                SumTypeVariantFieldASTNode("reason", TypeRef("String")),
+                SumTypeVariantFieldASTNode("code", TypeRef("Int")),
+            ),
+            response.variants[2].fields,
+        )
+    }
+
+    @Test
     fun `constructor call and field access chain are parsed`() {
         val root = parse(
             """
@@ -536,6 +613,35 @@ class ParserTest {
         assertTrue(parseFails("type Person(name: String, name: String)"))
         assertTrue(parseFails("type Person(name: String,)"))
         assertTrue(parseFails("type Person(name String)"))
+    }
+
+    @Test
+    fun `sum type rejects malformed variants and generic parameter lists`() {
+        assertTrue(parseFails("type Broken ="))
+        assertTrue(parseFails("type Broken = A |"))
+        assertTrue(parseFails("type Broken = A || B"))
+        assertTrue(parseFails("type Broken = A | A"))
+        assertTrue(parseFails("type Broken<T,> = A"))
+        assertTrue(parseFails("type Broken<> = A"))
+    }
+
+    @Test
+    fun `sum type rejects malformed variant fields`() {
+        assertTrue(parseFails("type Broken = A(value: Int,)"))
+        assertTrue(parseFails("type Broken = A(value Int)"))
+        assertTrue(parseFails("type Broken = A(value: Int, value: String)"))
+    }
+
+    @Test
+    fun `sum type cannot be mutable`() {
+        assertTrue(parseFails("type mut Maybe = Nothing"))
+    }
+
+    @Test
+    fun `generic call rejects malformed type argument lists`() {
+        assertTrue(parseFails("fun main(): Unit { val x: Maybe<Int> = Just<>(1) }"))
+        assertTrue(parseFails("fun main(): Unit { val x: Maybe<Int> = Just<Int,>(1) }"))
+        assertTrue(parseFails("fun main(): Unit { val x: Maybe<Int> = Just<Int>(1 }"))
     }
 
     @Test

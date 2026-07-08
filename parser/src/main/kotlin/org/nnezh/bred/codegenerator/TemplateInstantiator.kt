@@ -11,6 +11,7 @@ import org.nnezh.bred.ast.BlockAstNode
 import org.nnezh.bred.ast.BooleanLiteralExpressionASTNode
 import org.nnezh.bred.ast.CallFunctionStatementAstNode
 import org.nnezh.bred.ast.DeclareGlobalVariableASTNode
+import org.nnezh.bred.ast.DeclareTypeASTNode
 import org.nnezh.bred.ast.DoubleLiteralExpressionASTNode
 import org.nnezh.bred.ast.ExpressionASTNode
 import org.nnezh.bred.ast.FieldAccessChainExpressionASTNode
@@ -46,6 +47,7 @@ class TemplateInstantiator(
     private val context: ProgramGlobalContext,
 ) {
     private lateinit var templates: Map<String, FunctionDeclAstNode>
+    private lateinit var templateTypes: Map<String, DeclareTypeASTNode>
     private lateinit var typeClassMethods: Map<String, List<TypeClassMethodOwner>>
 
     private val generatedTemplates: MutableMap<TemplateInstanceKey, FunctionDeclAstNode> = mutableMapOf()
@@ -63,6 +65,11 @@ class TemplateInstantiator(
         templates = root.functions
             .filter { it.genericParams.isNotEmpty() }
             .associateBy { it.name }
+
+        templateTypes = root.types
+            .filter { it.genericParams.isNotEmpty() }
+            .associateBy { it.name }
+
         typeClassMethods = root.typeClasses
             .flatMap { typeClass -> typeClass.methods.map { method -> TypeClassMethodOwner(typeClass, method.name) } }
             .groupBy { it.methodName }

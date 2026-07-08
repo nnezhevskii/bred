@@ -1,6 +1,7 @@
 package org.nnezh.bred.context
 
 import arrow.core.Either
+import arrow.core.raise.Raise
 import arrow.core.raise.either
 import org.nnezh.bred.ast.ASTError
 import org.nnezh.bred.ast.ArrayDeclarationASTNode
@@ -8,6 +9,7 @@ import org.nnezh.bred.ast.AssignmentStatementAstNode
 import org.nnezh.bred.ast.BlockAstNode
 import org.nnezh.bred.ast.CallFunctionStatementAstNode
 import org.nnezh.bred.ast.DeclareGlobalVariableASTNode
+import org.nnezh.bred.ast.DeclareSumTypeASTNode
 import org.nnezh.bred.ast.DeclareTypeASTNode
 import org.nnezh.bred.ast.ForStatementAstNode
 import org.nnezh.bred.ast.FunctionArgument
@@ -18,6 +20,8 @@ import org.nnezh.bred.ast.ProgramRoot
 import org.nnezh.bred.ast.ReturnFunctionStatementAstNode
 import org.nnezh.bred.ast.ScalarVariableInitializationASTNode
 import org.nnezh.bred.ast.StatementAstNode
+import org.nnezh.bred.ast.SumTypeVariantASTNode
+import org.nnezh.bred.ast.SumTypeVariantFieldASTNode
 import org.nnezh.bred.ast.TypeClassDeclAstNode
 import org.nnezh.bred.ast.TypeClassMethodDeclAstNode
 import org.nnezh.bred.ast.WhileStatementAstNode
@@ -36,15 +40,36 @@ class ProgramTypeResolver(
         )
     }
 
-    private fun resolveTypeDeclaration(node: DeclareTypeASTNode): DeclareTypeASTNode =
-        node
+    private fun Raise<ASTError>.resolveTypeDeclaration(node: DeclareTypeASTNode): DeclareTypeASTNode =
+        when (node) {
+            is DeclareSumTypeASTNode -> {
+                val genericScope = context.genericScope(node.genericParams)
+                node.copy(variants = node.variants.map { resolveSumTypeVariant(it, genericScope) })
+            }
+            else -> node
+        }
 
-    private fun arrow.core.raise.Raise<ASTError>.resolveGlobalVariable(
+    private fun Raise<ASTError>.resolveSumTypeVariant(
+        node: SumTypeVariantASTNode,
+        genericScope: Map<String, TypeSign>,
+    ): SumTypeVariantASTNode =
+        node.copy(
+            typeArguments = node.typeArguments.map { resolveType(it, genericScope) },
+            fields = node.fields.map { resolveSumTypeVariantField(it, genericScope) },
+        )
+
+    private fun Raise<ASTError>.resolveSumTypeVariantField(
+        node: SumTypeVariantFieldASTNode,
+        genericScope: Map<String, TypeSign>,
+    ): SumTypeVariantFieldASTNode =
+        node.copy(type = resolveType(node.type, genericScope))
+
+    private fun Raise<ASTError>.resolveGlobalVariable(
         node: DeclareGlobalVariableASTNode,
     ): DeclareGlobalVariableASTNode =
         node.copy(type = node.type?.let { resolveType(it, emptyMap()) })
 
-    private fun arrow.core.raise.Raise<ASTError>.resolveFunction(
+    private fun Raise<ASTError>.resolveFunction(
         node: FunctionDeclAstNode,
         genericScope: Map<String, TypeSign>,
     ): FunctionDeclAstNode =
@@ -54,19 +79,19 @@ class ProgramTypeResolver(
             body = resolveBlock(node.body, genericScope),
         )
 
-    private fun arrow.core.raise.Raise<ASTError>.resolveFunctionArgument(
+    private fun Raise<ASTError>.resolveFunctionArgument(
         node: FunctionArgument,
         genericScope: Map<String, TypeSign>,
     ): FunctionArgument =
         node.copy(type = resolveType(node.type, genericScope))
 
-    private fun arrow.core.raise.Raise<ASTError>.resolveBlock(
+    private fun Raise<ASTError>.resolveBlock(
         node: BlockAstNode,
         genericScope: Map<String, TypeSign>,
     ): BlockAstNode =
         BlockAstNode(node.statements.map { resolveStatement(it, genericScope) })
 
-    private fun arrow.core.raise.Raise<ASTError>.resolveStatement(
+    private fun Raise<ASTError>.resolveStatement(
         node: StatementAstNode,
         genericScope: Map<String, TypeSign>,
     ): StatementAstNode =
@@ -84,14 +109,14 @@ class ProgramTypeResolver(
             is ForStatementAstNode -> node.copy(desugaredContent = resolveBlock(node.desugaredContent, genericScope))
         }
 
-    private fun arrow.core.raise.Raise<ASTError>.resolveTypeClass(
+    private fun Raise<ASTError>.resolveTypeClass(
         node: TypeClassDeclAstNode,
     ): TypeClassDeclAstNode {
         val genericScope = context.genericScope(listOf(node.genericParam))
         return node.copy(methods = node.methods.map { resolveTypeClassMethod(it, genericScope) })
     }
 
-    private fun arrow.core.raise.Raise<ASTError>.resolveTypeClassMethod(
+    private fun Raise<ASTError>.resolveTypeClassMethod(
         node: TypeClassMethodDeclAstNode,
         genericScope: Map<String, TypeSign>,
     ): TypeClassMethodDeclAstNode =
@@ -100,7 +125,7 @@ class ProgramTypeResolver(
             result = resolveType(node.result, genericScope),
         )
 
-    private fun arrow.core.raise.Raise<ASTError>.resolveInstance(
+    private fun Raise<ASTError>.resolveInstance(
         node: InstanceDeclAstNode,
     ): InstanceDeclAstNode =
         node.copy(
@@ -108,7 +133,7 @@ class ProgramTypeResolver(
             methods = node.methods.map { resolveFunction(it, context.genericScope(it.genericParams)) },
         )
 
-    private fun arrow.core.raise.Raise<ASTError>.resolveType(
+    private fun Raise<ASTError>.resolveType(
         type: TypeSign,
         genericScope: Map<String, TypeSign>,
     ): TypeSign =

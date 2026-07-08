@@ -77,17 +77,18 @@ errors.
 +  -  *  /  %  =  ==  !=  <  >  <=  >=  &&  ||  !
 ```
 
-The lexer recognizes multi-character operators greedily. A lone `&` or `|` is
-a lexer error with a hint for `&&` or `||`.
+The lexer recognizes multi-character operators greedily. A lone `&` is a lexer
+error with a hint for `&&`. A lone `|` is punctuation.
 
 ### 1.4 Punctuation
 
 ```text
-( ) { } [ ] , : .
+( ) { } [ ] , : . |
 ```
 
 `;` is rejected by the lexer. The dot token is used by identifier-rooted product
-field access chains.
+field access chains. The pipe token is currently lexical punctuation for later
+syntax; the parser does not consume it in the expression grammar.
 
 ### 1.5 Whitespace and Comments
 

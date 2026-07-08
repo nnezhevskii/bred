@@ -237,7 +237,7 @@ class LexerTest {
 
     @Test
     fun `punctuation is recognized`() {
-        val tokens = meaningfulTokens("(){},:.")
+        val tokens = meaningfulTokens("(){},:.|")
         val expected = listOf(
             Token.Punctuation.LParen::class.java,
             Token.Punctuation.RParen::class.java,
@@ -246,9 +246,22 @@ class LexerTest {
             Token.Punctuation.Comma::class.java,
             Token.Punctuation.Colon::class.java,
             Token.Punctuation.Dot::class.java,
+            Token.Punctuation.Pipe::class.java,
         )
         assertEquals(expected.size, tokens.size)
         expected.forEachIndexed { i, type -> assertInstanceOf(type, tokens[i]) }
+    }
+
+    @Test
+    fun `single pipe is punctuation while double pipe is logical or`() {
+        val tokens = meaningfulTokens("a | b || c")
+
+        assertEquals(listOf("a", "|", "b", "||", "c"), tokens.map { it.lexeme })
+        assertInstanceOf(Token.Identifier::class.java, tokens[0])
+        assertInstanceOf(Token.Punctuation.Pipe::class.java, tokens[1])
+        assertInstanceOf(Token.Identifier::class.java, tokens[2])
+        assertInstanceOf(Token.Operator.Or::class.java, tokens[3])
+        assertInstanceOf(Token.Identifier::class.java, tokens[4])
     }
 
     @Test
@@ -420,14 +433,6 @@ class LexerTest {
         val error = assertInstanceOf(LexerError.UnexpectedCharacter::class.java, errorOf("a & b"))
         assertEquals('&', error.char)
         assertTrue(error.message.contains("&&"))
-    }
-
-    @Test
-    fun `lonely pipe is reported with logical-or hint`() {
-        val error = assertInstanceOf(LexerError.UnexpectedCharacter::class.java, errorOf("a | b"))
-
-        assertEquals('|', error.char)
-        assertTrue(error.message.contains("||"))
     }
 
     @Test
