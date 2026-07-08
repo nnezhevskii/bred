@@ -85,6 +85,25 @@ sealed interface LLTACElement {
             destination = Operand.Variable(name = name, type = type),
         )
 
+        fun sumVariant(ownerType: TypeSign, variantName: String, tag: Int) = LLTACInstruction(
+            opcode = LLTACOperation.LLTAC_SUM_VARIANT,
+            destination = Operand.TypeConst(ownerType),
+            arg1 = Operand.Variable(name = variantName, type = ownerType),
+            arg2 = Operand.IntConst(tag.toLong()),
+        )
+
+        fun sumVariantField(
+            ownerType: TypeSign,
+            variantName: String,
+            fieldName: String,
+            fieldType: TypeSign,
+        ) = LLTACInstruction(
+            opcode = LLTACOperation.LLTAC_SUM_VARIANT_FIELD,
+            destination = Operand.TypeConst(ownerType),
+            arg1 = Operand.Variable(name = variantName, type = ownerType),
+            arg2 = Operand.Variable(name = fieldName, type = fieldType),
+        )
+
         fun loadField(
             ownerPath: String,
             ownerType: TypeSign,

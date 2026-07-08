@@ -1,3 +1,5 @@
+type Maybe<T> = Nothing | Just<T>(value: T)
+
 fun printInt(value: Int): Unit {
     println(intToString(value))
 }

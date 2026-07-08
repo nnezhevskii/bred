@@ -19,6 +19,7 @@ import org.nnezh.bred.ast.ScalarVariableInitializationASTNode
 import org.nnezh.bred.ast.StringLiteralExpressionASTNode
 import org.nnezh.bred.ast.UnaryExpressionASTNode
 import org.nnezh.bred.ast.VariableExpressionASTNode
+import org.nnezh.bred.ast.WhenExpressionASTNode
 
 class LLTACGenerationException(message: String) : IllegalStateException(message)
 
@@ -55,6 +56,7 @@ private fun ExpressionASTNode.expressionSummary(): String =
         is FunctionCallExpressionASTNode -> "$name(${arguments.joinToString(", ") { it.expressionSummary() }})"
         is UnaryExpressionASTNode -> "${operator.lexeme}${operand.expressionSummary()}"
         is FieldAccessChainExpressionASTNode -> "$root${next?.let { "." + it.expressionSummary() } ?: ""}"
+        is WhenExpressionASTNode -> "when (${subject.expressionSummary()})"
     }
 
 private fun String.escape(): String =

@@ -13,26 +13,33 @@ import org.nnezh.bred.ast.parsers.StatementParser
 import org.nnezh.bred.ast.parsers.TypeClassParser
 import org.nnezh.bred.ast.parsers.TypeSignParser
 import org.nnezh.bred.ast.parsers.VariableInitializationParser
+import org.nnezh.bred.ast.parsers.WhenParser
 import org.nnezh.bred.ast.parsers.WhileParser
 
 class ParserFactory(
-    private val expressionParser: Parser<ExpressionASTNode> = AbstractSyntaxTreeExpressionParser(),
+    expressionParser: Parser<ExpressionASTNode>? = null,
     private val typeSignParser: TypeSignParser = TypeSignParser(),
 ) {
-    private val variableInitializationParser: Parser<DeclareVariableASTNode> by lazy {
-        VariableInitializationParser(expressionParser, typeSignParser)
+    private val externalExpressionParser = expressionParser
+    private val effectiveExpressionParser: Parser<ExpressionASTNode> by lazy {
+        externalExpressionParser ?: AbstractSyntaxTreeExpressionParser(typeSignParser, lazy { whenParser })
     }
-    private val assignParser: Parser<AssignmentStatementAstNode> by lazy { AssignParser(expressionParser) }
-    private val callParser: Parser<CallFunctionStatementAstNode> by lazy { CallStatementParser(expressionParser) }
-    private val ifParser: Parser<IfStatementAstNode> by lazy { IfParser(expressionParser, lazy { blockParser }) }
-    private val whileParser: Parser<WhileStatementAstNode> by lazy { WhileParser(expressionParser, lazy { blockParser }) }
-    private val forParser: Parser<ForStatementAstNode> by lazy { ForParser(expressionParser, lazy { blockParser }) }
-    private val returnParser: Parser<ReturnFunctionStatementAstNode> by lazy { ReturnValueParser(expressionParser) }
+    private val variableInitializationParser: Parser<DeclareVariableASTNode> by lazy {
+        VariableInitializationParser(effectiveExpressionParser, typeSignParser)
+    }
+    private val assignParser: Parser<AssignmentStatementAstNode> by lazy { AssignParser(effectiveExpressionParser) }
+    private val callParser: Parser<CallFunctionStatementAstNode> by lazy { CallStatementParser(effectiveExpressionParser) }
+    private val ifParser: Parser<IfStatementAstNode> by lazy { IfParser(effectiveExpressionParser, lazy { blockParser }) }
+    private val whileParser: Parser<WhileStatementAstNode> by lazy { WhileParser(effectiveExpressionParser, lazy { blockParser }) }
+    private val forParser: Parser<ForStatementAstNode> by lazy { ForParser(effectiveExpressionParser, lazy { blockParser }) }
+    private val whenParser: Parser<WhenExpressionASTNode> by lazy { WhenParser(lazy { effectiveExpressionParser }, lazy { blockParser }) }
+    private val returnParser: Parser<ReturnFunctionStatementAstNode> by lazy { ReturnValueParser(effectiveExpressionParser) }
     private val statementParser: Parser<StatementAstNode> by lazy {
         StatementParser(
             ifParser = ifParser,
             whileParser = whileParser,
             forParser = forParser,
+            whenParser = whenParser,
             variableInitializationParser = variableInitializationParser,
             assignParser = assignParser,
             callParser = callParser,
@@ -43,7 +50,7 @@ class ParserFactory(
     private val functionParser: Parser<FunctionDeclAstNode> by lazy { FunctionParser(lazy { blockParser }, typeSignParser) }
     private val typeClassParser by lazy { TypeClassParser(typeSignParser) }
     private val instanceParser by lazy { InstanceParser(lazy { blockParser }, typeSignParser) }
-    private val typeParser by lazy { TypeParser() }
+    private val typeParser by lazy { TypeParser(typeSignParser) }
     private val programParser: Parser<ProgramRoot> by lazy {
         ProgramParser(functionParser, variableInitializationParser, typeClassParser, instanceParser, typeParser)
     }

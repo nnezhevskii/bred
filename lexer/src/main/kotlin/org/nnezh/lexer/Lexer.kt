@@ -153,7 +153,7 @@ class Lexer(private val source: String) {
         val start = currentPosition()
         return when (val char = advance()) {
             '+' -> Token.Operator.Plus(start)
-            '-' -> Token.Operator.Minus(start)
+            '-' -> if (match('>')) Token.Operator.Arrow(start) else Token.Operator.Minus(start)
             '*' -> Token.Operator.Star(start)
             '/' -> Token.Operator.Slash(start)
             '%' -> Token.Operator.Percent(start)
@@ -179,7 +179,7 @@ class Lexer(private val source: String) {
             '|' -> if (match('|')) {
                 Token.Operator.Or(start)
             } else {
-                raise(LexerError.UnexpectedCharacter(start, '|', "did you mean '||'?"))
+                Token.Punctuation.Pipe(start)
             }
             else -> raise(LexerError.UnexpectedCharacter(start, char))
         }

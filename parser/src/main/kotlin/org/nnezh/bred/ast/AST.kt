@@ -13,13 +13,32 @@ data class ProgramRoot(
 //data class DeclareTypeASTNode(val name: String) : ASTNode
 sealed interface DeclareTypeASTNode: ASTNode {
     val name: String
+    val genericParams: List<GenericParam>
 }
 
 data class DeclareProductTypeASTNode(
     override val name: String,
     val isMutable: Boolean,
-    val fields: Map<String, TypeSign>
+    val fields: Map<String, TypeSign>,
+    override val genericParams: List<GenericParam> = listOf(), // TODO: support it later
 ) : DeclareTypeASTNode
+
+data class DeclareSumTypeASTNode(
+    override val name: String,
+    override val genericParams: List<GenericParam>,
+    val variants: List<SumTypeVariantASTNode>,
+) : DeclareTypeASTNode
+
+data class SumTypeVariantASTNode(
+    val name: String,
+    val typeArguments: List<TypeSign> = emptyList(),
+    val fields: List<SumTypeVariantFieldASTNode> = emptyList(),
+) : ASTNode
+
+data class SumTypeVariantFieldASTNode(
+    val name: String,
+    val type: TypeSign,
+) : ASTNode
 
 
 
@@ -41,6 +60,11 @@ data class FunctionArgument(
 )
 
 data class BlockAstNode(val statements: List<StatementAstNode>) : ASTNode
+
+data class WhenBranchAstNode(
+    val condition: ExpressionASTNode?,
+    val bodyBlock: BlockAstNode,
+) : ASTNode
 
 sealed interface StatementAstNode : ASTNode
 
@@ -96,6 +120,10 @@ data class WhileStatementAstNode(
 
 data class ForStatementAstNode(
     val desugaredContent: BlockAstNode,
+) : StatementAstNode
+
+data class WhenStatementAstNode(
+    val expression: WhenExpressionASTNode,
 ) : StatementAstNode
 
 data class TypeClassDeclAstNode(

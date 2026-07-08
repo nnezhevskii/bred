@@ -38,7 +38,7 @@ class LexerTest {
 
     @Test
     fun `keywords are recognized as keyword tokens`() {
-        val tokens = meaningfulTokens("fun val var if else return while for in to true false mut typeclass instance")
+        val tokens = meaningfulTokens("fun val var if else return while when for in to true false mut typeclass instance")
         val expected = listOf(
             Token.Keyword.Fun::class.java,
             Token.Keyword.Val::class.java,
@@ -47,6 +47,7 @@ class LexerTest {
             Token.Keyword.Else::class.java,
             Token.Keyword.Return::class.java,
             Token.Keyword.While::class.java,
+            Token.Keyword.When::class.java,
             Token.Keyword.For::class.java,
             Token.Keyword.In::class.java,
             Token.Keyword.To::class.java,
@@ -62,19 +63,19 @@ class LexerTest {
 
     @Test
     fun `identifiers that look like keywords are still identifiers`() {
-        val tokens = meaningfulTokens("function valuable iffy typeclasses instanceOf _private x1 readInt")
+        val tokens = meaningfulTokens("function valuable iffy whenever typeclasses instanceOf _private x1 readInt")
         assertTrue(tokens.all { it is Token.Identifier })
         assertEquals(
-            listOf("function", "valuable", "iffy", "typeclasses", "instanceOf", "_private", "x1", "readInt"),
+            listOf("function", "valuable", "iffy", "whenever", "typeclasses", "instanceOf", "_private", "x1", "readInt"),
             tokens.map { it.lexeme },
         )
     }
 
     @Test
     fun `new keywords are case-sensitive`() {
-        val tokens = meaningfulTokens("Typeclass Instance TYPECLASS INSTANCE")
+        val tokens = meaningfulTokens("When WHEN Typeclass Instance TYPECLASS INSTANCE")
         assertTrue(tokens.all { it is Token.Identifier })
-        assertEquals(listOf("Typeclass", "Instance", "TYPECLASS", "INSTANCE"), tokens.map { it.lexeme })
+        assertEquals(listOf("When", "WHEN", "Typeclass", "Instance", "TYPECLASS", "INSTANCE"), tokens.map { it.lexeme })
     }
 
     @Test
@@ -237,7 +238,7 @@ class LexerTest {
 
     @Test
     fun `punctuation is recognized`() {
-        val tokens = meaningfulTokens("(){},:.")
+        val tokens = meaningfulTokens("(){},:.|")
         val expected = listOf(
             Token.Punctuation.LParen::class.java,
             Token.Punctuation.RParen::class.java,
@@ -246,9 +247,35 @@ class LexerTest {
             Token.Punctuation.Comma::class.java,
             Token.Punctuation.Colon::class.java,
             Token.Punctuation.Dot::class.java,
+            Token.Punctuation.Pipe::class.java,
         )
         assertEquals(expected.size, tokens.size)
         expected.forEachIndexed { i, type -> assertInstanceOf(type, tokens[i]) }
+    }
+
+    @Test
+    fun `when arrow is tokenized greedily`() {
+        val tokens = meaningfulTokens("a -> { } - >")
+
+        assertEquals(listOf("a", "->", "{", "}", "-", ">"), tokens.map { it.lexeme })
+        assertInstanceOf(Token.Identifier::class.java, tokens[0])
+        assertInstanceOf(Token.Operator.Arrow::class.java, tokens[1])
+        assertInstanceOf(Token.Punctuation.LBrace::class.java, tokens[2])
+        assertInstanceOf(Token.Punctuation.RBrace::class.java, tokens[3])
+        assertInstanceOf(Token.Operator.Minus::class.java, tokens[4])
+        assertInstanceOf(Token.Operator.Gt::class.java, tokens[5])
+    }
+
+    @Test
+    fun `single pipe is punctuation while double pipe is logical or`() {
+        val tokens = meaningfulTokens("a | b || c")
+
+        assertEquals(listOf("a", "|", "b", "||", "c"), tokens.map { it.lexeme })
+        assertInstanceOf(Token.Identifier::class.java, tokens[0])
+        assertInstanceOf(Token.Punctuation.Pipe::class.java, tokens[1])
+        assertInstanceOf(Token.Identifier::class.java, tokens[2])
+        assertInstanceOf(Token.Operator.Or::class.java, tokens[3])
+        assertInstanceOf(Token.Identifier::class.java, tokens[4])
     }
 
     @Test
@@ -420,14 +447,6 @@ class LexerTest {
         val error = assertInstanceOf(LexerError.UnexpectedCharacter::class.java, errorOf("a & b"))
         assertEquals('&', error.char)
         assertTrue(error.message.contains("&&"))
-    }
-
-    @Test
-    fun `lonely pipe is reported with logical-or hint`() {
-        val error = assertInstanceOf(LexerError.UnexpectedCharacter::class.java, errorOf("a | b"))
-
-        assertEquals('|', error.char)
-        assertTrue(error.message.contains("||"))
     }
 
     @Test

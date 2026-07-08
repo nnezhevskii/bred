@@ -1,6 +1,8 @@
 package org.nnezh.bred.ast
 
 import arrow.core.raise.Raise
+import org.nnezh.bred.ast.parsers.TypeSignParser
+import org.nnezh.bred.common.TypeSign
 import org.nnezh.lexer.Token
 
 /**
@@ -14,7 +16,10 @@ import org.nnezh.lexer.Token
  * `||`, `&&`, `== !=`, `< > <= >=`, `+ -`, `* / %`, unary `- !`, primary.
  * All binary operators are left-associative; unary operators are right-associative.
  */
-class AbstractSyntaxTreeExpressionParser : Parser<ExpressionASTNode> {
+class AbstractSyntaxTreeExpressionParser(
+    private val typeSignParser: TypeSignParser = TypeSignParser(),
+    private val whenParser: Lazy<Parser<WhenExpressionASTNode>>? = null,
+) : Parser<ExpressionASTNode> {
 
     override fun Raise<ASTError>.parse(context: TokensContext): ExpressionASTNode = parseLogicalOr(context)
 
@@ -129,10 +134,19 @@ class AbstractSyntaxTreeExpressionParser : Parser<ExpressionASTNode> {
                 BooleanLiteralExpressionASTNode(false)
             }
 
+            is Token.Keyword.When -> {
+                val parser = whenParser ?: raise(AstErrorFactory.expectedExpression(token))
+                parseWith(parser.value, context)
+            }
+
             is Token.Identifier -> {
                 context.consumeToken()
                 val node = when {
                     context.top() is Token.Punctuation.LParen -> parseCall(token, context)
+                    context.top() is Token.Operator.Lt && isGenericCallSuffix(context) -> {
+                        val typeArguments = parseCallTypeArguments(context)
+                        parseCall(token, context, typeArguments)
+                    }
                     context.top() is Token.Punctuation.LBracket -> parseArrayAccess(token, context)
                     context.top() is Token.Punctuation.Dot -> parseFieldAccessChain(token, context)
                     else -> VariableExpressionASTNode(token)
@@ -197,12 +211,58 @@ class AbstractSyntaxTreeExpressionParser : Parser<ExpressionASTNode> {
         return ArrayElementAccessASTNode(name.lexeme, index)
     }
 
-    private fun Raise<ASTError>.parseCall(name: Token, context: TokensContext): FunctionCallExpressionASTNode {
+    private fun isGenericCallSuffix(context: TokensContext): Boolean {
+        var offset = 0
+        var depth = 0
+        while (true) {
+            when (context.top(offset)) {
+                is Token.Operator.Lt -> depth++
+                is Token.Operator.Gt -> {
+                    depth--
+                    if (depth == 0) {
+                        return context.top(offset + 1) is Token.Punctuation.LParen
+                    }
+                    if (depth < 0) {
+                        return false
+                    }
+                }
+                is Token.Eof -> return false
+                else -> Unit
+            }
+            offset++
+        }
+    }
+
+    private fun Raise<ASTError>.parseCallTypeArguments(context: TokensContext): List<TypeSign> {
+        match<Token.Operator.Lt>(context.consumeToken()) { AstErrorFactory.buildError("<", it) }
+        val typeArguments = mutableListOf<TypeSign>()
+        if (context.top() is Token.Operator.Gt) {
+            raise(AstErrorFactory.buildError("type argument", context.top()))
+        }
+        while (true) {
+            typeArguments += with(typeSignParser) { parse(context) }
+            when (context.top()) {
+                is Token.Punctuation.Comma -> context.consumeToken()
+                is Token.Operator.Gt -> {
+                    context.consumeToken()
+                    break
+                }
+                else -> raise(AstErrorFactory.buildError("',' or '>'", context.top()))
+            }
+        }
+        return typeArguments
+    }
+
+    private fun Raise<ASTError>.parseCall(
+        name: Token,
+        context: TokensContext,
+        typeArguments: List<TypeSign> = emptyList(),
+    ): FunctionCallExpressionASTNode {
         context.consumeToken() // '('
         val arguments = mutableListOf<ExpressionASTNode>()
         if (context.top() is Token.Punctuation.RParen) {
             context.consumeToken()
-            return FunctionCallExpressionASTNode(name.lexeme, arguments)
+            return FunctionCallExpressionASTNode(name.lexeme, arguments, typeArguments)
         }
         while (true) {
             arguments += parse(context)
@@ -215,6 +275,6 @@ class AbstractSyntaxTreeExpressionParser : Parser<ExpressionASTNode> {
                 else -> raise(AstErrorFactory.expectedArgumentSeparator(context.top()))
             }
         }
-        return FunctionCallExpressionASTNode(name.lexeme, arguments)
+        return FunctionCallExpressionASTNode(name.lexeme, arguments, typeArguments)
     }
 }

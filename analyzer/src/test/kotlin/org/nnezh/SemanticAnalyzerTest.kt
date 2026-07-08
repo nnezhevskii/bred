@@ -15,6 +15,7 @@ import org.nnezh.bred.ast.ReturnFunctionStatementAstNode
 import org.nnezh.bred.ast.ScalarVariableInitializationASTNode
 import org.nnezh.bred.ast.UnaryExpressionASTNode
 import org.nnezh.bred.ast.VariableExpressionASTNode
+import org.nnezh.bred.ast.WhenExpressionASTNode
 
 class SemanticAnalyzerTest {
     // region Positive baseline
@@ -539,14 +540,95 @@ class SemanticAnalyzerTest {
     fun `product field assignment with matching type is valid`() {
         assertNoSemanticDiagnostics(
             """
+            type mut Counter(value: Int)
+
+            fun main(): Unit {
+                val counter: Counter = Counter(1)
+                counter.value = 2
+                val value: Int = counter.value
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `product field type may reference a later type declaration`() {
+        assertNoSemanticDiagnostics(
+            """
+            type Person(name: String, address: Address)
+            type Address(city: String)
+
+            fun main(): Unit {
+                val person: Person = Person("Nika", Address("Berlin"))
+                val city: String = person.address.city
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `generic product field access is valid after template instantiation`() {
+        assertNoSemanticDiagnosticsAfterTemplateInstantiation(
+            """
+            type Box<T>(value: T)
+
+            fun unwrap<T>(box: Box<T>): T {
+                return box.value
+            }
+
+            fun main(): Unit {
+                val box: Box<Int> = Box<Int>(1)
+                val value: Int = unwrap<Int>(box)
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `nested product field assignment uses final owner mutability`() {
+        assertNoSemanticDiagnostics(
+            """
+            type Person(address: Address)
+            type mut Address(city: String)
+
+            fun main(): Unit {
+                val person: Person = Person(Address("Berlin"))
+                person.address.city = "Paris"
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `nested product field assignment rejects immutable final owner`() {
+        assertSingleSemanticError(
+            """
+            type mut Person(address: Address)
+            type Address(city: String)
+
+            fun main(): Unit {
+                val person: Person = Person(Address("Berlin"))
+                person.address.city = "Paris"
+            }
+            """.trimIndent(),
+            SemanticErrorType.VARIABLE_CHANGING_IMMUTABLE,
+            AssignmentStatementAstNode::class.java,
+        )
+    }
+
+    @Test
+    fun `immutable product field assignment is a semantic error`() {
+        assertSingleSemanticError(
+            """
             type Counter(value: Int)
 
             fun main(): Unit {
                 var counter: Counter = Counter(1)
                 counter.value = 2
-                val value: Int = counter.value
             }
             """.trimIndent(),
+            SemanticErrorType.VARIABLE_CHANGING_IMMUTABLE,
+            AssignmentStatementAstNode::class.java,
         )
     }
 
@@ -599,7 +681,7 @@ class SemanticAnalyzerTest {
     fun `product field assignment checks rhs type`() {
         assertSingleSemanticError(
             """
-            type Counter(value: Int)
+            type mut Counter(value: Int)
 
             fun main(): Unit {
                 var counter: Counter = Counter(1)
@@ -608,6 +690,300 @@ class SemanticAnalyzerTest {
             """.trimIndent(),
             SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
             AssignmentStatementAstNode::class.java,
+        )
+    }
+
+    // endregion
+
+    // region Sum types and when
+
+    @Test
+    fun `sum constructors initialize sum variables`() {
+        assertNoSemanticDiagnostics(
+            """
+            type MaybeInt = Nothing | Just<Int>
+
+            fun main(): Unit {
+                val present: MaybeInt = Just(1)
+                val absent: MaybeInt = Nothing
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `sum constructor with named payload fields initializes sum variable`() {
+        assertNoSemanticDiagnostics(
+            """
+            type Response = Success(value: Int, message: String) | Failure
+
+            fun main(): Unit {
+                val response: Response = Success(200, "ok")
+                val failed: Response = Failure
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `sum constructor checks payload type`() {
+        assertSingleSemanticError(
+            """
+            type MaybeInt = Nothing | Just<Int>
+
+            fun main(): Unit {
+                val broken: MaybeInt = Just("wrong")
+            }
+            """.trimIndent(),
+            SemanticErrorType.CONSTRUCTOR_IS_FOUND_BUT_WRONG_ARGUMENTS,
+            FunctionCallExpressionASTNode::class.java,
+        )
+    }
+
+    @Test
+    fun `when over sum must cover all variants`() {
+        assertSingleSemanticError(
+            """
+            type MaybeInt = Nothing | Just<Int>
+
+            fun main(): Unit {
+                val value: MaybeInt = Just(1)
+                var result: Int = 0
+                when (value) {
+                    Just -> { result = 1 }
+                }
+            }
+            """.trimIndent(),
+            SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
+            WhenExpressionASTNode::class.java,
+        )
+    }
+
+    @Test
+    fun `exhaustive when over sum is valid`() {
+        assertNoSemanticDiagnostics(
+            """
+            type MaybeInt = Nothing | Just<Int>
+
+            fun main(): Unit {
+                val value: MaybeInt = Just(1)
+                var result: Int = 0
+                when (value) {
+                    Just -> { result = 1 }
+                    Nothing -> { result = 0 }
+                }
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `when over sum binds positional payload in branch body`() {
+        assertNoSemanticDiagnostics(
+            """
+            type MaybeInt = Nothing | Just<Int>
+
+            fun main(): Unit {
+                val maybe: MaybeInt = Just(41)
+                var result: Int = 0
+                when (maybe) {
+                    Just(payload) -> { result = payload + 1 }
+                    Nothing -> { result = -1 }
+                }
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `when over sum binds named payload fields positionally`() {
+        assertNoSemanticDiagnostics(
+            """
+            type Response = Success(value: Int, message: String) | Failure
+
+            fun main(): Unit {
+                val response: Response = Success(200, "ok")
+                var result: Int = 0
+                when (response) {
+                    Success(code, text) -> {
+                        val copy: String = text
+                        result = code
+                    }
+                    Failure -> { result = -1 }
+                }
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `when over sum rejects payload binding count mismatch`() {
+        assertSingleSemanticError(
+            """
+            type MaybeInt = Nothing | Just<Int>
+
+            fun main(): Unit {
+                val maybe: MaybeInt = Just(1)
+                when (maybe) {
+                    Just(payload, extra) -> { println("present") }
+                    Nothing -> { println("empty") }
+                }
+            }
+            """.trimIndent(),
+            SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
+            FunctionCallExpressionASTNode::class.java,
+        )
+    }
+
+    @Test
+    fun `when over sum rejects non variable payload binding`() {
+        assertSingleSemanticError(
+            """
+            type MaybeInt = Nothing | Just<Int>
+
+            fun main(): Unit {
+                val maybe: MaybeInt = Just(1)
+                when (maybe) {
+                    Just(1) -> { println("present") }
+                    Nothing -> { println("empty") }
+                }
+            }
+            """.trimIndent(),
+            SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
+        )
+    }
+
+    @Test
+    fun `when over sum rejects duplicate payload binding name`() {
+        assertSingleSemanticError(
+            """
+            type PairBox = Empty | Pair<Int, Int>
+
+            fun main(): Unit {
+                val box: PairBox = Pair(1, 2)
+                when (box) {
+                    Pair(item, item) -> { println(intToString(item)) }
+                    Empty -> { println("empty") }
+                }
+            }
+            """.trimIndent(),
+            SemanticErrorType.VARIABLE_REDECLARATION,
+            VariableExpressionASTNode::class.java,
+        )
+    }
+
+    @Test
+    fun `when over sum rejects payload binding that redeclares visible variable`() {
+        assertSingleSemanticError(
+            """
+            type MaybeInt = Nothing | Just<Int>
+
+            fun main(): Unit {
+                val payload: Int = 0
+                val maybe: MaybeInt = Just(1)
+                when (maybe) {
+                    Just(payload) -> { println(intToString(payload)) }
+                    Nothing -> { println("empty") }
+                }
+            }
+            """.trimIndent(),
+            SemanticErrorType.VARIABLE_REDECLARATION,
+            VariableExpressionASTNode::class.java,
+        )
+    }
+
+    @Test
+    fun `when payload binding is scoped to its branch body`() {
+        assertSingleSemanticError(
+            """
+            type MaybeInt = Nothing | Just<Int>
+
+            fun main(): Unit {
+                val maybe: MaybeInt = Just(1)
+                when (maybe) {
+                    Just(payload) -> { println(intToString(payload)) }
+                    Nothing -> { println("empty") }
+                }
+                val leaked: Int = payload
+            }
+            """.trimIndent(),
+            SemanticErrorType.UNKNOWN_VARIABLE,
+            VariableExpressionASTNode::class.java,
+        )
+    }
+
+    @Test
+    fun `when over sum may use else for remaining variants`() {
+        assertNoSemanticDiagnostics(
+            """
+            type MaybeInt = Nothing | Just<Int>
+
+            fun main(): Unit {
+                val value: MaybeInt = Just(1)
+                var result: Int = 0
+                when (value) {
+                    Just -> { result = 1 }
+                    else -> { result = 0 }
+                }
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `when over sum rejects duplicate variant branch`() {
+        assertSingleSemanticError(
+            """
+            type MaybeInt = Nothing | Just<Int>
+
+            fun main(): Unit {
+                val value: MaybeInt = Just(1)
+                when (value) {
+                    Just -> { println("first") }
+                    Just -> { println("second") }
+                    Nothing -> { println("empty") }
+                }
+            }
+            """.trimIndent(),
+            SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
+            VariableExpressionASTNode::class.java,
+        )
+    }
+
+    @Test
+    fun `when over sum rejects unknown variant branch`() {
+        assertSingleSemanticError(
+            """
+            type MaybeInt = Nothing | Just<Int>
+
+            fun main(): Unit {
+                val value: MaybeInt = Just(1)
+                when (value) {
+                    Other -> { println("other") }
+                    Nothing -> { println("empty") }
+                    Just -> { println("present") }
+                }
+            }
+            """.trimIndent(),
+            SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
+            VariableExpressionASTNode::class.java,
+        )
+    }
+
+    @Test
+    fun `generic sum constructor is valid after template instantiation`() {
+        assertNoSemanticDiagnosticsAfterTemplateInstantiation(
+            """
+            type Maybe<T> = Just<T>(v: T) | Nothing
+
+            fun id<T>(value: T): Maybe<T> {
+                return Just<T>(value)
+            }
+
+            fun main(): Unit {
+                val x: Maybe<Int> = id<Int>(200)
+            }
+            """.trimIndent(),
         )
     }
 

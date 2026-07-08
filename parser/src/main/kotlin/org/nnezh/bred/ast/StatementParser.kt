@@ -6,6 +6,8 @@ import org.nnezh.bred.ast.Parser
 import org.nnezh.bred.ast.ReturnFunctionStatementAstNode
 import org.nnezh.bred.ast.StatementAstNode
 import org.nnezh.bred.ast.TokensContext
+import org.nnezh.bred.ast.WhenExpressionASTNode
+import org.nnezh.bred.ast.WhenStatementAstNode
 import org.nnezh.bred.ast.parseWith
 import org.nnezh.lexer.Token
 
@@ -13,6 +15,7 @@ class StatementParser(
     private val ifParser: Parser<StatementAstNode>,
     private val whileParser: Parser<StatementAstNode>,
     private val forParser: Parser<StatementAstNode>,
+    private val whenParser: Parser<WhenExpressionASTNode>,
     private val variableInitializationParser: Parser<StatementAstNode>,
     private val assignParser: Parser<StatementAstNode>,
     private val callParser: Parser<StatementAstNode>,
@@ -39,6 +42,7 @@ class StatementParser(
             is Token.Keyword.If -> parseWith(ifParser, context)
             is Token.Keyword.While -> parseWith(whileParser, context)
             is Token.Keyword.For -> parseWith(forParser, context)
+            is Token.Keyword.When -> WhenStatementAstNode(parseWith(whenParser, context))
 
             else -> raise(ASTError("Didn't expect ${context.top()} in ${context.top().position}"))
         }

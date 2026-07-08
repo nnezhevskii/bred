@@ -30,10 +30,15 @@ import org.nnezh.bred.ast.ProgramRoot
 import org.nnezh.bred.ast.ReturnFunctionStatementAstNode
 import org.nnezh.bred.ast.ScalarVariableInitializationASTNode
 import org.nnezh.bred.ast.StringLiteralExpressionASTNode
+import org.nnezh.bred.ast.SumTypeVariantASTNode
+import org.nnezh.bred.ast.SumTypeVariantFieldASTNode
 import org.nnezh.bred.ast.TypeClassDeclAstNode
 import org.nnezh.bred.ast.TypeClassMethodDeclAstNode
 import org.nnezh.bred.ast.UnaryExpressionASTNode
 import org.nnezh.bred.ast.VariableExpressionASTNode
+import org.nnezh.bred.ast.WhenBranchAstNode
+import org.nnezh.bred.ast.WhenExpressionASTNode
+import org.nnezh.bred.ast.WhenStatementAstNode
 import org.nnezh.bred.ast.WhileStatementAstNode
 import org.nnezh.bred.common.FunctionSignature
 import org.nnezh.bred.common.TypeRef
@@ -41,6 +46,8 @@ import org.nnezh.bred.common.TypeSign
 import org.nnezh.bred.common.toTypeRef
 import org.nnezh.bred.context.DeclaredFunctionMeta
 import org.nnezh.bred.context.ProgramGlobalContext
+import org.nnezh.bred.context.SumTypeDefinition
+import org.nnezh.bred.context.SumVariantDefinition
 import java.util.Collections.singletonList
 import java.util.IdentityHashMap
 import kotlin.collections.flatMap
@@ -243,8 +250,11 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                 return warnings.right()
             }
 
-            is DeclareTypeASTNode -> {
-                TODO()
+            is DeclareTypeASTNode,
+            is SumTypeVariantASTNode,
+            is SumTypeVariantFieldASTNode,
+            is WhenBranchAstNode -> {
+                return emptyList<SemanticError.SemanticWarning>().right()
             }
             EmptyNode -> {
                 return listOf<SemanticError.SemanticWarning>().right()
@@ -422,6 +432,13 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
 
                 val type = scope.findVariable(node.token.lexeme)?.first
                 if (type == null) {
+                    val constructors = globalContext.constructorsByName(node.token.lexeme)
+                        .filter { it.arguments.isEmpty() }
+                    if (constructors.size == 1) {
+                        scope.put(node, constructors.single().resultType)
+                        return emptyList<SemanticError.SemanticWarning>().right()
+                    }
+
                     return singletonList(
                         SemanticError.VariableScopeSemanticError(
                             node,
@@ -473,6 +490,19 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                         ).left()
                     }
 //                    VARIABLE_CHANGING_IMMUTABLE
+                }
+                if (node.lValue is FieldAccessChainExpressionASTNode) {
+                    val target = fieldAccessTarget(node.lValue as FieldAccessChainExpressionASTNode, scope)
+                        ?: return buildError(node.lValue, SemanticErrorType.UNKNOWN_FIELD).left()
+                    if (!globalContext.isMutableProduct(target.ownerType)) {
+                        return singletonList(
+                            SemanticError.TypeSemanticError(
+                                node,
+                                SemanticErrorType.VARIABLE_CHANGING_IMMUTABLE,
+                                SemanticDiagnosticDetail.ImmutableAssignment(node.lValue.renderExpression())
+                            )
+                        ).left()
+                    }
                 }
 
                 if (lValueType != rValueType) {
@@ -688,18 +718,20 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                 val warnings = mutableListOf<SemanticError.SemanticWarning>()
                 // TODO What about SomeMethod().counter. << ... Can be not only variables here but also methods
 
-                var res = scope.findVariable(node.root)?.first ?: return buildError(node, SemanticErrorType.UNKNOWN_VARIABLE).left()
-                var root: FieldAccessChainExpressionASTNode = node
-                while (root.next != null) {
-                    val fields = productFields(res) ?: return buildError(root, SemanticErrorType.UNKNOWN_FIELD).left()
-                    val next = root.next!!
-                    res = fields[next.root] ?: return buildError(next, SemanticErrorType.UNKNOWN_FIELD).left()
-                    root = next
-                }
-                scope.put(node, res)
+                val target = fieldAccessTarget(node, scope)
+                    ?: return buildError(node, SemanticErrorType.UNKNOWN_FIELD).left()
+                scope.put(node, target.fieldType)
 
 
                 return warnings.right()
+            }
+
+            is WhenStatementAstNode -> {
+                return visit(node.expression, scope)
+            }
+
+            is WhenExpressionASTNode -> {
+                return visitWhenExpression(node, scope)
             }
 
             is TypeClassDeclAstNode -> { TODO() /* Should not be there */ }
@@ -802,7 +834,193 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
         if (isArray) elementTypeOrNull!! else this
 
     private fun productFields(type: TypeSign): Map<String, TypeSign>? =
-        runCatching { globalContext.typeRegistry.getProductTypeFields(type.name) }.getOrNull()
+        globalContext.productFields(type)
+
+    private data class FieldAccessTarget(
+        val ownerType: TypeSign,
+        val fieldType: TypeSign,
+    )
+
+    private data class SumBranchPattern(
+        val variant: SumVariantDefinition,
+        val bindings: List<VariableExpressionASTNode>,
+    )
+
+    private fun fieldAccessTarget(node: FieldAccessChainExpressionASTNode, scope: Scope): FieldAccessTarget? {
+        var ownerType = scope.findVariable(node.root)?.first ?: return null
+        var current = node.next ?: return null
+        while (true) {
+            val fields = productFields(ownerType) ?: return null
+            val fieldType = fields[current.root] ?: return null
+            if (current.next == null) {
+                return FieldAccessTarget(ownerType, fieldType)
+            }
+            ownerType = fieldType
+            current = current.next!!
+        }
+    }
+
+    private fun visitWhenExpression(
+        node: WhenExpressionASTNode,
+        scope: Scope,
+    ): Either<List<SemanticError>, List<SemanticError.SemanticWarning>> {
+        val warnings = mutableListOf<SemanticError.SemanticWarning>()
+        visit(node.subject, scope).fold(
+            ifLeft = { return it.left() },
+            ifRight = { warnings.addAll(it) }
+        )
+
+        val subjectType = scope.get(node.subject)!!
+        val sumDefinition = globalContext.sumDefinition(subjectType)
+        val seenVariants = mutableSetOf<String>()
+        var hasElse = false
+
+        node.branches.forEach { branch ->
+            val condition = branch.condition
+            val branchScope = scope.innerScope()
+            if (condition == null) {
+                hasElse = true
+            } else if (sumDefinition != null) {
+                when (val patternResult = sumBranchPattern(condition, sumDefinition, scope)) {
+                    is SumBranchPatternResult.Error -> return singletonList(patternResult.error).left()
+                    SumBranchPatternResult.NotPattern -> {
+                        visit(condition, scope).fold(
+                            ifLeft = { return it.left() },
+                            ifRight = { warnings.addAll(it) }
+                        )
+                        val conditionType = scope.get(condition)
+                        if (conditionType != subjectType) {
+                            return singletonList(
+                                SemanticError.TypeSemanticError(
+                                    condition,
+                                    SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
+                                    SemanticDiagnosticDetail.TypeMismatch(
+                                        "match when branch against ${subjectType.render()}",
+                                        subjectType,
+                                        conditionType,
+                                    )
+                                )
+                            ).left()
+                        }
+                    }
+                    is SumBranchPatternResult.Pattern -> {
+                        val pattern = patternResult.pattern
+                        if (!seenVariants.add(pattern.variant.name)) {
+                            return buildError(condition, SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES).left()
+                        }
+                        scope.put(condition, subjectType)
+                        pattern.bindings.zip(pattern.variant.fields).forEach { (binding, field) ->
+                            branchScope.put(binding.token.lexeme, field.type, false)
+                            branchScope.put(binding, field.type)
+                        }
+                    }
+                }
+            } else {
+                visit(condition, scope).fold(
+                    ifLeft = { return it.left() },
+                    ifRight = { warnings.addAll(it) }
+                )
+                val conditionType = scope.get(condition)
+                if (conditionType != subjectType) {
+                    return singletonList(
+                        SemanticError.TypeSemanticError(
+                            condition,
+                            SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
+                            SemanticDiagnosticDetail.TypeMismatch(
+                                "match when branch against ${subjectType.render()}",
+                                subjectType,
+                                conditionType,
+                            )
+                        )
+                    ).left()
+                }
+            }
+
+            visit(branch.bodyBlock, branchScope).fold(
+                ifLeft = { return it.left() },
+                ifRight = { warnings.addAll(it) }
+            )
+        }
+
+        if (sumDefinition != null && !hasElse) {
+            val expectedVariants = sumDefinition.variants.map { it.name }.toSet()
+            if (seenVariants != expectedVariants) {
+                return singletonList(
+                    SemanticError.TypeSemanticError(
+                        node,
+                        SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
+                        SemanticDiagnosticDetail.ControlFlow(
+                            "when over ${subjectType.render()} must cover variants ${expectedVariants.sorted().joinToString(", ")}."
+                        )
+                    )
+                ).left()
+            }
+        }
+
+        scope.put(node, unitType())
+        return warnings.right()
+    }
+
+    private sealed interface SumBranchPatternResult {
+        data class Pattern(val pattern: SumBranchPattern) : SumBranchPatternResult
+        object NotPattern : SumBranchPatternResult
+        data class Error(val error: SemanticError) : SumBranchPatternResult
+    }
+
+    private fun sumBranchPattern(
+        condition: ExpressionASTNode,
+        sumDefinition: SumTypeDefinition,
+        scope: Scope,
+    ): SumBranchPatternResult {
+        val variant = when (condition) {
+            is VariableExpressionASTNode -> sumDefinition.variants.singleOrNull { it.name == condition.token.lexeme }
+                ?: return SumBranchPatternResult.Error(sumPatternError(condition, "unknown sum variant '${condition.token.lexeme}'."))
+            is FunctionCallExpressionASTNode -> sumDefinition.variants.singleOrNull { it.name == condition.name }
+                ?: return SumBranchPatternResult.NotPattern
+            else -> return SumBranchPatternResult.NotPattern
+        }
+
+        if (condition is VariableExpressionASTNode) {
+            return SumBranchPatternResult.Pattern(SumBranchPattern(variant, emptyList()))
+        }
+
+        condition as FunctionCallExpressionASTNode
+        if (condition.arguments.size != variant.fields.size) {
+            return SumBranchPatternResult.Error(
+                sumPatternError(
+                    condition,
+                    "variant '${variant.name}' expects ${variant.fields.size} payload binding(s), got ${condition.arguments.size}.",
+                )
+            )
+        }
+
+        val bindings = mutableListOf<VariableExpressionASTNode>()
+        val seenNames = mutableSetOf<String>()
+        condition.arguments.forEach { argument ->
+            val binding = argument as? VariableExpressionASTNode
+                ?: return SumBranchPatternResult.Error(sumPatternError(argument, "sum payload binding must be a variable name."))
+            val bindingName = binding.token.lexeme
+            if (!seenNames.add(bindingName) || scope.findVariable(bindingName) != null) {
+                return SumBranchPatternResult.Error(
+                    SemanticError.TypeSemanticError(
+                        binding,
+                        SemanticErrorType.VARIABLE_REDECLARATION,
+                        SemanticDiagnosticDetail.VariableRedeclaration(bindingName),
+                    )
+                )
+            }
+            bindings.add(binding)
+        }
+
+        return SumBranchPatternResult.Pattern(SumBranchPattern(variant, bindings))
+    }
+
+    private fun sumPatternError(node: ASTNode, message: String): SemanticError =
+        SemanticError.TypeSemanticError(
+            node,
+            SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
+            SemanticDiagnosticDetail.ControlFlow(message),
+        )
 
     private fun unitType(): TypeSign = globalContext.unitType
 
@@ -922,46 +1140,42 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
         val actualArgs = args.filterNotNull()
         val signature = newScope.getFunction(node.name, actualArgs)
 
-        // is constructor
-        if (node.name in globalContext.types) {
-            val constructor = globalContext.constructors[node.name] ?: return buildError(node, SemanticErrorType.CONSTRUCTOR_IS_EXPECTED).left()
-            if (constructor.arguments != actualArgs) {
-                return buildError(node, SemanticErrorType.CONSTRUCTOR_IS_FOUND_BUT_WRONG_ARGUMENTS).left()
-            }
-
-            // TODO: I'm not if it's good idea to set flag and change flags during analyzing
-            // Think about it later
-            node.isConstructorCalling = true
-            newScope.put(node, globalContext.findType(node.name)!!)
+        if (signature != null) {
+            node.isConstructorCalling = false
+            newScope.put(node, signature.resultType)
             return emptyList<SemanticError.SemanticWarning>().right()
         }
 
-        // is function
-        if (signature == null) {
-            return if (newScope.functionExist(node.name)) {
-                singletonList(
-                    SemanticError.FunctionSemanticError(
-                        node,
-                        SemanticErrorType.FUNCTION_EXISTS_BUT_WRONG_ARGUMENTS,
-                        SemanticDiagnosticDetail.FunctionWrongArguments(
-                            node.name,
-                            actualArgs,
-                            newScope.functionCandidates(node.name),
-                        )
-                    )
-                ).left()
-            } else {
-                singletonList(
-                    SemanticError.FunctionSemanticError(
-                        node,
-                        SemanticErrorType.FUNCTION_NOT_FOUND,
-                        SemanticDiagnosticDetail.FunctionNotFound(node.name, actualArgs)
-                    )
-                ).left()
-            }
-        } else {
-            newScope.put(node, signature.resultType)
+        val constructorCandidates = globalContext.constructorsByName(node.name)
+        if (constructorCandidates.isNotEmpty()) {
+            val matchingConstructors = constructorCandidates.filter { it.arguments == actualArgs }
+            val constructor = matchingConstructors.singleOrNull()
+                ?: return buildError(node, SemanticErrorType.CONSTRUCTOR_IS_FOUND_BUT_WRONG_ARGUMENTS).left()
+            node.isConstructorCalling = true
+            newScope.put(node, constructor.resultType)
             return emptyList<SemanticError.SemanticWarning>().right()
+        }
+
+        return if (newScope.functionExist(node.name)) {
+            singletonList(
+                SemanticError.FunctionSemanticError(
+                    node,
+                    SemanticErrorType.FUNCTION_EXISTS_BUT_WRONG_ARGUMENTS,
+                    SemanticDiagnosticDetail.FunctionWrongArguments(
+                        node.name,
+                        actualArgs,
+                        newScope.functionCandidates(node.name),
+                    )
+                )
+            ).left()
+        } else {
+            singletonList(
+                SemanticError.FunctionSemanticError(
+                    node,
+                    SemanticErrorType.FUNCTION_NOT_FOUND,
+                    SemanticDiagnosticDetail.FunctionNotFound(node.name, actualArgs)
+                )
+            ).left()
         }
     }
 
@@ -992,6 +1206,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
             is FunctionCallExpressionASTNode -> "$name(${arguments.joinToString(", ") { it.renderExpression() }})"
             is UnaryExpressionASTNode -> "${operator.lexeme}${operand.renderExpression()}"
             is FieldAccessChainExpressionASTNode -> this.root + (this.next?.let { n -> "." + n.renderExpression() } ?: "")
+            is WhenExpressionASTNode -> "when (${subject.renderExpression()})"
         }
 
     private fun String.escape(): String =

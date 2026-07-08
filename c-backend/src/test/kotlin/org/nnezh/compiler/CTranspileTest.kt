@@ -396,6 +396,83 @@ class CTranspileTest {
     }
 
     @Test
+    fun `sum constructor calls render as designated struct literals`() {
+        val maybeInt = registry.declareUserType("MaybeInt")
+        val tac = listOf(
+            LLTACElement.structDef(maybeInt),
+            LLTACElement.field("tag", int),
+            LLTACElement.field("Just_value0", int),
+            LLTACElement.endStructDef(),
+            LLTACElement.sumVariant(maybeInt, "Nothing", 0),
+            LLTACElement.sumVariant(maybeInt, "Just", 1),
+            LLTACElement.sumVariantField(maybeInt, "Just", "Just_value0", int),
+            LLTACElement.function("main", unit),
+            LLTACElement.assign("value", int, 7),
+            LLTACElement.param("value", int),
+            LLTACElement.call("Just", "present", maybeInt, 1),
+            LLTACElement.call("Nothing", "absent", maybeInt, 0),
+            LLTACElement.ret(),
+        )
+
+        assertEquals(
+            listOf(
+                "typedef struct MaybeInt { int tag; int Just_value0; } MaybeInt;",
+                "int main(int size, char** arg);",
+                "int main(int size, char** arg) {",
+                "init_runtime();",
+                "int value;",
+                "MaybeInt present, absent;",
+                "value = 7;",
+                "present = (MaybeInt){.tag = 1, .Just_value0 = value};",
+                "absent = (MaybeInt){.tag = 0};",
+                "return;",
+                "}",
+            ),
+            CTranspile().compile(tac),
+        )
+    }
+
+    @Test
+    fun `sum constructor literals preserve named payload field order`() {
+        val response = registry.declareUserType("Response")
+        val tac = listOf(
+            LLTACElement.structDef(response),
+            LLTACElement.field("tag", int),
+            LLTACElement.field("Success_value", int),
+            LLTACElement.field("Success_message", string),
+            LLTACElement.endStructDef(),
+            LLTACElement.sumVariant(response, "Success", 0),
+            LLTACElement.sumVariantField(response, "Success", "Success_value", int),
+            LLTACElement.sumVariantField(response, "Success", "Success_message", string),
+            LLTACElement.function("main", unit),
+            LLTACElement.assign("code", int, 200),
+            LLTACElement.assign("message", string, "ok"),
+            LLTACElement.param("code", int),
+            LLTACElement.param("message", string),
+            LLTACElement.call("Success", "response", response, 2),
+            LLTACElement.ret(),
+        )
+
+        assertEquals(
+            listOf(
+                "typedef struct Response { int tag; int Success_value; String Success_message; } Response;",
+                "int main(int size, char** arg);",
+                "int main(int size, char** arg) {",
+                "init_runtime();",
+                "int code;",
+                "String message;",
+                "Response response;",
+                "code = 200;",
+                "message = create_string(\"ok\", strlen(\"ok\"));",
+                "response = (Response){.tag = 0, .Success_value = code, .Success_message = message};",
+                "return;",
+                "}",
+            ),
+            CTranspile().compile(tac),
+        )
+    }
+
+    @Test
     fun `compile resets function body state between invocations`() {
         val transpiler = CTranspile()
         val tac = listOf(

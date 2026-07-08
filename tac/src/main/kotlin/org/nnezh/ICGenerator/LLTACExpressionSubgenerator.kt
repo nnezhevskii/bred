@@ -16,6 +16,7 @@ import org.nnezh.bred.ast.StringLiteralExpressionASTNode
 import org.nnezh.bred.ast.UnaryExpressionASTNode
 import org.nnezh.bred.ast.UnaryOperator
 import org.nnezh.bred.ast.VariableExpressionASTNode
+import org.nnezh.bred.ast.WhenExpressionASTNode
 import org.nnezh.bred.common.TypeSign
 import org.nnezh.bred.context.ProgramGlobalContext
 import org.nnezh.org.nnezh.ICGenerator.LLTACElement.Companion.binOp
@@ -187,11 +188,29 @@ class LLTACExpressionSubgenerator(
             }
 
             is VariableExpressionASTNode -> {
-                LLTACExpressionSubgeneratorResult(
-                    instructions = emptyList(),
-                    finalVariable = expression.token.lexeme,
-                    finalType = expression.tacType(),
-                )
+                val nullaryConstructor = globalContext.constructorsByName(expression.token.lexeme)
+                    .singleOrNull { it.arguments.isEmpty() }
+                if (nullaryConstructor != null) {
+                    val destination = variable ?: lltacError("constructor TAC destination is required", expression)
+                    LLTACExpressionSubgeneratorResult(
+                        instructions = listOf(
+                            LLTACElement.call(
+                                funName = expression.token.lexeme,
+                                resVariable = destination,
+                                resType = nullaryConstructor.resultType,
+                                amountOfArgs = 0,
+                            )
+                        ),
+                        finalVariable = destination,
+                        finalType = nullaryConstructor.resultType,
+                    )
+                } else {
+                    LLTACExpressionSubgeneratorResult(
+                        instructions = emptyList(),
+                        finalVariable = expression.token.lexeme,
+                        finalType = expression.tacType(),
+                    )
+                }
             }
 
             is ArrayInitializationExpressionASTNode -> {
@@ -245,6 +264,10 @@ class LLTACExpressionSubgenerator(
                     finalType = target.fieldType,
                 )
             }
+
+            is WhenExpressionASTNode -> {
+                lltacError("when expression TAC lowering is not supported yet", expression)
+            }
         }
 
     fun buildStoreInstructionsForFieldAccess(
@@ -290,11 +313,8 @@ class LLTACExpressionSubgenerator(
     }
 
     private fun fieldType(ownerType: TypeSign, fieldName: String, expression: FieldAccessChainExpressionASTNode): TypeSign {
-        val fields = try {
-            globalContext.typeRegistry.getProductTypeFields(ownerType.name)
-        } catch (error: Throwable) {
-            lltacError("type '${ownerType.render()}' has no fields", expression)
-        }
+        val fields = globalContext.productFields(ownerType)
+            ?: lltacError("type '${ownerType.render()}' has no fields", expression)
         return fields[fieldName] ?: lltacError("type '${ownerType.render()}' has no field '$fieldName'", expression)
     }
 

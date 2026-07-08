@@ -56,6 +56,10 @@ sealed class Token {
             override val lexeme: String = "while"
         }
 
+        data class When(override val position: Position) : Keyword() {
+            override val lexeme: String = "when"
+        }
+
         data class For(override val position: Position) : Keyword() {
             override val lexeme: String = "for"
         }
@@ -102,6 +106,7 @@ sealed class Token {
                 "else" to ::Else,
                 "return" to ::Return,
                 "while" to ::While,
+                "when" to ::When,
                 "for" to ::For,
                 "in" to ::In,
                 "to" to ::To,
@@ -214,6 +219,10 @@ sealed class Token {
         data class Not(override val position: Position) : Operator() {
             override val lexeme: String = "!"
         }
+
+        data class Arrow(override val position: Position) : Operator() {
+            override val lexeme: String = "->"
+        }
     }
     // endregion
 
@@ -254,6 +263,11 @@ sealed class Token {
         data class Dot(override val position: Position) : Punctuation() {
             override val lexeme: String = "."
         }
+
+        data class Pipe(override val position: Position) : Punctuation() {
+            override val lexeme: String = "|"
+        }
+
     }
     // endregion
 

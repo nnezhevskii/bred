@@ -87,7 +87,7 @@ internal data class NamedTypeSign internal constructor(
 
 internal data class ProductTypeSign internal constructor(
     override val name: String,
-    val fields: LinkedHashMap<String, TypeSign>
+    val fields: LinkedHashMap<String, TypeSign>,
 ): TypeSign {
     override val isPrimitive: Boolean
         get() = false
@@ -98,13 +98,7 @@ internal data class ProductTypeSign internal constructor(
     override val arguments: List<TypeSign>
         get() = emptyList()
 
-    override fun toManglePart(): String =
-        if (fields.isEmpty()) {
-            name
-        } else {
-            fields.values.joinToString(prefix = "${name}_", separator = "_") { it.toManglePart() }
-        }
-
+    override fun toManglePart(): String = name
 }
 
 internal data class GenericTypeSign internal constructor(
@@ -151,9 +145,13 @@ public class TypeRegistry {
         namedTypes.getOrPut(name) { NamedTypeSign(name) }.also { existing ->
             require(!existing.isPrimitive) { "Primitive type '$name' cannot be redeclared as user type" }
         }
+
     fun declareProductType(name: String, fields: LinkedHashMap<String, TypeSign>): TypeSign {
         require(fields.values.all { it.isResolved}) { "field type must me resolved, got unresolved in ${name}" }
-        require(name !in namedTypes.keys ) { "Type ${name} is not unique" }
+        val existing = namedTypes[name]
+        require(existing == null || existing !is PrimitiveTypeSign) {
+            "Type ${name} is not unique"
+        }
         namedTypes[name] = ProductTypeSign(name, fields)
         return namedTypes[name]!!
     }
@@ -238,7 +236,9 @@ public class TypeRegistry {
         val resolvedArgs = type.arguments.map { argument ->
             resolve(argument, genericScope).fold(ifLeft = { return it.left() }, ifRight = { it })
         }
-        return namedTypes[type.name]!!.right()
-//        return NamedTypeSign(type.name, resolvedArgs).right()
+        if (type.name !in namedTypes) {
+            return "Unknown type '${type.name}'".left()
+        }
+        return NamedTypeSign(type.name, resolvedArgs).right()
     }
 }

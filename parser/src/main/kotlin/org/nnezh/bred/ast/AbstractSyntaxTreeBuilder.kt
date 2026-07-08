@@ -5,7 +5,7 @@ import arrow.core.raise.either
 import org.nnezh.lexer.Token
 
 class AbstractSyntaxTreeBuilder(
-    expressionParser: Parser<ExpressionASTNode> = AbstractSyntaxTreeExpressionParser(),
+    expressionParser: Parser<ExpressionASTNode>? = null,
     factory: ParserFactory = ParserFactory(expressionParser = expressionParser),
 ) {
     private val programParser = factory.programParser()

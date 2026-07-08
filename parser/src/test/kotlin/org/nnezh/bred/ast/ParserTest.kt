@@ -149,6 +149,91 @@ class ParserTest {
     }
 
     @Test
+    fun `product field accepts generic type sign`() {
+        val root = parse("type Box(value: Array<Int>)")
+
+        val box = assertInstanceOf(DeclareProductTypeASTNode::class.java, root.types.single())
+        assertEquals(linkedMapOf("value" to TypeRef("Array", listOf(TypeRef("Int")))), box.fields)
+    }
+
+    @Test
+    fun `sum type declaration with generic variant argument is parsed`() {
+        val root = parse("type MaybeInt = Nothing | Just<Int>")
+
+        val maybe = assertInstanceOf(DeclareSumTypeASTNode::class.java, root.types.single())
+        assertEquals("MaybeInt", maybe.name)
+        assertTrue(maybe.genericParams.isEmpty())
+        assertEquals(listOf("Nothing", "Just"), maybe.variants.map { it.name })
+        assertTrue(maybe.variants[0].typeArguments.isEmpty())
+        assertTrue(maybe.variants[0].fields.isEmpty())
+        assertEquals(listOf(TypeRef("Int")), maybe.variants[1].typeArguments)
+        assertTrue(maybe.variants[1].fields.isEmpty())
+    }
+
+    @Test
+    fun `generic sum type declaration with constructor fields is parsed`() {
+        val root = parse("type Maybe<T> = Nothing | Just<T>(a: T)")
+
+        val maybe = assertInstanceOf(DeclareSumTypeASTNode::class.java, root.types.single())
+        assertEquals("Maybe", maybe.name)
+        assertEquals(listOf(GenericParam("T", emptyList())), maybe.genericParams)
+
+        val just = maybe.variants[1]
+        assertEquals("Just", just.name)
+        assertEquals(listOf(TypeRef("T")), just.typeArguments)
+        assertEquals(listOf(SumTypeVariantFieldASTNode("a", TypeRef("T"))), just.fields)
+    }
+
+    @Test
+    fun `generic sum type constructor call is parsed`() {
+        val root = parse(
+            """
+            type Maybe<T> = Just<T>(v: T) | Nothing
+
+            fun main() {
+                val x: Maybe<Int> = Just<Int>(1)
+            }
+            """.trimIndent()
+        )
+
+        val declaration = assertInstanceOf(
+            ScalarVariableInitializationASTNode::class.java,
+            root.functions.single().body.statements.first(),
+        )
+        val call = assertInstanceOf(FunctionCallExpressionASTNode::class.java, declaration.expression)
+
+        assertEquals(TypeRef("Maybe", listOf(TypeRef("Int"))), declaration.type)
+        assertEquals("Just", call.name)
+        assertEquals(listOf(TypeRef("Int")), call.typeArguments)
+        assertEquals(1, call.arguments.size)
+    }
+
+    @Test
+    fun `enum-like and payload sum type declarations are parsed`() {
+        val root = parse(
+            """
+            type Color = RED | GREEN | BLUE
+            type Response = NOT_FOUND | SUCCESS(value: Int) | FAIL(reason: String, code: Int) | UNATHORIZED
+            """.trimIndent()
+        )
+
+        val color = assertInstanceOf(DeclareSumTypeASTNode::class.java, root.types[0])
+        val response = assertInstanceOf(DeclareSumTypeASTNode::class.java, root.types[1])
+
+        assertEquals(listOf("RED", "GREEN", "BLUE"), color.variants.map { it.name })
+        assertTrue(color.variants.all { it.typeArguments.isEmpty() && it.fields.isEmpty() })
+        assertEquals(listOf("NOT_FOUND", "SUCCESS", "FAIL", "UNATHORIZED"), response.variants.map { it.name })
+        assertEquals(listOf(SumTypeVariantFieldASTNode("value", TypeRef("Int"))), response.variants[1].fields)
+        assertEquals(
+            listOf(
+                SumTypeVariantFieldASTNode("reason", TypeRef("String")),
+                SumTypeVariantFieldASTNode("code", TypeRef("Int")),
+            ),
+            response.variants[2].fields,
+        )
+    }
+
+    @Test
     fun `constructor call and field access chain are parsed`() {
         val root = parse(
             """
@@ -220,6 +305,83 @@ class ParserTest {
         val forStatement = assertInstanceOf(ForStatementAstNode::class.java, function.body.statements.first())
         assertEquals(3, forStatement.desugaredContent.statements.size)
         assertInstanceOf(WhileStatementAstNode::class.java, forStatement.desugaredContent.statements[2])
+    }
+
+    @Test
+    fun `when statement parses expression cases and else branch`() {
+        val root = parse(
+            """
+            fun main(): Unit {
+                when (value) {
+                    1 -> { println("one") }
+                    value + 1 -> { value = value + 1 }
+                    else -> { println("other") }
+                }
+            }
+            """.trimIndent()
+        )
+
+        val statement = assertInstanceOf(WhenStatementAstNode::class.java, root.functions.single().body.statements.first())
+        val expression = statement.expression
+
+        assertEquals("value", assertInstanceOf(VariableExpressionASTNode::class.java, expression.subject).token.lexeme)
+        assertEquals(3, expression.branches.size)
+        assertEquals(1, assertInstanceOf(IntLiteralExpressionASTNode::class.java, expression.branches[0].condition).value)
+        assertInstanceOf(BinaryExpressionASTNode::class.java, expression.branches[1].condition)
+        assertNull(expression.branches[2].condition)
+        assertInstanceOf(CallFunctionStatementAstNode::class.java, expression.branches[0].bodyBlock.statements.single())
+        assertInstanceOf(AssignmentStatementAstNode::class.java, expression.branches[1].bodyBlock.statements.single())
+        assertInstanceOf(CallFunctionStatementAstNode::class.java, expression.branches[2].bodyBlock.statements.single())
+    }
+
+    @Test
+    fun `when statement parses sum variant payload pattern as branch condition call`() {
+        val root = parse(
+            """
+            fun main(): Unit {
+                when (maybe) {
+                    Just(value) -> { println(value) }
+                    Nothing -> { println("empty") }
+                }
+            }
+            """.trimIndent()
+        )
+
+        val statement = assertInstanceOf(WhenStatementAstNode::class.java, root.functions.single().body.statements.first())
+        val expression = statement.expression
+        val justPattern = assertInstanceOf(FunctionCallExpressionASTNode::class.java, expression.branches[0].condition)
+
+        assertEquals("Just", justPattern.name)
+        assertTrue(justPattern.typeArguments.isEmpty())
+        assertEquals("value", assertInstanceOf(VariableExpressionASTNode::class.java, justPattern.arguments.single()).token.lexeme)
+        assertEquals("Nothing", assertInstanceOf(VariableExpressionASTNode::class.java, expression.branches[1].condition).token.lexeme)
+    }
+
+    @Test
+    fun `when expression parses in initializer`() {
+        val root = parse(
+            """
+            fun choose(value: Int): Int {
+                val result: Int = when (value) {
+                    0 -> { return 1 }
+                    else -> { return value }
+                }
+            }
+            """.trimIndent()
+        )
+
+        val declaration = assertInstanceOf(
+            ScalarVariableInitializationASTNode::class.java,
+            root.functions.single().body.statements.first(),
+        )
+        val expression = assertInstanceOf(WhenExpressionASTNode::class.java, declaration.expression)
+
+        assertEquals("value", assertInstanceOf(VariableExpressionASTNode::class.java, expression.subject).token.lexeme)
+        assertEquals(2, expression.branches.size)
+        assertEquals(0, assertInstanceOf(IntLiteralExpressionASTNode::class.java, expression.branches[0].condition).value)
+        assertNull(expression.branches[1].condition)
+        assertInstanceOf(ReturnFunctionStatementAstNode::class.java, expression.branches[0].bodyBlock.statements.single())
+        assertInstanceOf(ReturnFunctionStatementAstNode::class.java, expression.branches[1].bodyBlock.statements.single())
     }
 
     @Test
@@ -539,6 +701,35 @@ class ParserTest {
     }
 
     @Test
+    fun `sum type rejects malformed variants and generic parameter lists`() {
+        assertTrue(parseFails("type Broken ="))
+        assertTrue(parseFails("type Broken = A |"))
+        assertTrue(parseFails("type Broken = A || B"))
+        assertTrue(parseFails("type Broken = A | A"))
+        assertTrue(parseFails("type Broken<T,> = A"))
+        assertTrue(parseFails("type Broken<> = A"))
+    }
+
+    @Test
+    fun `sum type rejects malformed variant fields`() {
+        assertTrue(parseFails("type Broken = A(value: Int,)"))
+        assertTrue(parseFails("type Broken = A(value Int)"))
+        assertTrue(parseFails("type Broken = A(value: Int, value: String)"))
+    }
+
+    @Test
+    fun `sum type cannot be mutable`() {
+        assertTrue(parseFails("type mut Maybe = Nothing"))
+    }
+
+    @Test
+    fun `generic call rejects malformed type argument lists`() {
+        assertTrue(parseFails("fun main(): Unit { val x: Maybe<Int> = Just<>(1) }"))
+        assertTrue(parseFails("fun main(): Unit { val x: Maybe<Int> = Just<Int,>(1) }"))
+        assertTrue(parseFails("fun main(): Unit { val x: Maybe<Int> = Just<Int>(1 }"))
+    }
+
+    @Test
     fun `field access rejects missing target and call suffix`() {
         assertTrue(parseFails("fun main(): Unit { val city: String = person. }"))
         assertTrue(parseFails("fun main(): Unit { val age: Int = person.age() }"))
@@ -625,6 +816,15 @@ class ParserTest {
     @Test
     fun `literal starting statement is rejected`() {
         assertTrue(parseFails("fun main(): Unit { 1 }"))
+    }
+
+    @Test
+    fun `malformed when syntax is rejected`() {
+        assertTrue(parseFails("when (x) { 1 -> { } }"))
+        assertTrue(parseFails("fun main(): Unit { when (x) { } }"))
+        assertTrue(parseFails("fun main(): Unit { when (x) { 1 { } } }"))
+        assertTrue(parseFails("fun main(): Unit { when (x) { 1 -> println(\"one\") } }"))
+        assertTrue(parseFails("fun main(): Unit { when (x) { else -> { } 1 -> { } } }"))
     }
 
     @Test
@@ -829,6 +1029,120 @@ class ParserTest {
 
         assertEquals("tmp", tmp.name)
         assertEquals(ProgramGlobalContext().intType, tmp.type)
+    }
+
+    @Test
+    fun `template instantiator generates concrete sum type from generic usage`() {
+        val root = parse(
+            """
+            type Maybe<T> = Just<T>(v: T) | Nothing
+
+            fun id<T>(value: T): Maybe<T> {
+                return Just<T>(value)
+            }
+
+            fun main() {
+                val x: Maybe<Int> = id<Int>(200)
+            }
+            """.trimIndent()
+        )
+
+        val instantiated = instantiate(root)
+        val maybeInt = assertInstanceOf(
+            DeclareSumTypeASTNode::class.java,
+            instantiated.types.single { it.name == "Maybe_Int" },
+        )
+        val just = maybeInt.variants.single { it.name == "Just" }
+        val nothing = maybeInt.variants.single { it.name == "Nothing" }
+        val id = instantiated.functions.single { it.name == "id_Int_Maybe_Int" }
+        val main = instantiated.functions.single { it.name == "main" }
+        val declaration = assertInstanceOf(
+            ScalarVariableInitializationASTNode::class.java,
+            main.body.statements.first(),
+        )
+        val call = assertInstanceOf(FunctionCallExpressionASTNode::class.java, declaration.expression)
+
+        assertTrue(instantiated.types.none { it.name == "Maybe" })
+        assertTrue(maybeInt.genericParams.isEmpty())
+        assertTrue(just.typeArguments.isEmpty())
+        assertEquals("v", just.fields.single().name)
+        assertEquals("Int", just.fields.single().type.name)
+        assertTrue(nothing.fields.isEmpty())
+        assertEquals("Maybe_Int", id.result.name)
+        assertEquals("Maybe_Int", declaration.type.name)
+        assertTrue(declaration.type.arguments.isEmpty())
+        assertEquals("id_Int_Maybe_Int", call.name)
+
+        val returnStatement = assertInstanceOf(ReturnFunctionStatementAstNode::class.java, id.body.statements.first())
+        val returnCall = assertInstanceOf(FunctionCallExpressionASTNode::class.java, returnStatement.expression)
+        assertEquals("Just", returnCall.name)
+        assertTrue(returnCall.typeArguments.isEmpty())
+    }
+
+    @Test
+    fun `template instantiator rewrites explicit generic product constructor call`() {
+        val root = parse(
+            """
+            type Box<T>(value: T)
+
+            fun main() {
+                val x: Box<Int> = Box<Int>(200)
+            }
+            """.trimIndent()
+        )
+
+        val instantiated = instantiate(root)
+        val main = instantiated.functions.single { it.name == "main" }
+        val declaration = assertInstanceOf(
+            ScalarVariableInitializationASTNode::class.java,
+            main.body.statements.first(),
+        )
+        val call = assertInstanceOf(FunctionCallExpressionASTNode::class.java, declaration.expression)
+
+        assertInstanceOf(
+            DeclareProductTypeASTNode::class.java,
+            instantiated.types.single { it.name == "Box_Int" },
+        )
+        assertEquals("Box_Int", declaration.type.name)
+        assertEquals("Box_Int", call.name)
+        assertTrue(call.typeArguments.isEmpty())
+    }
+
+    @Test
+    fun `template instantiator generates concrete product type from generic usage`() {
+        val root = parse(
+            """
+            type Box<T>(value: T)
+
+            fun makeBox<T>(value: T): Box<T> {
+                return value
+            }
+
+            fun main() {
+                val x: Box<Int> = makeBox<Int>(200)
+            }
+            """.trimIndent()
+        )
+
+        val instantiated = instantiate(root)
+        val boxInt = assertInstanceOf(
+            DeclareProductTypeASTNode::class.java,
+            instantiated.types.single { it.name == "Box_Int" },
+        )
+        val makeBox = instantiated.functions.single { it.name == "makeBox_Int_Box_Int" }
+        val main = instantiated.functions.single { it.name == "main" }
+        val declaration = assertInstanceOf(
+            ScalarVariableInitializationASTNode::class.java,
+            main.body.statements.first(),
+        )
+        val call = assertInstanceOf(FunctionCallExpressionASTNode::class.java, declaration.expression)
+
+        assertTrue(instantiated.types.none { it.name == "Box" })
+        assertTrue(boxInt.genericParams.isEmpty())
+        assertEquals("Int", boxInt.fields.getValue("value").name)
+        assertEquals("Box_Int", makeBox.result.name)
+        assertEquals("Box_Int", declaration.type.name)
+        assertEquals("makeBox_Int_Box_Int", call.name)
     }
 
     @Test

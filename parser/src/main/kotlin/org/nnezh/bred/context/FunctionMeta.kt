@@ -19,4 +19,14 @@ data class DeclaredFunctionMeta(
     val astNode: FunctionDeclAstNode
 ): FunctionMeta
 
-data class ConstructorMeta(val arguments: List<TypeSign>)
+data class ConstructorMeta(
+    val name: String,
+    val arguments: List<TypeSign>,
+    val resultType: TypeSign,
+    val kind: ConstructorKind,
+)
+
+enum class ConstructorKind {
+    PRODUCT,
+    SUM_VARIANT,
+}

@@ -32,14 +32,14 @@ identifier is scanned, exact text is matched against the keyword table.
 ### 1.1 Keywords
 
 ```text
-fun val var if else return while for in to true false mut type typeclass instance
+fun val var if else return while for in to true false mut type typeclass instance when
 ```
 
 Keywords are case-sensitive. Prefixes and longer words are identifiers:
 `function`, `valuable`, `typeclasses`, `instanceOf`.
 
 `mut` is consumed only by product type declarations: `type mut Name(...)`.
-No later compiler phase currently gives `mut` a distinct semantic effect.
+Semantic analysis uses it to decide whether product fields may be assigned.
 
 ### 1.2 Literals
 
@@ -74,20 +74,20 @@ errors.
 ### 1.3 Operators
 
 ```text
-+  -  *  /  %  =  ==  !=  <  >  <=  >=  &&  ||  !
++  -  *  /  %  =  ==  !=  <  >  <=  >=  &&  ||  !  ->
 ```
 
-The lexer recognizes multi-character operators greedily. A lone `&` or `|` is
-a lexer error with a hint for `&&` or `||`.
+The lexer recognizes multi-character operators greedily. A lone `&` is a lexer
+error with a hint for `&&`. A lone `|` is punctuation.
 
 ### 1.4 Punctuation
 
 ```text
-( ) { } [ ] , : .
+( ) { } [ ] , : . |
 ```
 
 `;` is rejected by the lexer. The dot token is used by identifier-rooted product
-field access chains.
+field access chains. The pipe token separates sum type variants.
 
 ### 1.5 Whitespace and Comments
 
@@ -106,7 +106,7 @@ Comments do not produce tokens. Block comments are not nested.
 program      ::= { topLevelDecl } EOF ;
 topLevelDecl ::= functionDecl
                | globalValDecl
-               | productTypeDecl
+               | typeDecl
                | typeclassDecl
                | instanceDecl ;
 ```
@@ -144,11 +144,21 @@ Empty type argument lists are invalid: `Box<>`. Trailing commas are invalid:
 Primitive names initialized by `ProgramGlobalContext` and used by tests and
 built-ins are `Int`, `Long`, `Double`, `String`, `Boolean`, and `Unit`.
 
-## 4. Product Types
+## 4. User-Defined Types
 
 ```ebnf
-productTypeDecl ::= "type" [ "mut" ] identifier "(" [ productField { "," productField } ] ")" ;
-productField    ::= identifier ":" identifier ;
+typeDecl ::= productTypeDecl | sumTypeDecl ;
+```
+
+Type declarations are represented as `DeclareTypeASTNode` values in
+`ProgramRoot.types`.
+
+### 4.1 Product Types
+
+```ebnf
+productTypeDecl ::= "type" [ "mut" ] identifier genericParams?
+                    "(" [ productField { "," productField } ] ")" ;
+productField    ::= identifier ":" typeSign ;
 ```
 
 Examples:
@@ -157,21 +167,22 @@ Examples:
 type Person(name: String, age: Int)
 type Address(city: String)
 type Person(name: String, age: Int, address: Address)
+type Box<T>(value: T)
 type mut Counter(value: Int)
 type Empty()
 ```
 
-Product declarations are represented as `DeclareProductTypeASTNode` values in
-`ProgramRoot.types`. The optional `mut` keyword is stored as
-`DeclareProductTypeASTNode.isMutable`.
+The optional `mut` keyword is stored as
+`DeclareProductTypeASTNode.isMutable`. Semantic analysis allows product field
+assignment only when the owner product type was declared with `mut`; the
+mutability of the root variable binding does not control field assignment.
 
-Field type syntax is currently a bare identifier, not the full `typeSign`
-grammar. Therefore these forms are not parsed as product field declarations:
+Field type syntax uses the full `typeSign` grammar, so product fields may refer
+to generic arguments and generic named types:
 
 ```bred
-type Box(value: Array<Int>)
-type Box(value: Int[])
-type PairBox(value: Pair<Int, String>)
+type Box<T>(value: T)
+type PersonBox(value: Box<Person>)
 ```
 
 The parser rejects duplicate field names inside one product type declaration.
@@ -191,9 +202,43 @@ assignment is part of the assignment grammar. The current compiler parses,
 analyzes, lowers, and renders nested field chains whose root is an identifier,
 for example `person.address.city`.
 
-`mut` currently has no enforced semantic effect. In particular, field
-assignment is checked for type compatibility, but product mutability is not
-checked by the semantic analyzer.
+### 4.2 Sum Types
+
+```ebnf
+sumTypeDecl     ::= "type" identifier genericParams? "=" sumVariant
+                    { "|" sumVariant } ;
+sumVariant      ::= identifier variantTypeArguments? variantFields? ;
+variantTypeArguments ::= "<" typeSign { "," typeSign } ">" ;
+variantFields   ::= "(" [ variantField { "," variantField } ] ")" ;
+variantField    ::= identifier ":" typeSign ;
+```
+
+Examples:
+
+```bred
+type MaybeInt = Nothing | Just<Int>
+type Maybe<T> = Just<T>(value: T) | Nothing
+type Response = Success(value: Int) | Fail(reason: String, code: Int)
+```
+
+`type mut Name = ...` is rejected; `mut` is product-only. The parser rejects
+duplicate variant names within one sum type and duplicate named fields within
+one variant. Empty generic argument lists, trailing commas, missing field
+colons, and dangling `|` tokens are invalid.
+
+Each variant is registered as a constructor. Named variant fields become
+constructor arguments in declaration order. A variant with type arguments and no
+named field list is treated as a positional payload constructor with synthetic
+field names `value0`, `value1`, and so on:
+
+```bred
+val a: MaybeInt = Nothing
+val b: MaybeInt = Just(1)
+```
+
+Generic sum types are monomorphized by `TemplateInstantiator` when a concrete
+variant constructor call provides enough type information, for example
+`Just<T>(value)` inside a generic function.
 
 ## 5. Functions
 
@@ -349,6 +394,7 @@ statement ::= valDecl
             | callStmt
             | returnStmt
             | ifStmt
+            | whenStmt
             | whileStmt
             | forStmt ;
 ```
@@ -363,6 +409,7 @@ Statement dispatch is based on the first token:
 | `val`, `var` | variable declaration |
 | `return` | return statement |
 | `if` | if statement |
+| `when` | when statement |
 | `while` | while statement |
 | `for` | for statement |
 | `identifier` followed by `(` | call statement |
@@ -384,10 +431,10 @@ The assignment parser first parses the left side as an expression and then
 requires it to be either `VariableExpressionASTNode` or
 `ArrayElementAccessASTNode` or `FieldAccessChainExpressionASTNode`.
 
-The semantic analyzer checks field assignment type compatibility. It currently
-checks scalar binding mutability only for `VariableExpressionASTNode` lvalues;
-array element and product field assignments are not rejected merely because the
-root binding or product type was declared with `val` / without `mut`.
+The semantic analyzer checks field assignment type compatibility. It rejects
+assignment to a product field unless the final owner product type in the field
+chain was declared with `mut`. The root variable may still be declared with
+`val`; binding mutability controls rebinding, not field writes.
 
 ### 8.2 Return
 
@@ -410,13 +457,54 @@ ifStmt ::= "if" "(" expression ")" block [ "else" block ] ;
 
 `else if` is invalid because `else` must be followed by a block.
 
-### 8.4 While
+### 8.4 When
+
+```ebnf
+whenStmt   ::= whenExpr ;
+whenExpr   ::= "when" "(" expression ")" "{"
+               whenBranch { whenBranch }
+               "}" ;
+whenBranch ::= ( expression | "else" ) "->" block ;
+```
+
+Examples:
+
+```bred
+when (value) {
+    Nothing -> { println("empty") }
+    Just(payload) -> { println(intToString(payload)) }
+}
+
+when (status) {
+    0 -> { println("ok") }
+    else -> { println("error") }
+}
+```
+
+At least one branch is required. Branch bodies are blocks; a bare expression or
+call after `->` is invalid. `else` must be the last branch and may appear only
+once.
+
+For sum-typed subjects, bare variant names such as `Nothing` and `Just` are
+validated against the subject sum type. A branch may also use a variant pattern
+written with call syntax, for example `Just(payload)` or
+`Success(code, message)`. Pattern names bind payload fields positionally as
+immutable branch-local variables; the number of names must match the variant
+payload field count. Pattern names must be unique and currently may not
+redeclare another visible variable. A bare variant branch still matches the
+variant while ignoring its payload. A sum `when` without `else` must cover every
+variant exactly once.
+
+For non-sum subjects, each branch condition is an expression whose semantic
+type must equal the subject type.
+
+### 8.5 While
 
 ```ebnf
 whileStmt ::= "while" "(" expression ")" block ;
 ```
 
-### 8.5 For
+### 8.6 For
 
 ```ebnf
 forStmt ::= "for" "(" identifier "in" expression "to" expression ")" block ;
@@ -457,10 +545,13 @@ primary        ::= intLiteral
                  | doubleLiteral
                  | stringLiteral
                  | booleanLiteral
-                 | identifier [ callSuffix | arrayAccessSuffix | fieldAccessSuffix ]
+                 | whenExpr
+                 | identifier [ genericCallSuffix | callSuffix | arrayAccessSuffix | fieldAccessSuffix ]
                  | arrayInitList
                  | "(" expression ")" ;
 
+genericCallSuffix  ::= "<" typeSign { "," typeSign } ">"
+                       "(" [ expression { "," expression } ] ")" ;
 callSuffix        ::= "(" [ expression { "," expression } ] ")" ;
 arrayAccessSuffix ::= "[" expression "]" ;
 fieldAccessSuffix ::= "." identifier { "." identifier } ;
@@ -480,15 +571,21 @@ right-associative and bind tighter than multiplicative operators.
 | 7 | unary `-`, `!` |
 | 8 | primary, calls, array access, field access |
 
-Function call, array access, and field access suffixes attach only to
-identifier primaries. Array access may not be called directly: `arr[0](1)` is
-invalid. Field access may not be applied to arbitrary expressions:
+Function call, explicit generic call, array access, and field access suffixes
+attach only to identifier primaries. Explicit generic calls are used by generic
+functions and by generic product/sum constructors, for example `id<Int>(1)` or
+`Box<Int>(1)`. Array access may not be called directly: `arr[0](1)` is invalid.
+Field access may not be applied to arbitrary expressions:
 `makePerson().age`, `(person).age`, `people[0].age`, and `person.names[0]` are
 not part of the current grammar. Indirect calls such as `(f)()` are not part of
 the grammar.
 
 Function call arguments reject trailing commas. Array initialization lists
 permit `[]` but reject `[1,]` and `[1,, 2]`.
+
+`when` is accepted in expression position but currently has semantic type
+`Unit`. TAC lowering supports it as a statement; using it as a value-producing
+expression is not supported by the active pipeline.
 
 ## 10. Known Restrictions
 
@@ -498,15 +595,16 @@ permit `[]` but reject `[1,]` and `[1,, 2]`.
 - No `else if` syntax.
 - No general member/method access beyond identifier-rooted product field
   chains.
+- No value-producing `when` expression lowering; the active `when` type is
+  `Unit`.
 - No indirect calls or first-class function syntax.
 - No parser-level semantic validation of type names. Type syntax is accepted
   as `TypeRef`; unknown concrete names are rejected later by
   `ProgramTypeResolver`.
 - No mutable static array declaration syntax.
-- Product field declarations accept only bare identifier field types, not the
-  full `typeSign` grammar.
-- Product type declaration ordering, forward references, recursive products,
-  and `mut` semantics are not fully specified.
+- Sum values are lowered as by-value tagged structs with flattened payload
+  fields, not as union/pointer runtime values.
+- Recursive product and sum layouts are not specified.
 
 
 

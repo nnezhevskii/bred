@@ -10,12 +10,14 @@ import org.nnezh.bred.ast.BooleanLiteralExpressionASTNode
 import org.nnezh.bred.ast.CallFunctionStatementAstNode
 import org.nnezh.bred.ast.DeclareGlobalVariableASTNode
 import org.nnezh.bred.ast.DeclareProductTypeASTNode
+import org.nnezh.bred.ast.DeclareSumTypeASTNode
 import org.nnezh.bred.ast.DeclareTypeASTNode
 import org.nnezh.bred.ast.DoubleLiteralExpressionASTNode
 import org.nnezh.bred.ast.EmptyNode
 import org.nnezh.bred.ast.ExpressionASTNode
 import org.nnezh.bred.ast.FieldAccessChainExpressionASTNode
 import org.nnezh.bred.ast.ForStatementAstNode
+import org.nnezh.bred.ast.FunctionCallExpressionASTNode
 import org.nnezh.bred.ast.FunctionArgument
 import org.nnezh.bred.ast.FunctionDeclAstNode
 import org.nnezh.bred.ast.IfStatementAstNode
@@ -26,9 +28,13 @@ import org.nnezh.bred.ast.ReturnFunctionStatementAstNode
 import org.nnezh.bred.ast.ScalarVariableInitializationASTNode
 import org.nnezh.bred.ast.StringLiteralExpressionASTNode
 import org.nnezh.bred.ast.VariableExpressionASTNode
+import org.nnezh.bred.ast.WhenExpressionASTNode
+import org.nnezh.bred.ast.WhenStatementAstNode
 import org.nnezh.bred.ast.WhileStatementAstNode
 import org.nnezh.bred.common.TypeSign
 import org.nnezh.bred.context.ProgramGlobalContext
+import org.nnezh.bred.context.SumTypeDefinition
+import org.nnezh.bred.context.SumVariantDefinition
 import org.nnezh.org.nnezh.ICGenerator.LLTACElement.Companion.endStructDef
 import org.nnezh.org.nnezh.ICGenerator.LLTACElement.Companion.field
 import org.nnezh.org.nnezh.ICGenerator.LLTACElement.Companion.structDef
@@ -38,6 +44,7 @@ class LLTACGenerator(
     private val typeTable: Map<ExpressionASTNode, TypeSign>,
     private val globalContext: ProgramGlobalContext,
 ) {
+    private val sumTagFieldName = "tag"
     private val mangledFunctions: MutableMap<String, String> = hashMapOf()
     private val localVariableTypes: MutableMap<String, TypeSign> = mutableMapOf()
     private val expressionLLTACGenerator = LLTACExpressionSubgenerator(
@@ -147,10 +154,37 @@ class LLTACGenerator(
                     is DeclareProductTypeASTNode -> {
                         val type = globalContext.findType(node.name)!!
                         instructions.add(structDef(type))
-                        globalContext.typeRegistry.getProductTypeFields(node.name).forEach { f ->
+                        globalContext.productFields(type).orEmpty().forEach { f ->
                             instructions.add(field(f.key, f.value))
                         }
                         instructions.add(endStructDef())
+                    }
+                    is DeclareSumTypeASTNode -> {
+                        val type = globalContext.findType(node.name)!!
+                        val definition = globalContext.sumDefinition(type)
+                        if (definition != null) {
+                            instructions.add(structDef(type))
+                            instructions.add(field(sumTagFieldName, globalContext.intType))
+                            definition.variants.forEach { variant ->
+                                variant.fields.forEach { f ->
+                                    instructions.add(field(sumPayloadFieldName(variant.name, f.name), f.type))
+                                }
+                            }
+                            instructions.add(endStructDef())
+                            definition.variants.forEach { variant ->
+                                instructions.add(LLTACElement.sumVariant(type, variant.name, variant.tag))
+                                variant.fields.forEach { f ->
+                                    instructions.add(
+                                        LLTACElement.sumVariantField(
+                                            ownerType = type,
+                                            variantName = variant.name,
+                                            fieldName = sumPayloadFieldName(variant.name, f.name),
+                                            fieldType = f.type,
+                                        )
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -262,6 +296,10 @@ class LLTACGenerator(
                 instructions.add(endOfWhile)
             }
 
+            is WhenStatementAstNode -> {
+                instructions.addAll(buildWhenStatement(node.expression))
+            }
+
             is DeclareGlobalVariableASTNode -> {
                 node.size?.let { size ->
                     val elementType = node.arrayElementType()
@@ -283,6 +321,92 @@ class LLTACGenerator(
     private fun mangleFunctionName(function: FunctionDeclAstNode): String =
         function.name
 
+    private fun buildWhenStatement(node: WhenExpressionASTNode): List<LLTACElement> {
+        val instructions = mutableListOf<LLTACElement>()
+        val subjectType = node.subject.tacType()
+        val subject = expressionLLTACGenerator.buildInstructionsForExpression(
+            variable = nameEmitter.nextVar(),
+            type = subjectType,
+            expression = node.subject,
+        )
+        instructions.addAll(subject.instructions)
+        val subjectVariable = subject.finalVariable!!
+        val sumDefinition = globalContext.sumDefinition(subjectType)
+        val endLabel = LLTACElement.label(nameEmitter.nextLbl()) as LLTACLabel
+
+        node.branches.forEach { branch ->
+            val condition = branch.condition
+            if (condition == null) {
+                instructions.addAll(visit(branch.bodyBlock))
+                instructions.add(LLTACElement.jump(endLabel))
+                return@forEach
+            }
+
+            val nextLabel = LLTACElement.label(nameEmitter.nextLbl()) as LLTACLabel
+            val pattern = sumDefinition?.let { sumBranchPattern(condition, it) }
+            if (pattern != null) {
+                val variant = pattern.variant
+                val actualTag = nameEmitter.nextVar()
+                val expectedTag = nameEmitter.nextVar()
+                val conditionVariable = nameEmitter.nextVar()
+                instructions.add(
+                    LLTACElement.loadField(
+                        ownerPath = subjectVariable,
+                        ownerType = subjectType,
+                        fieldName = sumTagFieldName,
+                        fieldType = globalContext.intType,
+                        destination = actualTag,
+                    )
+                )
+                instructions.add(LLTACElement.assign(expectedTag, globalContext.intType, variant.tag.toLong()))
+                instructions.add(
+                    LLTACElement.binOp(
+                        opcode = LLTACOperation.LLTAC_EQ,
+                        varName = conditionVariable,
+                        varType = globalContext.booleanType,
+                        arg1Name = actualTag,
+                        arg1Type = globalContext.intType,
+                        arg2Name = expectedTag,
+                        arg2Type = globalContext.intType,
+                    )
+                )
+                instructions.add(LLTACElement.jumpIfNot(nextLabel, conditionVariable, globalContext.booleanType))
+            } else {
+                val branchValue = expressionLLTACGenerator.buildInstructionsForExpression(
+                    variable = nameEmitter.nextVar(),
+                    type = condition.tacType(),
+                    expression = condition,
+                )
+                val conditionVariable = nameEmitter.nextVar()
+                instructions.addAll(branchValue.instructions)
+                instructions.add(
+                    LLTACElement.binOp(
+                        opcode = LLTACOperation.LLTAC_EQ,
+                        varName = conditionVariable,
+                        varType = globalContext.booleanType,
+                        arg1Name = subjectVariable,
+                        arg1Type = subjectType,
+                        arg2Name = branchValue.finalVariable!!,
+                        arg2Type = branchValue.finalType,
+                    )
+                )
+                instructions.add(LLTACElement.jumpIfNot(nextLabel, conditionVariable, globalContext.booleanType))
+            }
+
+            val payloadBindings = pattern?.payloadBindingTypes().orEmpty()
+            val previousBindingTypes = rememberLocalVariableTypes(payloadBindings)
+            payloadBindings.forEach { (name, type) -> localVariableTypes[name] = type }
+            pattern?.payloadLoads(subjectVariable, subjectType)?.let { instructions.addAll(it) }
+            instructions.addAll(visit(branch.bodyBlock))
+            restoreLocalVariableTypes(previousBindingTypes)
+            instructions.add(LLTACElement.jump(endLabel))
+            instructions.add(nextLabel)
+        }
+
+        instructions.add(endLabel)
+        return instructions
+    }
+
     private fun FunctionArgument.scopeType(): TypeSign =
         if (isArray) globalContext.arrayOf(type) else type
 
@@ -293,6 +417,63 @@ class LLTACGenerator(
 
     private fun TypeSign.arrayElementType(): TypeSign =
         if (isArray) elementTypeOrNull!! else this
+
+    private fun sumPayloadFieldName(variantName: String, fieldName: String): String =
+        "${variantName}_${fieldName}"
+
+    private data class SumBranchPattern(
+        val variant: SumVariantDefinition,
+        val bindingNames: List<String>,
+    )
+
+    private fun sumBranchPattern(
+        condition: ExpressionASTNode,
+        sumDefinition: SumTypeDefinition,
+    ): SumBranchPattern? =
+        when (condition) {
+            is VariableExpressionASTNode ->
+                sumDefinition.variants.singleOrNull { it.name == condition.token.lexeme }
+                    ?.let { SumBranchPattern(it, emptyList()) }
+            is FunctionCallExpressionASTNode ->
+                sumDefinition.variants.singleOrNull { it.name == condition.name }
+                    ?.let { variant ->
+                        SumBranchPattern(
+                            variant,
+                            condition.arguments.map { argument ->
+                                (argument as? VariableExpressionASTNode)?.token?.lexeme
+                                    ?: lltacError("sum payload binding must be a variable name", argument)
+                            },
+                        )
+                    }
+            else -> null
+        }
+
+    private fun SumBranchPattern.payloadBindingTypes(): List<Pair<String, TypeSign>> =
+        bindingNames.zip(variant.fields).map { (name, field) -> name to field.type }
+
+    private fun SumBranchPattern.payloadLoads(subjectVariable: String, subjectType: TypeSign): List<LLTACElement> =
+        bindingNames.zip(variant.fields).map { (name, field) ->
+            LLTACElement.loadField(
+                ownerPath = subjectVariable,
+                ownerType = subjectType,
+                fieldName = sumPayloadFieldName(variant.name, field.name),
+                fieldType = field.type,
+                destination = name,
+            )
+        }
+
+    private fun rememberLocalVariableTypes(bindings: List<Pair<String, TypeSign>>): Map<String, TypeSign?> =
+        bindings.associate { (name, _) -> name to localVariableTypes[name] }
+
+    private fun restoreLocalVariableTypes(previousTypes: Map<String, TypeSign?>) {
+        previousTypes.forEach { (name, type) ->
+            if (type == null) {
+                localVariableTypes.remove(name)
+            } else {
+                localVariableTypes[name] = type
+            }
+        }
+    }
 
     private fun ExpressionASTNode.tacType(): TypeSign =
         typeTable[this] ?: inferLiteralTacType(this)

@@ -52,6 +52,72 @@ class ProgramGlobalContextTest {
     }
 
     @Test
+    fun `unknown product field type is rejected during resolution`() {
+        val root = parse("type Person(address: Missing)")
+        val context = ProgramContextCollector().collect(root)
+
+        assertTrue(ProgramTypeResolver(context).resolve(root).isLeft())
+        assertNull(context.productFields(context.findType("Person")!!))
+    }
+
+    @Test
+    fun `unknown sum payload type is rejected during resolution`() {
+        val root = parse("type Maybe = Nothing | Just<Missing>")
+        val context = ProgramContextCollector().collect(root)
+
+        assertTrue(ProgramTypeResolver(context).resolve(root).isLeft())
+        assertNull(context.sumDefinition(context.findType("Maybe")!!))
+    }
+
+    @Test
+    fun `resolved context records forward product fields mutability and constructor`() {
+        val context = resolvedContext(
+            """
+            type Person(address: Address)
+            type mut Address(city: String)
+            """.trimIndent()
+        )
+        val person = context.findType("Person")!!
+        val address = context.findType("Address")!!
+
+        assertEquals(address, context.productFields(person)?.get("address"))
+        assertFalse(context.isMutableProduct(person))
+        assertTrue(context.isMutableProduct(address))
+
+        val constructor = context.constructorsByName("Person").single()
+        assertEquals(ConstructorKind.PRODUCT, constructor.kind)
+        assertEquals(listOf(address), constructor.arguments)
+        assertEquals(person, constructor.resultType)
+    }
+
+    @Test
+    fun `resolved context records sum variant constructors and payload metadata`() {
+        val context = resolvedContext("type MaybeInt = Nothing | Just<Int> | Pair<Int, String>")
+        val maybeInt = context.findType("MaybeInt")!!
+        val definition = context.sumDefinition(maybeInt)!!
+
+        assertEquals(listOf("Nothing", "Just", "Pair"), definition.variants.map { it.name })
+        assertEquals(listOf(0, 1, 2), definition.variants.map { it.tag })
+        assertTrue(definition.variants[0].fields.isEmpty())
+        assertEquals("value0", definition.variants[1].fields.single().name)
+        assertEquals(context.intType, definition.variants[1].fields.single().type)
+        assertEquals(listOf("value0", "value1"), definition.variants[2].fields.map { it.name })
+        assertEquals(listOf(context.intType, context.stringType), definition.variants[2].fields.map { it.type })
+
+        val nothing = context.constructorsByName("Nothing").single()
+        val just = context.constructorsByName("Just").single()
+        val pair = context.constructorsByName("Pair").single()
+
+        assertEquals(ConstructorKind.SUM_VARIANT, nothing.kind)
+        assertEquals(emptyList<TypeRef>(), nothing.arguments)
+        assertEquals(maybeInt, nothing.resultType)
+        assertEquals(listOf(context.intType), just.arguments)
+        assertEquals(maybeInt, just.resultType)
+        assertEquals(listOf(context.intType, context.stringType), pair.arguments)
+        assertEquals(maybeInt, pair.resultType)
+    }
+
+    @Test
     fun `generic type resolves only inside generic scope`() {
         val context = ProgramGlobalContext()
         val scope = context.genericScope(listOf(GenericParam("T", emptyList())))
@@ -62,6 +128,20 @@ class ProgramGlobalContextTest {
         assertFalse(generic!!.isPrimitive)
         assertEquals("T", generic.name)
         assertNull(context.resolve(TypeRef("T")))
+    }
+
+    @Test
+    fun `resolved named user type preserves generic arguments`() {
+        val context = ProgramGlobalContext()
+        context.addType("Box", isPrimitive = false)
+
+        val boxOfInt = context.resolve(TypeRef("Box", listOf(TypeRef("Int"))))
+
+        assertNotNull(boxOfInt)
+        assertEquals("Box", boxOfInt!!.name)
+        assertEquals(listOf(context.intType), boxOfInt.arguments)
+        assertEquals("Box<Int>", boxOfInt.render())
+        assertEquals("Box_Int", boxOfInt.toManglePart())
     }
 
     @Test
@@ -84,5 +164,14 @@ class ProgramGlobalContextTest {
     private fun parse(source: String): ProgramRoot {
         val tokens = Lexer(source).tokenize().getOrElse { error("unexpected lexer error: $it") }
         return AbstractSyntaxTreeBuilder().build(tokens).getOrElse { error("unexpected parser error: $it") } as ProgramRoot
+    }
+
+    private fun resolvedContext(source: String): ProgramGlobalContext {
+        val root = parse(source)
+        val initialContext = ProgramContextCollector().collect(root)
+        val resolved = ProgramTypeResolver(initialContext)
+            .resolve(root)
+            .getOrElse { error("unexpected type resolution error: $it") }
+        return ProgramContextCollector().collect(resolved)
     }
 }
