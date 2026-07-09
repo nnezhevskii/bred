@@ -15,14 +15,16 @@ import java.nio.file.Paths
 @Execution(ExecutionMode.SAME_THREAD)
 class LLTAGSnapshotTester {
 
-    private val allPrograms: List<String> = listOf(
-        "factorial",
-        "for",
-        "minMax",
-        "isPositive",
-        "arrayBubble",
-        "binarySearch",
-        "complexShock",
+    companion object {
+        val SNAPSHOT_PROGRAMS: List<String> = listOf(
+            "factorial",
+            "for",
+            "minMax",
+            "isPositive",
+            "arrayBubble",
+            "binarySearch",
+            "complexShock",
+            "deploymentHealthRadar",
 //        "sortThree",
 //        "isEven",
 //
@@ -40,11 +42,12 @@ class LLTAGSnapshotTester {
 //        "whileZeroTrip",
 //        "whileEarlyReturn",
 //        "whileGuardedAccum",
-    )
+        )
+    }
 
     @TestFactory
     fun testFiles(): List<DynamicTest> =
-        snapshotTests(allPrograms)
+        snapshotTests(SNAPSHOT_PROGRAMS)
 
     private fun snapshotTests(programs: List<String>): List<DynamicTest> =
         programs.map { testName ->

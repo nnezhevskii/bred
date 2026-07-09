@@ -1,0 +1,61 @@
+type ScoreBox<T>(value: T)
+type Maybe<T> = Just<T>(value: T) | Nothing
+
+type Health = Healthy | Degraded<Int> | Critical(score: Int) | Offline
+type Alert = NoAlert | Notify(level: Int, message: String)
+type ServiceSnapshot(name: String, score: Int, health: Health)
+
+fun remember<T>(value: T): Maybe<T> {
+    return Just<T>(value)
+}
+
+fun boxScore<T>(value: T): ScoreBox<T> {
+    return ScoreBox<T>(value)
+}
+
+fun healthLabel(health: Health): String {
+    var label: String = ""
+
+    when (health) {
+        Healthy -> {
+            label = "HEALTHY"
+        }
+        Degraded(score) -> {
+            label = "DEGRADED(" + intToString(score) + ")"
+        }
+        Critical(score) -> {
+            label = "CRITICAL(" + intToString(score) + ")"
+        }
+        Offline -> {
+            label = "OFFLINE"
+        }
+    }
+
+    return label
+}
+
+fun main(): Unit {
+    val service: ServiceSnapshot = ServiceSnapshot("search-index", 64, Degraded(64))
+    val bestBox: ScoreBox<Int> = boxScore<Int>(service.score)
+    val checkpoint: Maybe<Int> = remember<Int>(bestBox.value)
+    val alert: Alert = Notify(2, healthLabel(service.health))
+
+    when (checkpoint) {
+        Just(bestScore) -> {
+            println("best=" + intToString(bestScore))
+        }
+        Nothing -> {
+            println("empty")
+        }
+    }
+
+    when (alert) {
+        NoAlert -> {
+            println("ship")
+        }
+        Notify(level, message) -> {
+            println("level=" + intToString(level))
+            println(message)
+        }
+    }
+}

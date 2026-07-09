@@ -263,6 +263,45 @@ class BredCompilationFactoryTest {
     }
 
     @Test
+    fun `deployment health radar example emits sum payload extraction c code`() {
+        val result = BredToCCompilerFactory().create().compile(Path.of("examples/3ac.bred"))
+
+        result.fold(
+            ifLeft = { errors -> error("expected C code, got: $errors") },
+            ifRight = { cLines ->
+                assertTrue(
+                    cLines.any { it == "typedef struct Health { int tag; int Degraded_value0; int Critical_score; } Health;" },
+                    "expected Health tagged struct definition: $cLines",
+                )
+                assertTrue(
+                    cLines.any { it == "typedef struct Alert { int tag; int Notify_level; String Notify_message; } Alert;" },
+                    "expected Alert tagged struct definition: $cLines",
+                )
+                assertTrue(
+                    cLines.any { it.contains("bestScore =") && it.contains(".Just_value;") },
+                    "expected Maybe Just payload extraction into bestScore: $cLines",
+                )
+                assertTrue(
+                    cLines.any { it.contains("level =") && it.contains(".Notify_level;") },
+                    "expected Alert level payload extraction: $cLines",
+                )
+                assertTrue(
+                    cLines.any { it.contains("message =") && it.contains(".Notify_message;") },
+                    "expected Alert message payload extraction: $cLines",
+                )
+                assertTrue(
+                    cLines.any { it.contains("score =") && it.contains(".Degraded_value0;") },
+                    "expected Degraded payload extraction: $cLines",
+                )
+                assertTrue(
+                    cLines.any { it.contains("score =") && it.contains(".Critical_score;") },
+                    "expected Critical payload extraction: $cLines",
+                )
+            },
+        )
+    }
+
+    @Test
     fun `bred compiler returns parser errors on the left`(@TempDir dir: Path) {
         val source = dir.resolve("broken.bred")
         source.writeText("fun main(: Unit { }")
