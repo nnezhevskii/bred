@@ -59,8 +59,12 @@ class ProgramContextCollector(
         types.forEach { type ->
             when (type) {
                 is DeclareProductTypeASTNode -> {
-                    val productType = context.declareProductType(type.name, type.fields)
-                    context.addProductTypeConstructor(productType.name)
+                    if (type.genericParams.isEmpty()) {
+                        val productType = context.declareProductType(type.name, type.fields)
+                        context.addProductTypeConstructor(productType.name)
+                    } else {
+                        context.addType(type.name, isPrimitive = false)
+                    }
                 }
                 is DeclareSumTypeASTNode -> {
                     context.addType(type.name, isPrimitive = false)

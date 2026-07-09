@@ -23,10 +23,7 @@ class TypeParser(
         val genericParams = parseTypeGenericParams(context)
         return when (context.top()) {
             is Token.Punctuation.LParen -> {
-                if (genericParams.isNotEmpty()) {
-                    raise(ASTError("Product type ${name.lexeme} cannot have generic parameters"))
-                }
-                parseProductType(context, name.lexeme, isMutable)
+                parseProductType(context, name.lexeme, isMutable, genericParams)
             }
             is Token.Operator.Assign -> {
                 if (isMutable) {
@@ -42,6 +39,7 @@ class TypeParser(
         context: TokensContext,
         typeName: String,
         isMutable: Boolean,
+        genericParams: List<GenericParam>,
     ): DeclareProductTypeASTNode {
         match<Token.Punctuation.LParen>(context.consumeToken()) { AstErrorFactory.buildError("(", it) }
 
@@ -75,6 +73,7 @@ class TypeParser(
             typeName,
             isMutable,
             fields,
+            genericParams,
         )
     }
 

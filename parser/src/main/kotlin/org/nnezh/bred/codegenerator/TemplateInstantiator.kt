@@ -11,6 +11,8 @@ import org.nnezh.bred.ast.BlockAstNode
 import org.nnezh.bred.ast.BooleanLiteralExpressionASTNode
 import org.nnezh.bred.ast.CallFunctionStatementAstNode
 import org.nnezh.bred.ast.DeclareGlobalVariableASTNode
+import org.nnezh.bred.ast.DeclareProductTypeASTNode
+import org.nnezh.bred.ast.DeclareSumTypeASTNode
 import org.nnezh.bred.ast.DeclareTypeASTNode
 import org.nnezh.bred.ast.DoubleLiteralExpressionASTNode
 import org.nnezh.bred.ast.ExpressionASTNode
@@ -28,6 +30,8 @@ import org.nnezh.bred.ast.ReturnFunctionStatementAstNode
 import org.nnezh.bred.ast.ScalarVariableInitializationASTNode
 import org.nnezh.bred.ast.StatementAstNode
 import org.nnezh.bred.ast.StringLiteralExpressionASTNode
+import org.nnezh.bred.ast.SumTypeVariantASTNode
+import org.nnezh.bred.ast.SumTypeVariantFieldASTNode
 import org.nnezh.bred.ast.TypeClassDeclAstNode
 import org.nnezh.bred.ast.UnaryExpressionASTNode
 import org.nnezh.bred.ast.VariableExpressionASTNode
@@ -51,6 +55,7 @@ class TemplateInstantiator(
     private lateinit var typeClassMethods: Map<String, List<TypeClassMethodOwner>>
 
     private val generatedTemplates: MutableMap<TemplateInstanceKey, FunctionDeclAstNode> = mutableMapOf()
+    private val generatedTypes: MutableMap<TypeInstanceKey, DeclareTypeASTNode> = mutableMapOf()
     private val templatesInProgress: MutableSet<TemplateInstanceKey> = mutableSetOf()
     private val signaturesByName: MutableMap<String, FunctionSignature> = mutableMapOf()
 
@@ -80,6 +85,10 @@ class TemplateInstantiator(
             }
         }
 
+        val concreteTypes = root.types
+            .filter { it.genericParams.isEmpty() }
+            .map { cloneSubtree(it) }
+
         val concreteFunctions = root.functions
             .filter { it.genericParams.isEmpty() }
             .map { function -> transformConcreteFunction(cloneSubtree(function)) }
@@ -90,8 +99,8 @@ class TemplateInstantiator(
 
         return ProgramRoot(
             functions = allFunctions,
-            globalVariables = root.globalVariables.map { cloneGlobalVariable(it) },
-            types = root.types.map { cloneSubtree(it) },
+            globalVariables = root.globalVariables.map { transformGlobalVariable(it, TemplateRewriteContext.empty()) },
+            types = concreteTypes + generatedTypes.values,
             typeClasses = emptyList(),
             instances = emptyList(),
         )
@@ -99,10 +108,15 @@ class TemplateInstantiator(
 
     private fun transformConcreteFunction(function: FunctionDeclAstNode): FunctionDeclAstNode {
         val scope = Scope()
-        function.arguments.forEach { scope.bind(it.name, it.scopeType()) }
+        val rewriteContext = TemplateRewriteContext.empty()
+        val arguments = function.arguments.map { it.replaceTypes(rewriteContext.typeMapping) }
+        val result = replaceType(function.result, rewriteContext.typeMapping)
+        arguments.forEach { scope.bind(it.name, it.scopeType()) }
 
         return function.copy(
-            body = transformBlock(function.body, scope, TemplateRewriteContext.empty()),
+            arguments = arguments,
+            result = result,
+            body = transformBlock(function.body, scope, rewriteContext),
         )
     }
 
@@ -238,6 +252,7 @@ class TemplateInstantiator(
         rewriteContext: TemplateRewriteContext,
     ): FunctionCallExpressionASTNode {
         val transformedArguments = expression.arguments.map { transformExpression(it, scope, rewriteContext) }
+        val transformedTypeArguments = expression.typeArguments.map { replaceType(it, rewriteContext.typeMapping) }
 
         templates[expression.name]?.let { template ->
             val argumentTypes = expression.arguments.map { inferType(it, scope, rewriteContext) }
@@ -259,7 +274,12 @@ class TemplateInstantiator(
             }
         }
 
-        return FunctionCallExpressionASTNode(expression.name, transformedArguments)
+        return FunctionCallExpressionASTNode(
+            name = expression.name,
+            arguments = transformedArguments,
+            typeArguments = transformedTypeArguments,
+            isConstructorCalling = expression.isConstructorCalling,
+        )
     }
 
     private fun resolveTypeClassMethod(
@@ -405,16 +425,81 @@ class TemplateInstantiator(
     private fun TypeSign.isArrayLike(): Boolean =
         isArray || name == TypeNames.ARRAY
 
-    private fun replaceType(type: TypeSign, mapping: Map<String, TypeSign>): TypeSign =
-        mapping[type.name]?.takeIf { type.arguments.isEmpty() }
-            ?: if (type.isArray) {
-                context.arrayOf(replaceType(type.elementTypeOrNull ?: fail("Array type has no element type"), mapping))
-            } else if (type.arguments.isEmpty()) {
-                type
-            } else {
-                val args = type.arguments.map { replaceType(it, mapping).toTypeRef() }
-                context.resolveOrThrow(TypeRef(type.name, args))
-            }
+    private fun replaceType(type: TypeSign, mapping: Map<String, TypeSign>): TypeSign {
+        mapping[type.name]?.takeIf { type.arguments.isEmpty() }?.let { return it }
+        if (type.isArray) {
+            return context.arrayOf(replaceType(type.elementTypeOrNull ?: fail("Array type has no element type"), mapping))
+        }
+        if (type.arguments.isEmpty()) {
+            return type
+        }
+
+        val args = type.arguments.map { replaceType(it, mapping) }
+        templateTypes[type.name]?.let { template ->
+            return instantiateTemplateType(template, args)
+        }
+        return context.resolveOrThrow(TypeRef(type.name, args.map { it.toTypeRef() }))
+    }
+
+    private fun instantiateTemplateType(
+        template: DeclareTypeASTNode,
+        concreteArguments: List<TypeSign>,
+    ): TypeSign {
+        if (template.genericParams.size != concreteArguments.size) {
+            fail("Cannot instantiate ${template.name}: expected ${template.genericParams.size} type arguments but got ${concreteArguments.size}")
+        }
+
+        val key = TypeInstanceKey(template.name, concreteArguments)
+        generatedTypes[key]?.let { return context.resolveOrThrow(TypeRef(it.name)) }
+
+        val typeName = TypeRef(template.name, concreteArguments.map { it.toTypeRef() }).toManglePart()
+        context.addType(typeName, isPrimitive = false)
+        val mapping = template.genericParams.zip(concreteArguments).associate { (generic, concreteType) ->
+            generic.name to concreteType
+        }
+
+        val generated = instantiateTypeDeclaration(template, typeName, mapping)
+        generatedTypes[key] = generated
+        return context.resolveOrThrow(TypeRef(typeName))
+    }
+
+    private fun instantiateTypeDeclaration(
+        template: DeclareTypeASTNode,
+        typeName: String,
+        mapping: Map<String, TypeSign>,
+    ): DeclareTypeASTNode =
+        when (template) {
+            is DeclareProductTypeASTNode -> DeclareProductTypeASTNode(
+                name = typeName,
+                isMutable = template.isMutable,
+                fields = template.fields.mapValues { (_, type) -> replaceType(type, mapping) },
+                genericParams = emptyList(),
+            )
+            is DeclareSumTypeASTNode -> DeclareSumTypeASTNode(
+                name = typeName,
+                genericParams = emptyList(),
+                variants = template.variants.map { instantiateSumTypeVariant(it, mapping) },
+            )
+        }
+
+    private fun instantiateSumTypeVariant(
+        variant: SumTypeVariantASTNode,
+        mapping: Map<String, TypeSign>,
+    ): SumTypeVariantASTNode =
+        SumTypeVariantASTNode(
+            name = variant.name,
+            typeArguments = emptyList(),
+            fields = variant.fields.map { instantiateSumTypeVariantField(it, mapping) },
+        )
+
+    private fun instantiateSumTypeVariantField(
+        field: SumTypeVariantFieldASTNode,
+        mapping: Map<String, TypeSign>,
+    ): SumTypeVariantFieldASTNode =
+        SumTypeVariantFieldASTNode(
+            name = field.name,
+            type = replaceType(field.type, mapping),
+        )
 
     private fun FunctionArgument.replaceTypes(mapping: Map<String, TypeSign>): FunctionArgument =
         copy(type = replaceType(type, mapping))
@@ -431,8 +516,14 @@ class TemplateInstantiator(
     private fun containsGeneric(type: TypeSign, genericNames: Set<String>): Boolean =
         type.name in genericNames || type.arguments.any { containsGeneric(it, genericNames) }
 
-    private fun cloneGlobalVariable(node: DeclareGlobalVariableASTNode): DeclareGlobalVariableASTNode =
-        node.copy(expression = node.expression?.let { cloneSubtree(it) })
+    private fun transformGlobalVariable(
+        node: DeclareGlobalVariableASTNode,
+        rewriteContext: TemplateRewriteContext,
+    ): DeclareGlobalVariableASTNode =
+        node.copy(
+            type = node.type?.let { replaceType(it, rewriteContext.typeMapping) },
+            expression = node.expression?.let { transformExpression(it, Scope(), rewriteContext) },
+        )
 
     private fun addFunctionOrAbort(
         functions: MutableList<FunctionDeclAstNode>,
@@ -496,6 +587,11 @@ class TemplateInstantiator(
         val name: String,
         val argumentTypes: List<TypeSign>,
         val result: TypeSign,
+    )
+
+    private data class TypeInstanceKey(
+        val name: String,
+        val argumentTypes: List<TypeSign>,
     )
 
     private data class FunctionSignature(

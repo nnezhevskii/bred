@@ -938,6 +938,86 @@ class ParserTest {
     }
 
     @Test
+    fun `template instantiator generates concrete sum type from generic usage`() {
+        val root = parse(
+            """
+            type Maybe<T> = Just<T>(v: T) | Nothing
+
+            fun id<T>(value: T): Maybe<T> {
+                return Just<T>(value)
+            }
+
+            fun main() {
+                val x: Maybe<Int> = id<Int>(200)
+            }
+            """.trimIndent()
+        )
+
+        val instantiated = instantiate(root)
+        val maybeInt = assertInstanceOf(
+            DeclareSumTypeASTNode::class.java,
+            instantiated.types.single { it.name == "Maybe_Int" },
+        )
+        val just = maybeInt.variants.single { it.name == "Just" }
+        val nothing = maybeInt.variants.single { it.name == "Nothing" }
+        val id = instantiated.functions.single { it.name == "id_Int_Maybe_Int" }
+        val main = instantiated.functions.single { it.name == "main" }
+        val declaration = assertInstanceOf(
+            ScalarVariableInitializationASTNode::class.java,
+            main.body.statements.first(),
+        )
+        val call = assertInstanceOf(FunctionCallExpressionASTNode::class.java, declaration.expression)
+
+        assertTrue(instantiated.types.none { it.name == "Maybe" })
+        assertTrue(maybeInt.genericParams.isEmpty())
+        assertTrue(just.typeArguments.isEmpty())
+        assertEquals("v", just.fields.single().name)
+        assertEquals("Int", just.fields.single().type.name)
+        assertTrue(nothing.fields.isEmpty())
+        assertEquals("Maybe_Int", id.result.name)
+        assertEquals("Maybe_Int", declaration.type.name)
+        assertTrue(declaration.type.arguments.isEmpty())
+        assertEquals("id_Int_Maybe_Int", call.name)
+    }
+
+    @Test
+    fun `template instantiator generates concrete product type from generic usage`() {
+        val root = parse(
+            """
+            type Box<T>(value: T)
+
+            fun makeBox<T>(value: T): Box<T> {
+                return value
+            }
+
+            fun main() {
+                val x: Box<Int> = makeBox<Int>(200)
+            }
+            """.trimIndent()
+        )
+
+        val instantiated = instantiate(root)
+        val boxInt = assertInstanceOf(
+            DeclareProductTypeASTNode::class.java,
+            instantiated.types.single { it.name == "Box_Int" },
+        )
+        val makeBox = instantiated.functions.single { it.name == "makeBox_Int_Box_Int" }
+        val main = instantiated.functions.single { it.name == "main" }
+        val declaration = assertInstanceOf(
+            ScalarVariableInitializationASTNode::class.java,
+            main.body.statements.first(),
+        )
+        val call = assertInstanceOf(FunctionCallExpressionASTNode::class.java, declaration.expression)
+
+        assertTrue(instantiated.types.none { it.name == "Box" })
+        assertTrue(boxInt.genericParams.isEmpty())
+        assertEquals("Int", boxInt.fields.getValue("value").name)
+        assertEquals("Box_Int", makeBox.result.name)
+        assertEquals("Box_Int", declaration.type.name)
+        assertEquals("makeBox_Int_Box_Int", call.name)
+    }
+
+    @Test
     fun `template instantiator infers same generic from array and scalar arguments`() {
         val root = parse(
             """
