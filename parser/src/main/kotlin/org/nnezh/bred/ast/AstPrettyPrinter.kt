@@ -29,6 +29,7 @@ class AstPrettyPrinter(
                 is FunctionDeclAstNode -> function(node, level)
                 is SumTypeVariantASTNode -> sumTypeVariant(node, level)
                 is SumTypeVariantFieldASTNode -> line(level, "${node.name}: ${type(node.type)}")
+                is WhenBranchAstNode -> whenBranch(node, level)
                 is TypeClassDeclAstNode -> typeClass(node, level)
                 is TypeClassMethodDeclAstNode -> line(level, methodSignature(node))
                 is InstanceDeclAstNode -> instance(node, level)
@@ -182,6 +183,10 @@ class AstPrettyPrinter(
                     line(level, "for <desugared>")
                     block(node.desugaredContent, level + 1)
                 }
+                is WhenStatementAstNode -> {
+                    line(level, "when statement")
+                    expression(node.expression, level + 1)
+                }
             }
         }
 
@@ -214,6 +219,14 @@ class AstPrettyPrinter(
                         expression(arg, argLevel)
                     }
                 }
+                is WhenExpressionASTNode -> {
+                    line(level, "when")
+                    line(level + 1, "subject:")
+                    expression(node.subject, level + 2)
+                    section(level + 1, "branches", node.branches) { branch, branchLevel ->
+                        whenBranch(branch, branchLevel)
+                    }
+                }
                 is BinaryExpressionASTNode -> {
                     line(level, "binary ${node.operator.lexeme}")
                     line(level + 1, "left:")
@@ -231,6 +244,13 @@ class AstPrettyPrinter(
                     node.next?.let { expression(it, level + 1) }
                 }
             }
+        }
+
+        private fun whenBranch(node: WhenBranchAstNode, level: Int) {
+            line(level, if (node.condition == null) "else" else "case:")
+            node.condition?.let { expression(it, level + 1) }
+            line(level + 1, "body:")
+            block(node.bodyBlock, level + 2)
         }
 
         private fun <T : ASTNode> section(level: Int, title: String, items: List<T>) {

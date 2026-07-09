@@ -55,6 +55,7 @@ object AstCloner {
             is DeclareTypeASTNode -> cloneTypeDeclaration(node)
             is SumTypeVariantASTNode -> cloneSumTypeVariant(node, replacement)
             is SumTypeVariantFieldASTNode -> cloneSumTypeVariantField(node, replacement)
+            is WhenBranchAstNode -> cloneWhenBranch(node, replacement)
             is FunctionDeclAstNode -> cloneFunction(node, replacement)
             is BlockAstNode -> cloneBlock(node, replacement)
             is StatementAstNode -> cloneStatement(node, replacement)
@@ -82,7 +83,8 @@ object AstCloner {
             is DeclareProductTypeASTNode -> DeclareProductTypeASTNode(
                 name = node.name,
                 isMutable = node.isMutable,
-                fields = node.fields.toMutableMap()
+                fields = node.fields.toMutableMap(),
+                genericParams = node.genericParams.map { cloneGenericParam(it) },
             )
             is DeclareSumTypeASTNode -> DeclareSumTypeASTNode(
                 name = node.name,
@@ -170,6 +172,9 @@ object AstCloner {
             is ForStatementAstNode -> ForStatementAstNode(
                 desugaredContent = cloneBlock(node.desugaredContent, replacement),
             )
+            is WhenStatementAstNode -> WhenStatementAstNode(
+                expression = cloneExpression(node.expression, replacement) as WhenExpressionASTNode,
+            )
         }
 
     private fun cloneExpression(
@@ -196,6 +201,10 @@ object AstCloner {
                 typeArguments = node.typeArguments.map { cloneTypeSign(it, replacement) },
                 isConstructorCalling = node.isConstructorCalling,
             )
+            is WhenExpressionASTNode -> WhenExpressionASTNode(
+                subject = cloneExpression(node.subject, replacement),
+                branches = node.branches.map { cloneWhenBranch(it, replacement) },
+            )
             is BinaryExpressionASTNode -> BinaryExpressionASTNode(
                 left = cloneExpression(node.left, replacement),
                 operator = cloneLocatedBinaryOperator(node.operator),
@@ -211,6 +220,15 @@ object AstCloner {
                 next = node.next?.let { cloneExpression(it, replacement) as FieldAccessChainExpressionASTNode }
             )
         }
+
+    private fun cloneWhenBranch(
+        node: WhenBranchAstNode,
+        replacement: TypeReplacement?,
+    ): WhenBranchAstNode =
+        WhenBranchAstNode(
+            condition = node.condition?.let { cloneExpression(it, replacement) },
+            bodyBlock = cloneBlock(node.bodyBlock, replacement),
+        )
 
     private fun cloneTypeClass(
         node: TypeClassDeclAstNode,
@@ -301,6 +319,7 @@ object AstCloner {
             is Token.Keyword.Type -> Token.Keyword.Type(clonePosition(token.position))
             is Token.Keyword.Return -> Token.Keyword.Return(clonePosition(token.position))
             is Token.Keyword.While -> Token.Keyword.While(clonePosition(token.position))
+            is Token.Keyword.When -> Token.Keyword.When(clonePosition(token.position))
             is Token.Keyword.For -> Token.Keyword.For(clonePosition(token.position))
             is Token.Keyword.To -> Token.Keyword.To(clonePosition(token.position))
             is Token.Keyword.Mut -> Token.Keyword.Mut(clonePosition(token.position))
@@ -329,6 +348,7 @@ object AstCloner {
             is Token.Operator.And -> Token.Operator.And(clonePosition(token.position))
             is Token.Operator.Or -> Token.Operator.Or(clonePosition(token.position))
             is Token.Operator.Not -> Token.Operator.Not(clonePosition(token.position))
+            is Token.Operator.Arrow -> Token.Operator.Arrow(clonePosition(token.position))
             is Token.Punctuation.LParen -> Token.Punctuation.LParen(clonePosition(token.position))
             is Token.Punctuation.RParen -> Token.Punctuation.RParen(clonePosition(token.position))
             is Token.Punctuation.LBrace -> Token.Punctuation.LBrace(clonePosition(token.position))

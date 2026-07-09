@@ -23,6 +23,8 @@ import org.nnezh.bred.ast.ScalarVariableInitializationASTNode
 import org.nnezh.bred.ast.StringLiteralExpressionASTNode
 import org.nnezh.bred.ast.UnaryExpressionASTNode
 import org.nnezh.bred.ast.VariableExpressionASTNode
+import org.nnezh.bred.ast.WhenExpressionASTNode
+import org.nnezh.bred.ast.WhenStatementAstNode
 import org.nnezh.bred.ast.WhileStatementAstNode
 import org.nnezh.bred.common.FunctionSignature
 import org.nnezh.bred.common.TypeSign
@@ -130,6 +132,8 @@ class SemanticDiagnosticFormatter {
             is CallFunctionStatementAstNode -> expression.position()
             is ReturnFunctionStatementAstNode -> expression?.position()
             is IfStatementAstNode -> condition.position()
+            is WhenExpressionASTNode -> subject.position()
+            is WhenStatementAstNode -> expression.position()
             is WhileStatementAstNode -> condition.position()
             else -> null
         }
@@ -146,6 +150,8 @@ class SemanticDiagnosticFormatter {
             is ArrayElementAccessASTNode -> "array access '${name}[...]'"
             is BinaryExpressionASTNode -> "binary expression '${left.expressionSummary()} ${operator.lexeme} ${right.expressionSummary()}'"
             is UnaryExpressionASTNode -> "unary expression '${operator.lexeme}${operand.expressionSummary()}'"
+            is WhenExpressionASTNode -> "when expression"
+            is WhenStatementAstNode -> "when statement"
             is ReturnFunctionStatementAstNode -> "return statement"
             is BlockAstNode -> "block"
             else -> this::class.simpleName ?: "AST node"
@@ -165,6 +171,7 @@ class SemanticDiagnosticFormatter {
             is BinaryExpressionASTNode -> "${left.expressionSummary()} ${operator.lexeme} ${right.expressionSummary()}"
             is UnaryExpressionASTNode -> "${operator.lexeme}${operand.expressionSummary()}"
             is FieldAccessChainExpressionASTNode -> this.root + (this.next?.let { n -> "." + n.expressionSummary() } ?: "")
+            is WhenExpressionASTNode -> "when (${subject.expressionSummary()})"
         }
 
     private fun String.escape(): String =

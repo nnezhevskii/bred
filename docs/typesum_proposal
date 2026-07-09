@@ -1,0 +1,11 @@
+Первая версия. Пока что без шаблонов
+type MaybeInt = Nothing | Just<Int>
+
+АСД нода:
+SumType(
+    valName = "MaybeInt",
+    val variants: List<Variants> = listOf(
+        VariantNode(name = "Nothing", fields: List<Type> = listOf(),
+        VariantNode(name = "Just", fields: List<Type> = listOf(Int),
+    )
+)

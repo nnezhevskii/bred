@@ -212,6 +212,57 @@ class BredCompilationFactoryTest {
     }
 
     @Test
+    fun `bred compiler emits product and sum type c code`(@TempDir dir: Path) {
+        val source = dir.resolve("product-sum.bred")
+        source.writeText(
+            """
+            type mut Counter(value: Int)
+            type MaybeInt = Nothing | Just<Int>
+
+            fun main(): Unit {
+                val counter: Counter = Counter(1)
+                counter.value = 2
+                val present: MaybeInt = Just(counter.value)
+                val absent: MaybeInt = Nothing
+                var result: Int = 0
+                when (present) {
+                    Just -> { result = 1 }
+                    Nothing -> { result = 0 }
+                }
+            }
+            """.trimIndent(),
+        )
+
+        val result = BredToCCompilerFactory().create().compile(source)
+
+        result.fold(
+            ifLeft = { errors -> error("expected C code, got: $errors") },
+            ifRight = { cLines ->
+                assertTrue(
+                    cLines.any { it == "typedef struct Counter { int value; } Counter;" },
+                    "expected Counter struct definition: $cLines",
+                )
+                assertTrue(
+                    cLines.any { it == "typedef struct MaybeInt { int tag; int Just_value0; } MaybeInt;" },
+                    "expected MaybeInt tagged struct definition: $cLines",
+                )
+                assertTrue(
+                    cLines.any { it.contains("present = (MaybeInt){.tag = 1, .Just_value0 =") },
+                    "expected Just designated initializer: $cLines",
+                )
+                assertTrue(
+                    cLines.any { it == "absent = (MaybeInt){.tag = 0};" },
+                    "expected Nothing designated initializer: $cLines",
+                )
+                assertTrue(
+                    cLines.any { it.contains(".tag") },
+                    "expected when lowering to inspect the sum tag: $cLines",
+                )
+            },
+        )
+    }
+
+    @Test
     fun `bred compiler returns parser errors on the left`(@TempDir dir: Path) {
         val source = dir.resolve("broken.bred")
         source.writeText("fun main(: Unit { }")

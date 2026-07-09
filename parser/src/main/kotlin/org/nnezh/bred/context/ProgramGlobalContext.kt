@@ -3,6 +3,7 @@ package org.nnezh.bred.context
 import org.nnezh.bred.ast.FunctionDeclAstNode
 import org.nnezh.bred.ast.FunctionArgument
 import org.nnezh.bred.ast.GenericParam
+import org.nnezh.bred.ast.SumTypeVariantASTNode
 import org.nnezh.bred.common.ExternalFunctionSpecs
 import org.nnezh.bred.common.FunctionSignature
 import org.nnezh.bred.common.TypeNames
@@ -13,7 +14,10 @@ import org.nnezh.bred.common.TypeSign
 class ProgramGlobalContext(
     val typeRegistry: TypeRegistry = TypeRegistry(),
     val functions: MutableMap<String, FunctionMeta> = mutableMapOf(),
-    val constructors: MutableMap<String,ConstructorMeta> = mutableMapOf(),
+    val constructors: MutableMap<String, MutableList<ConstructorMeta>> = mutableMapOf(),
+    val productTypes: MutableMap<String, ProductTypeDefinition> = mutableMapOf(),
+    val sumTypes: MutableMap<String, SumTypeDefinition> = mutableMapOf(),
+    val sumVariants: MutableMap<String, MutableList<SumVariantDefinition>> = mutableMapOf(),
     val typeclasses: MutableMap<String, TypeclassMeta> = mutableMapOf(),
     val instances: MutableMap<InstanceKey, InstanceMeta> = mutableMapOf(),
     val externalFunctionSpecs: List<ExternalFunctionSpecs.ExternalFunctionSpec> = ExternalFunctionSpecs.specs,
@@ -50,18 +54,86 @@ class ProgramGlobalContext(
             typeRegistry.declareUserType(name)
         }
 
-    fun declareProductType(name: String, fields: Map<String, TypeSign>): TypeSign {
+    fun declareProductType(name: String, fields: Map<String, TypeSign>, isMutable: Boolean = false): TypeSign {
         val newFields: LinkedHashMap<String, TypeSign> = LinkedHashMap()
         for (field in fields) {
             newFields[field.key] = resolveOrThrow(field.value)
         }
-        return typeRegistry.declareProductType(name, newFields)
+        val type = typeRegistry.declareProductType(name, newFields)
+        productTypes[name] = ProductTypeDefinition(
+            name = name,
+            isMutable = isMutable,
+            fields = newFields,
+        )
+        return type
     }
 
     fun addProductTypeConstructor(name: String) {
         val args = typeRegistry.getProductTypeFields(name).map { it.value }
-        constructors[name] = ConstructorMeta(args)
+        val resultType = findType(name) ?: error("Unknown product type '$name'")
+        addConstructor(ConstructorMeta(name, args, resultType, ConstructorKind.PRODUCT))
     }
+
+    fun declareSumType(
+        name: String,
+        genericParams: List<GenericParam>,
+        variants: List<SumTypeVariantASTNode>,
+    ): TypeSign {
+        val type = typeRegistry.declareUserType(name)
+        val definitions = variants.mapIndexed { index, variant ->
+            SumVariantDefinition(
+                ownerTypeName = name,
+                tag = index,
+                name = variant.name,
+                fields = sumVariantPayloadFields(variant),
+            )
+        }
+        val definition = SumTypeDefinition(
+            name = name,
+            genericParams = genericParams,
+            variants = definitions,
+        )
+        sumTypes[name] = definition
+        definitions.forEach { variant ->
+            sumVariants.getOrPut(variant.name) { mutableListOf() }.add(variant)
+            if (genericParams.isEmpty()) {
+                addConstructor(
+                    ConstructorMeta(
+                        name = variant.name,
+                        arguments = variant.fields.map { it.type },
+                        resultType = type,
+                        kind = ConstructorKind.SUM_VARIANT,
+                    )
+                )
+            }
+        }
+        return type
+    }
+
+    fun productFields(type: TypeSign): Map<String, TypeSign>? =
+        productTypes[type.name]?.fields ?: runCatching { typeRegistry.getProductTypeFields(type.name) }.getOrNull()
+
+    fun isMutableProduct(type: TypeSign): Boolean =
+        productTypes[type.name]?.isMutable == true
+
+    fun sumDefinition(type: TypeSign): SumTypeDefinition? =
+        sumTypes[type.name]
+
+    fun constructorsByName(name: String): List<ConstructorMeta> =
+        constructors[name].orEmpty()
+
+    private fun addConstructor(constructor: ConstructorMeta) {
+        constructors.getOrPut(constructor.name) { mutableListOf() }.add(constructor)
+    }
+
+    private fun sumVariantPayloadFields(variant: SumTypeVariantASTNode): List<SumVariantFieldDefinition> =
+        if (variant.fields.isNotEmpty()) {
+            variant.fields.map { SumVariantFieldDefinition(it.name, resolveOrThrow(it.type)) }
+        } else {
+            variant.typeArguments.mapIndexed { index, type ->
+                SumVariantFieldDefinition("value$index", resolveOrThrow(type))
+            }
+        }
 
     fun genericType(name: String): TypeSign =
         typeRegistry.generic(name)
@@ -129,6 +201,30 @@ class ProgramGlobalContext(
 }
 
 data class TypeMeta(val name: String, val isPrimitive: Boolean)
+
+data class ProductTypeDefinition(
+    val name: String,
+    val isMutable: Boolean,
+    val fields: LinkedHashMap<String, TypeSign>,
+)
+
+data class SumTypeDefinition(
+    val name: String,
+    val genericParams: List<GenericParam>,
+    val variants: List<SumVariantDefinition>,
+)
+
+data class SumVariantDefinition(
+    val ownerTypeName: String,
+    val tag: Int,
+    val name: String,
+    val fields: List<SumVariantFieldDefinition>,
+)
+
+data class SumVariantFieldDefinition(
+    val name: String,
+    val type: TypeSign,
+)
 
 data class TypeclassMeta(
     val name: String,

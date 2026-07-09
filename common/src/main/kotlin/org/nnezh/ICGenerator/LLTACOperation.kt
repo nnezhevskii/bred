@@ -104,5 +104,13 @@ enum class LLTACOperation {
 
     LLTAC_FIELD {
         override fun toString() = "FIELD"
+    },
+
+    LLTAC_SUM_VARIANT {
+        override fun toString() = "SUM_VARIANT"
+    },
+
+    LLTAC_SUM_VARIANT_FIELD {
+        override fun toString() = "SUM_VARIANT_FIELD"
     }
 }

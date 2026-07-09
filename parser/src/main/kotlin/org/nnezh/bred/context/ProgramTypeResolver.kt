@@ -7,23 +7,40 @@ import org.nnezh.bred.ast.ASTError
 import org.nnezh.bred.ast.ArrayDeclarationASTNode
 import org.nnezh.bred.ast.AssignmentStatementAstNode
 import org.nnezh.bred.ast.BlockAstNode
+import org.nnezh.bred.ast.ArrayElementAccessASTNode
+import org.nnezh.bred.ast.ArrayInitializationExpressionASTNode
 import org.nnezh.bred.ast.CallFunctionStatementAstNode
+import org.nnezh.bred.ast.DeclareProductTypeASTNode
 import org.nnezh.bred.ast.DeclareGlobalVariableASTNode
 import org.nnezh.bred.ast.DeclareSumTypeASTNode
 import org.nnezh.bred.ast.DeclareTypeASTNode
+import org.nnezh.bred.ast.BinaryExpressionASTNode
+import org.nnezh.bred.ast.ExpressionASTNode
+import org.nnezh.bred.ast.FieldAccessChainExpressionASTNode
 import org.nnezh.bred.ast.ForStatementAstNode
+import org.nnezh.bred.ast.FunctionCallExpressionASTNode
 import org.nnezh.bred.ast.FunctionArgument
 import org.nnezh.bred.ast.FunctionDeclAstNode
 import org.nnezh.bred.ast.IfStatementAstNode
+import org.nnezh.bred.ast.IntLiteralExpressionASTNode
 import org.nnezh.bred.ast.InstanceDeclAstNode
+import org.nnezh.bred.ast.BooleanLiteralExpressionASTNode
+import org.nnezh.bred.ast.DoubleLiteralExpressionASTNode
+import org.nnezh.bred.ast.LongLiteralExpressionASTNode
 import org.nnezh.bred.ast.ProgramRoot
 import org.nnezh.bred.ast.ReturnFunctionStatementAstNode
 import org.nnezh.bred.ast.ScalarVariableInitializationASTNode
 import org.nnezh.bred.ast.StatementAstNode
+import org.nnezh.bred.ast.StringLiteralExpressionASTNode
 import org.nnezh.bred.ast.SumTypeVariantASTNode
 import org.nnezh.bred.ast.SumTypeVariantFieldASTNode
 import org.nnezh.bred.ast.TypeClassDeclAstNode
 import org.nnezh.bred.ast.TypeClassMethodDeclAstNode
+import org.nnezh.bred.ast.UnaryExpressionASTNode
+import org.nnezh.bred.ast.VariableExpressionASTNode
+import org.nnezh.bred.ast.WhenBranchAstNode
+import org.nnezh.bred.ast.WhenExpressionASTNode
+import org.nnezh.bred.ast.WhenStatementAstNode
 import org.nnezh.bred.ast.WhileStatementAstNode
 import org.nnezh.bred.common.TypeSign
 
@@ -42,11 +59,14 @@ class ProgramTypeResolver(
 
     private fun Raise<ASTError>.resolveTypeDeclaration(node: DeclareTypeASTNode): DeclareTypeASTNode =
         when (node) {
+            is DeclareProductTypeASTNode -> {
+                val genericScope = context.genericScope(node.genericParams)
+                node.copy(fields = node.fields.mapValues { (_, type) -> resolveType(type, genericScope) })
+            }
             is DeclareSumTypeASTNode -> {
                 val genericScope = context.genericScope(node.genericParams)
                 node.copy(variants = node.variants.map { resolveSumTypeVariant(it, genericScope) })
             }
-            else -> node
         }
 
     private fun Raise<ASTError>.resolveSumTypeVariant(
@@ -96,18 +116,75 @@ class ProgramTypeResolver(
         genericScope: Map<String, TypeSign>,
     ): StatementAstNode =
         when (node) {
-            is ScalarVariableInitializationASTNode -> node.copy(type = resolveType(node.type, genericScope))
-            is ArrayDeclarationASTNode -> node.copy(type = resolveType(node.type, genericScope))
-            is AssignmentStatementAstNode -> node
-            is CallFunctionStatementAstNode -> node
-            is ReturnFunctionStatementAstNode -> node
+            is ScalarVariableInitializationASTNode -> node.copy(
+                type = resolveType(node.type, genericScope),
+                expression = resolveExpression(node.expression, genericScope),
+            )
+            is ArrayDeclarationASTNode -> node.copy(
+                type = resolveType(node.type, genericScope),
+                expression = node.expression?.let { resolveExpression(it, genericScope) },
+            )
+            is AssignmentStatementAstNode -> node.copy(
+                lValue = resolveExpression(node.lValue, genericScope),
+                rValue = resolveExpression(node.rValue, genericScope),
+            )
+            is CallFunctionStatementAstNode -> node.copy(expression = resolveExpression(node.expression, genericScope))
+            is ReturnFunctionStatementAstNode -> node.copy(
+                expression = node.expression?.let { resolveExpression(it, genericScope) },
+            )
             is IfStatementAstNode -> node.copy(
+                condition = resolveExpression(node.condition, genericScope),
                 thenBlock = resolveBlock(node.thenBlock, genericScope),
                 elseBlock = node.elseBlock?.let { resolveBlock(it, genericScope) },
             )
-            is WhileStatementAstNode -> node.copy(bodyBlock = resolveBlock(node.bodyBlock, genericScope))
+            is WhileStatementAstNode -> node.copy(
+                condition = resolveExpression(node.condition, genericScope),
+                bodyBlock = resolveBlock(node.bodyBlock, genericScope),
+            )
             is ForStatementAstNode -> node.copy(desugaredContent = resolveBlock(node.desugaredContent, genericScope))
+            is WhenStatementAstNode -> node.copy(
+                expression = resolveExpression(node.expression, genericScope) as WhenExpressionASTNode,
+            )
         }
+
+    private fun Raise<ASTError>.resolveExpression(
+        node: ExpressionASTNode,
+        genericScope: Map<String, TypeSign>,
+    ): ExpressionASTNode =
+        when (node) {
+            is IntLiteralExpressionASTNode,
+            is LongLiteralExpressionASTNode,
+            is DoubleLiteralExpressionASTNode,
+            is BooleanLiteralExpressionASTNode,
+            is StringLiteralExpressionASTNode,
+            is VariableExpressionASTNode,
+            is FieldAccessChainExpressionASTNode -> node
+            is ArrayInitializationExpressionASTNode -> node.copy(
+                args = node.args.map { resolveExpression(it, genericScope) },
+            )
+            is ArrayElementAccessASTNode -> node.copy(index = resolveExpression(node.index, genericScope))
+            is FunctionCallExpressionASTNode -> node.copy(
+                arguments = node.arguments.map { resolveExpression(it, genericScope) },
+            )
+            is BinaryExpressionASTNode -> node.copy(
+                left = resolveExpression(node.left, genericScope),
+                right = resolveExpression(node.right, genericScope),
+            )
+            is UnaryExpressionASTNode -> node.copy(operand = resolveExpression(node.operand, genericScope))
+            is WhenExpressionASTNode -> node.copy(
+                subject = resolveExpression(node.subject, genericScope),
+                branches = node.branches.map { resolveWhenBranch(it, genericScope) },
+            )
+        }
+
+    private fun Raise<ASTError>.resolveWhenBranch(
+        node: WhenBranchAstNode,
+        genericScope: Map<String, TypeSign>,
+    ): WhenBranchAstNode =
+        node.copy(
+            condition = node.condition?.let { resolveExpression(it, genericScope) },
+            bodyBlock = resolveBlock(node.bodyBlock, genericScope),
+        )
 
     private fun Raise<ASTError>.resolveTypeClass(
         node: TypeClassDeclAstNode,

@@ -2,7 +2,6 @@ package org.nnezh.bred.ast
 
 import arrow.core.raise.Raise
 import org.nnezh.bred.ast.parsers.TypeSignParser
-import org.nnezh.bred.common.TypeRef
 import org.nnezh.bred.common.TypeSign
 import org.nnezh.lexer.Token
 
@@ -54,12 +53,12 @@ class TypeParser(
 
             val name = match<Token.Identifier>(context.consumeToken()) { AstErrorFactory.buildError("identifier", it) }
             match<Token.Punctuation.Colon>(context.consumeToken()) { AstErrorFactory.buildError("field type declaration", it) }
-            val type = match<Token.Identifier>(context.consumeToken()) { AstErrorFactory.buildError("identifier", it) }
+            val type = with(typeSignParser) { parse(context) }
 
             if (fields.containsKey(name.lexeme)) {
                 raise(ASTError("${name.lexeme} is not unique field for ${name.lexeme}"))
             }
-            fields[name.lexeme] = TypeRef(type.lexeme)
+            fields[name.lexeme] = type
 
             if (context.top() is Token.Punctuation.Comma) {
                 context.consumeToken()

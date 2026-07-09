@@ -18,6 +18,7 @@ import org.nnezh.lexer.Token
  */
 class AbstractSyntaxTreeExpressionParser(
     private val typeSignParser: TypeSignParser = TypeSignParser(),
+    private val whenParser: Lazy<Parser<WhenExpressionASTNode>>? = null,
 ) : Parser<ExpressionASTNode> {
 
     override fun Raise<ASTError>.parse(context: TokensContext): ExpressionASTNode = parseLogicalOr(context)
@@ -131,6 +132,11 @@ class AbstractSyntaxTreeExpressionParser(
             is Token.Keyword.False -> {
                 context.consumeToken()
                 BooleanLiteralExpressionASTNode(false)
+            }
+
+            is Token.Keyword.When -> {
+                val parser = whenParser ?: raise(AstErrorFactory.expectedExpression(token))
+                parseWith(parser.value, context)
             }
 
             is Token.Identifier -> {

@@ -35,6 +35,9 @@ import org.nnezh.bred.ast.SumTypeVariantFieldASTNode
 import org.nnezh.bred.ast.TypeClassDeclAstNode
 import org.nnezh.bred.ast.UnaryExpressionASTNode
 import org.nnezh.bred.ast.VariableExpressionASTNode
+import org.nnezh.bred.ast.WhenBranchAstNode
+import org.nnezh.bred.ast.WhenExpressionASTNode
+import org.nnezh.bred.ast.WhenStatementAstNode
 import org.nnezh.bred.ast.WhileStatementAstNode
 import org.nnezh.bred.ast.cloneSubtree
 import org.nnezh.bred.common.TypeNames
@@ -52,6 +55,7 @@ class TemplateInstantiator(
 ) {
     private lateinit var templates: Map<String, FunctionDeclAstNode>
     private lateinit var templateTypes: Map<String, DeclareTypeASTNode>
+    private lateinit var templateVariantOwners: Map<String, DeclareSumTypeASTNode>
     private lateinit var typeClassMethods: Map<String, List<TypeClassMethodOwner>>
 
     private val generatedTemplates: MutableMap<TemplateInstanceKey, FunctionDeclAstNode> = mutableMapOf()
@@ -74,6 +78,10 @@ class TemplateInstantiator(
         templateTypes = root.types
             .filter { it.genericParams.isNotEmpty() }
             .associateBy { it.name }
+        templateVariantOwners = templateTypes.values
+            .filterIsInstance<DeclareSumTypeASTNode>()
+            .flatMap { sumType -> sumType.variants.map { variant -> variant.name to sumType } }
+            .toMap()
 
         typeClassMethods = root.typeClasses
             .flatMap { typeClass -> typeClass.methods.map { method -> TypeClassMethodOwner(typeClass, method.name) } }
@@ -215,6 +223,9 @@ class TemplateInstantiator(
             is ForStatementAstNode -> statement.copy(
                 desugaredContent = transformBlock(statement.desugaredContent, scope, rewriteContext),
             )
+            is WhenStatementAstNode -> statement.copy(
+                expression = transformExpression(statement.expression, scope, rewriteContext) as WhenExpressionASTNode,
+            )
         }
 
     private fun transformExpression(
@@ -244,7 +255,21 @@ class TemplateInstantiator(
             )
             is FunctionCallExpressionASTNode -> transformCallExpression(expression, scope, rewriteContext)
             is FieldAccessChainExpressionASTNode -> expression
+            is WhenExpressionASTNode -> expression.copy(
+                subject = transformExpression(expression.subject, scope, rewriteContext),
+                branches = expression.branches.map { transformWhenBranch(it, scope, rewriteContext) },
+            )
         }
+
+    private fun transformWhenBranch(
+        branch: WhenBranchAstNode,
+        scope: Scope,
+        rewriteContext: TemplateRewriteContext,
+    ): WhenBranchAstNode =
+        branch.copy(
+            condition = branch.condition?.let { transformExpression(it, scope, rewriteContext) },
+            bodyBlock = transformBlock(branch.bodyBlock, scope, rewriteContext),
+        )
 
     private fun transformCallExpression(
         expression: FunctionCallExpressionASTNode,
@@ -258,6 +283,24 @@ class TemplateInstantiator(
             val argumentTypes = expression.arguments.map { inferType(it, scope, rewriteContext) }
             val generated = generateTemplateFunction(template, argumentTypes)
             return FunctionCallExpressionASTNode(generated.name, transformedArguments)
+        }
+
+        templateTypes[expression.name]?.let { template ->
+            if (transformedTypeArguments.isNotEmpty()) {
+                val type = instantiateTemplateType(template, transformedTypeArguments)
+                return FunctionCallExpressionASTNode(type.name, transformedArguments, isConstructorCalling = true)
+            }
+        }
+
+        templateVariantOwners[expression.name]?.let { owner ->
+            if (transformedTypeArguments.isNotEmpty()) {
+                instantiateTemplateType(owner, transformedTypeArguments)
+                return FunctionCallExpressionASTNode(
+                    name = expression.name,
+                    arguments = transformedArguments,
+                    isConstructorCalling = true,
+                )
+            }
         }
 
         if (expression.name in typeClassMethods) {
@@ -345,13 +388,16 @@ class TemplateInstantiator(
                         .firstOrNull { it.name == meta.name && it.args == argumentTypes }
                         ?.resultType
                         ?: context.unitType
-                    null -> context.constructors[expression.name]?.let { context.typeRegistry.findType(expression.name) }
+                    null -> context.constructorsByName(expression.name)
+                        .singleOrNull { it.arguments == argumentTypes }
+                        ?.resultType
                         ?: fail("Cannot infer return type for function ${expression.name}")
                 //
                 }
             }
 
-            is FieldAccessChainExpressionASTNode -> TODO()
+            is FieldAccessChainExpressionASTNode -> inferFieldAccessType(expression, scope)
+            is WhenExpressionASTNode -> context.unitType
         }
 
     private fun inferGenericMapping(
@@ -385,22 +431,33 @@ class TemplateInstantiator(
         genericNames: Set<String>,
         mapping: MutableMap<String, TypeSign>,
     ) {
+        val comparableArgumentType = remapGeneratedArgumentType(parameterType, argumentType)
         if (parameterType.arguments.isEmpty() && parameterType.name in genericNames) {
-            bindGeneric(parameterType.name, argumentType, mapping)
+            bindGeneric(parameterType.name, comparableArgumentType, mapping)
             return
         }
         if (!containsGeneric(parameterType, genericNames)) {
             return
         }
-        if (!sameGenericContainer(parameterType, argumentType) ||
-            parameterType.arguments.size != argumentType.arguments.size
+        if (!sameGenericContainer(parameterType, comparableArgumentType) ||
+            parameterType.arguments.size != comparableArgumentType.arguments.size
         ) {
             fail("Cannot infer generic type from complex parameter $parameterName: ${parameterType.render()}")
         }
 
-        parameterType.arguments.zip(argumentType.arguments).forEach { (parameterArgument, argumentArgument) ->
+        parameterType.arguments.zip(comparableArgumentType.arguments).forEach { (parameterArgument, argumentArgument) ->
             inferGenericMappingFromParameter(parameterName, parameterArgument, argumentArgument, genericNames, mapping)
         }
+    }
+
+    private fun remapGeneratedArgumentType(parameterType: TypeSign, argumentType: TypeSign): TypeSign {
+        if (parameterType.name !in templateTypes) {
+            return argumentType
+        }
+        val generated = generatedTypes.entries.firstOrNull { (key, generatedType) ->
+            key.name == parameterType.name && generatedType.name == argumentType.name
+        } ?: return argumentType
+        return TypeRef(generated.key.name, generated.key.argumentTypes.map { it.toTypeRef() })
     }
 
     private fun bindGeneric(
@@ -431,7 +488,7 @@ class TemplateInstantiator(
             return context.arrayOf(replaceType(type.elementTypeOrNull ?: fail("Array type has no element type"), mapping))
         }
         if (type.arguments.isEmpty()) {
-            return type
+            return context.resolve(type) ?: type
         }
 
         val args = type.arguments.map { replaceType(it, mapping) }
@@ -453,14 +510,24 @@ class TemplateInstantiator(
         generatedTypes[key]?.let { return context.resolveOrThrow(TypeRef(it.name)) }
 
         val typeName = TypeRef(template.name, concreteArguments.map { it.toTypeRef() }).toManglePart()
-        context.addType(typeName, isPrimitive = false)
         val mapping = template.genericParams.zip(concreteArguments).associate { (generic, concreteType) ->
             generic.name to concreteType
         }
 
         val generated = instantiateTypeDeclaration(template, typeName, mapping)
         generatedTypes[key] = generated
+        registerGeneratedType(generated)
         return context.resolveOrThrow(TypeRef(typeName))
+    }
+
+    private fun registerGeneratedType(type: DeclareTypeASTNode) {
+        when (type) {
+            is DeclareProductTypeASTNode -> {
+                context.declareProductType(type.name, type.fields, type.isMutable)
+                context.addProductTypeConstructor(type.name)
+            }
+            is DeclareSumTypeASTNode -> context.declareSumType(type.name, type.genericParams, type.variants)
+        }
     }
 
     private fun instantiateTypeDeclaration(
@@ -512,6 +579,28 @@ class TemplateInstantiator(
 
     private fun TypeSign.arrayElementType(): TypeSign? =
         if (isArray) elementTypeOrNull else null
+
+    private fun inferFieldAccessType(
+        expression: FieldAccessChainExpressionASTNode,
+        scope: Scope,
+    ): TypeSign {
+        var currentType = scope.lookup(expression.root)
+            ?: fail("Cannot infer type for field access root ${expression.root}")
+        var current = expression.next
+            ?: fail("Cannot infer field access without field on ${expression.root}")
+
+        while (true) {
+            val fields = context.productFields(currentType)
+                ?: fail("Cannot access field ${current.root} on non-product type ${currentType.render()}")
+            val fieldType = fields[current.root]
+                ?: fail("Unknown field ${current.root} on type ${currentType.render()}")
+            if (current.next == null) {
+                return fieldType
+            }
+            currentType = fieldType
+            current = current.next
+        }
+    }
 
     private fun containsGeneric(type: TypeSign, genericNames: Set<String>): Boolean =
         type.name in genericNames || type.arguments.any { containsGeneric(it, genericNames) }

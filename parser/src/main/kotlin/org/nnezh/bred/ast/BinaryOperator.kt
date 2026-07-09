@@ -41,7 +41,8 @@ fun Token.Operator.toLocatedBinaryOperator(): LocatedBinaryOperator = when (this
     is Token.Operator.And -> LocatedBinaryOperator(BinaryOperator.And, position)
     is Token.Operator.Or -> LocatedBinaryOperator(BinaryOperator.Or, position)
     is Token.Operator.Assign,
-    is Token.Operator.Not -> error("not a binary operator: $this")
+    is Token.Operator.Not,
+    is Token.Operator.Arrow -> error("not a binary operator: $this")
 }
 
 fun LocatedBinaryOperator.toToken(): Token.Operator = when (kind) {

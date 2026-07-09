@@ -23,9 +23,11 @@ class CTranspile {
     )
 
     private var firstFunctionWasProceeded: Boolean = false
+    private var sumDefinitions: Map<String, SumDefinition> = emptyMap()
 
     fun compile(instructions: List<LLTACElement>): List<String> {
         firstFunctionWasProceeded = false
+        sumDefinitions = collectSumDefinitions(instructions)
         val context = Context(instructions)
         val cCode = collectStructDefinitions(instructions)
             .map { renderStructDefinition(it) }
@@ -117,6 +119,42 @@ class CTranspile {
         return definitions
     }
 
+    private fun collectSumDefinitions(instructions: List<LLTACElement>): Map<String, SumDefinition> {
+        val definitions = linkedMapOf<String, MutableSumDefinition>()
+        instructions.filterIsInstance<LLTACInstruction>().forEach { instruction ->
+            when (instruction.opcode) {
+                LLTACOperation.LLTAC_SUM_VARIANT -> {
+                    val type = instruction.expectTypeConst(instruction.destination, "destination").type
+                    val variant = instruction.expectVariable(instruction.arg1, "arg1")
+                    val tag = instruction.expectIntConst(instruction.arg2, "arg2").value.toInt()
+                    val definition = definitions.getOrPut(type.name) { MutableSumDefinition(type) }
+                    definition.variants.getOrPut(variant.name) {
+                        MutableSumVariant(variant.name, tag)
+                    }
+                }
+                LLTACOperation.LLTAC_SUM_VARIANT_FIELD -> {
+                    val type = instruction.expectTypeConst(instruction.destination, "destination").type
+                    val variant = instruction.expectVariable(instruction.arg1, "arg1")
+                    val field = instruction.expectVariable(instruction.arg2, "arg2")
+                    val definition = definitions.getOrPut(type.name) { MutableSumDefinition(type) }
+                    val mutableVariant = definition.variants.getOrPut(variant.name) {
+                        MutableSumVariant(variant.name, 0)
+                    }
+                    mutableVariant.fields.add(SumField(field.name, field.type))
+                }
+                else -> Unit
+            }
+        }
+        return definitions.mapValues { (_, definition) ->
+            SumDefinition(
+                type = definition.type,
+                variants = definition.variants.mapValues { (_, variant) ->
+                    SumVariant(variant.name, variant.tag, variant.fields.toList())
+                },
+            )
+        }
+    }
+
     private fun renderStructDefinition(definition: StructDefinition): String {
         val name = typeToStringInInitialization(definition.type)
         val fields = definition.fields.joinToString(" ") { field ->
@@ -203,15 +241,19 @@ class CTranspile {
                         (((context.top(-i - 1) as LLTACInstruction).destination) as Operand.Variable).name
                     }
                 val args: String = paramInstructions.reversed().joinToString(",")
+                val argNames = paramInstructions.reversed()
+                val sumConstructor = destinationVariable?.let { variable ->
+                    sumDefinitions[variable.type.name]?.variants?.get(callingFunctionName)
+                }
 
-                val callingFunctionStr = if (
+                val callingFunctionStr = when {
+                    destinationVariable != null && sumConstructor != null ->
+                        renderSumConstructor(destinationVariable.type, sumConstructor, argNames)
                     destinationVariable != null &&
-                    destinationVariable.type.isProductType() &&
-                    callingFunctionName == destinationVariable.type.name
-                ) {
-                    "(${typeToStringInInitialization(destinationVariable.type)}){$args}"
-                } else {
-                    "$callingFunctionName(${args})"
+                        destinationVariable.type.isProductType() &&
+                        callingFunctionName == destinationVariable.type.name ->
+                        "(${typeToStringInInitialization(destinationVariable.type)}){$args}"
+                    else -> "$callingFunctionName(${args})"
                 }
                 var finalLine = callingFunctionStr
                 destination?.let {
@@ -275,7 +317,9 @@ class CTranspile {
             }
             LLTACOperation.LLTAC_STRUCT_DEF,
             LLTACOperation.LLTAC_STRUCT_DEF_END,
-            LLTACOperation.LLTAC_FIELD -> { /* emitted before function prototypes */ }
+            LLTACOperation.LLTAC_FIELD,
+            LLTACOperation.LLTAC_SUM_VARIANT,
+            LLTACOperation.LLTAC_SUM_VARIANT_FIELD -> { /* emitted before function prototypes */ }
         }
         } catch (error: CTranspileException) {
             throw CTranspileException(
@@ -312,6 +356,8 @@ class CTranspile {
                         LLTACOperation.LLTAC_STRUCT_DEF,
                         LLTACOperation.LLTAC_STRUCT_DEF_END,
                         LLTACOperation.LLTAC_FIELD,
+                        LLTACOperation.LLTAC_SUM_VARIANT,
+                        LLTACOperation.LLTAC_SUM_VARIANT_FIELD,
                         LLTACOperation.LLTAC_STF,
                     )
                 ) {
@@ -435,6 +481,14 @@ class CTranspile {
             (operand as RightValue).asRightValue()
         }
 
+    private fun renderSumConstructor(type: TypeSign, variant: SumVariant, args: List<String>): String {
+        val assignments = mutableListOf(".tag = ${variant.tag}")
+        variant.fields.zip(args).forEach { (field, arg) ->
+            assignments.add(".${field.name} = $arg")
+        }
+        return "(${typeToStringInInitialization(type)}){${assignments.joinToString(", ")}}"
+    }
+
     private fun escapeCString(value: String): String =
         buildString {
             value.forEach { char ->
@@ -533,6 +587,33 @@ class CTranspile {
     private data class StructDefinition(
         val type: TypeSign,
         val fields: List<Operand.Variable>,
+    )
+
+    private data class SumDefinition(
+        val type: TypeSign,
+        val variants: Map<String, SumVariant>,
+    )
+
+    private data class SumVariant(
+        val name: String,
+        val tag: Int,
+        val fields: List<SumField>,
+    )
+
+    private data class SumField(
+        val name: String,
+        val type: TypeSign,
+    )
+
+    private data class MutableSumDefinition(
+        val type: TypeSign,
+        val variants: MutableMap<String, MutableSumVariant> = linkedMapOf(),
+    )
+
+    private data class MutableSumVariant(
+        val name: String,
+        val tag: Int,
+        val fields: MutableList<SumField> = mutableListOf(),
     )
 
     private class Context(private val tacLines: List<LLTACElement>) {

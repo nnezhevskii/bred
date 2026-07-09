@@ -149,6 +149,14 @@ class ParserTest {
     }
 
     @Test
+    fun `product field accepts generic type sign`() {
+        val root = parse("type Box(value: Array<Int>)")
+
+        val box = assertInstanceOf(DeclareProductTypeASTNode::class.java, root.types.single())
+        assertEquals(linkedMapOf("value" to TypeRef("Array", listOf(TypeRef("Int")))), box.fields)
+    }
+
+    @Test
     fun `sum type declaration with generic variant argument is parsed`() {
         val root = parse("type MaybeInt = Nothing | Just<Int>")
 
@@ -297,6 +305,60 @@ class ParserTest {
         val forStatement = assertInstanceOf(ForStatementAstNode::class.java, function.body.statements.first())
         assertEquals(3, forStatement.desugaredContent.statements.size)
         assertInstanceOf(WhileStatementAstNode::class.java, forStatement.desugaredContent.statements[2])
+    }
+
+    @Test
+    fun `when statement parses expression cases and else branch`() {
+        val root = parse(
+            """
+            fun main(): Unit {
+                when (value) {
+                    1 -> { println("one") }
+                    value + 1 -> { value = value + 1 }
+                    else -> { println("other") }
+                }
+            }
+            """.trimIndent()
+        )
+
+        val statement = assertInstanceOf(WhenStatementAstNode::class.java, root.functions.single().body.statements.first())
+        val expression = statement.expression
+
+        assertEquals("value", assertInstanceOf(VariableExpressionASTNode::class.java, expression.subject).token.lexeme)
+        assertEquals(3, expression.branches.size)
+        assertEquals(1, assertInstanceOf(IntLiteralExpressionASTNode::class.java, expression.branches[0].condition).value)
+        assertInstanceOf(BinaryExpressionASTNode::class.java, expression.branches[1].condition)
+        assertNull(expression.branches[2].condition)
+        assertInstanceOf(CallFunctionStatementAstNode::class.java, expression.branches[0].bodyBlock.statements.single())
+        assertInstanceOf(AssignmentStatementAstNode::class.java, expression.branches[1].bodyBlock.statements.single())
+        assertInstanceOf(CallFunctionStatementAstNode::class.java, expression.branches[2].bodyBlock.statements.single())
+    }
+
+    @Test
+    fun `when expression parses in initializer`() {
+        val root = parse(
+            """
+            fun choose(value: Int): Int {
+                val result: Int = when (value) {
+                    0 -> { return 1 }
+                    else -> { return value }
+                }
+            }
+            """.trimIndent()
+        )
+
+        val declaration = assertInstanceOf(
+            ScalarVariableInitializationASTNode::class.java,
+            root.functions.single().body.statements.first(),
+        )
+        val expression = assertInstanceOf(WhenExpressionASTNode::class.java, declaration.expression)
+
+        assertEquals("value", assertInstanceOf(VariableExpressionASTNode::class.java, expression.subject).token.lexeme)
+        assertEquals(2, expression.branches.size)
+        assertEquals(0, assertInstanceOf(IntLiteralExpressionASTNode::class.java, expression.branches[0].condition).value)
+        assertNull(expression.branches[1].condition)
+        assertInstanceOf(ReturnFunctionStatementAstNode::class.java, expression.branches[0].bodyBlock.statements.single())
+        assertInstanceOf(ReturnFunctionStatementAstNode::class.java, expression.branches[1].bodyBlock.statements.single())
     }
 
     @Test
@@ -734,6 +796,15 @@ class ParserTest {
     }
 
     @Test
+    fun `malformed when syntax is rejected`() {
+        assertTrue(parseFails("when (x) { 1 -> { } }"))
+        assertTrue(parseFails("fun main(): Unit { when (x) { } }"))
+        assertTrue(parseFails("fun main(): Unit { when (x) { 1 { } } }"))
+        assertTrue(parseFails("fun main(): Unit { when (x) { 1 -> println(\"one\") } }"))
+        assertTrue(parseFails("fun main(): Unit { when (x) { else -> { } 1 -> { } } }"))
+    }
+
+    @Test
     fun `bare return at end of file is rejected`() {
         assertTrue(parseFails("fun broken(): Unit { return"))
     }
@@ -978,6 +1049,40 @@ class ParserTest {
         assertEquals("Maybe_Int", declaration.type.name)
         assertTrue(declaration.type.arguments.isEmpty())
         assertEquals("id_Int_Maybe_Int", call.name)
+
+        val returnStatement = assertInstanceOf(ReturnFunctionStatementAstNode::class.java, id.body.statements.first())
+        val returnCall = assertInstanceOf(FunctionCallExpressionASTNode::class.java, returnStatement.expression)
+        assertEquals("Just", returnCall.name)
+        assertTrue(returnCall.typeArguments.isEmpty())
+    }
+
+    @Test
+    fun `template instantiator rewrites explicit generic product constructor call`() {
+        val root = parse(
+            """
+            type Box<T>(value: T)
+
+            fun main() {
+                val x: Box<Int> = Box<Int>(200)
+            }
+            """.trimIndent()
+        )
+
+        val instantiated = instantiate(root)
+        val main = instantiated.functions.single { it.name == "main" }
+        val declaration = assertInstanceOf(
+            ScalarVariableInitializationASTNode::class.java,
+            main.body.statements.first(),
+        )
+        val call = assertInstanceOf(FunctionCallExpressionASTNode::class.java, declaration.expression)
+
+        assertInstanceOf(
+            DeclareProductTypeASTNode::class.java,
+            instantiated.types.single { it.name == "Box_Int" },
+        )
+        assertEquals("Box_Int", declaration.type.name)
+        assertEquals("Box_Int", call.name)
+        assertTrue(call.typeArguments.isEmpty())
     }
 
     @Test

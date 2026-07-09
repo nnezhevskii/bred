@@ -61,6 +61,11 @@ data class FunctionArgument(
 
 data class BlockAstNode(val statements: List<StatementAstNode>) : ASTNode
 
+data class WhenBranchAstNode(
+    val condition: ExpressionASTNode?,
+    val bodyBlock: BlockAstNode,
+) : ASTNode
+
 sealed interface StatementAstNode : ASTNode
 
 sealed interface DeclareVariableASTNode : StatementAstNode
@@ -115,6 +120,10 @@ data class WhileStatementAstNode(
 
 data class ForStatementAstNode(
     val desugaredContent: BlockAstNode,
+) : StatementAstNode
+
+data class WhenStatementAstNode(
+    val expression: WhenExpressionASTNode,
 ) : StatementAstNode
 
 data class TypeClassDeclAstNode(

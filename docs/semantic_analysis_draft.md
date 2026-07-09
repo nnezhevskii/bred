@@ -53,7 +53,9 @@ source -> Lexer -> AbstractSyntaxTreeBuilder -> ProgramContextCollector
 `TypeSign` instances before semantic analysis. The context records:
 
 - primitive types `Int`, `Long`, `Double`, `String`, `Boolean`, and `Unit`;
-- user-declared types from `ProgramRoot.types`;
+- user-declared product and sum types from `ProgramRoot.types`;
+- product fields and product mutability metadata;
+- sum variants and constructor metadata;
 - declared functions;
 - typeclasses;
 - instances;
@@ -129,11 +131,14 @@ TYPE_CHECKER_INCONSISTENT_ARRAY_TYPE
 ARRAY_INDEX_IS_NOT_INTEGER
 INVALID_AMOUNT_OF_ARGUMENTS_IN_ARRAYS_INITIALIZATION
 ARRAY_IS_EXPECTED_BUT_GOT_SCALAR
+CONSTRUCTOR_IS_EXPECTED
+CONSTRUCTOR_IS_FOUND_BUT_WRONG_ARGUMENTS
 BLOCK_CONTAINS_MORE_THAN_ONE_RETURN
 BLOCK_CONTAINS_CODE_AFTER_RETURN
 METHOD_HAS_NO_RETURN
 METHOD_HAS_WRONG_RETURN
 EXPLICIT_RETURN_IS_EXPECTED
+UNKNOWN_FIELD
 ```
 
 Current emitted wrappers:
@@ -197,7 +202,8 @@ variables.
 Assignments require a parser-level left value:
 
 - variable expression;
-- array element access.
+- array element access;
+- product field access chain rooted at an identifier.
 
 The analyzer additionally:
 
@@ -205,10 +211,16 @@ The analyzer additionally:
 - analyzes the right side;
 - rejects assignment to immutable scalar variables with
   `VARIABLE_CHANGING_IMMUTABLE`;
+- rejects product field assignment with `VARIABLE_CHANGING_IMMUTABLE` unless
+  the final owner product type in the field chain was declared with `mut`;
 - requires left and right types to be equal.
 
 Array element assignment is allowed even when the array binding was declared
 with `val`; mutability is checked only for scalar variable lvalues.
+
+Product field assignment depends on product type mutability, not on the root
+binding. For example, `val counter: Counter = ...` may still assign
+`counter.value = ...` when `Counter` is declared as `type mut Counter(...)`.
 
 ## 6. Functions
 
@@ -246,16 +258,25 @@ For a function call:
 1. Analyze all argument expressions.
 2. Read each argument type from the expression type table.
 3. Resolve a function by exact name and exact positional argument types.
-4. If the name exists but no signature matches, emit
-   `FUNCTION_EXISTS_BUT_WRONG_ARGUMENTS`.
-5. If no function with that name exists, emit `FUNCTION_NOT_FOUND`.
-6. Store the resolved result type on the call expression.
+4. If no function signature matches, try constructor metadata by exact
+   constructor name and argument types. Product constructors return the product
+   type; sum variant constructors return the owning sum type.
+5. If constructor candidates exist for the name but no constructor matches,
+   emit `CONSTRUCTOR_IS_FOUND_BUT_WRONG_ARGUMENTS`.
+6. If function candidates exist for the name but no function matches and there
+   are no constructor candidates, emit `FUNCTION_EXISTS_BUT_WRONG_ARGUMENTS`.
+7. If no function or constructor with that name exists, emit
+   `FUNCTION_NOT_FOUND`.
+8. Store the resolved result type on the call expression.
 
 Forward function references are valid because all user functions are registered
 before bodies are visited.
 
 Function names are not first-class values. A bare function name in expression
 position is analyzed as a variable and normally produces `UNKNOWN_VARIABLE`.
+Bare nullary constructor names, such as `Nothing`, are accepted as expressions
+when exactly one zero-argument constructor with that name is visible in the
+global context.
 
 ## 7. Expression Type Rules
 
@@ -365,7 +386,77 @@ For `values[index]`, the analyzer:
 
 Using array access on a scalar variable produces `ARRAY_IS_EXPECTED_BUT_GOT_SCALAR`.
 
-## 9. Control Flow and Returns
+## 9. Product and Sum Types
+
+Product and sum declarations themselves are collected and resolved before the
+analyzer walks functions. Direct visit branches for `DeclareProductTypeASTNode`,
+`DeclareSumTypeASTNode`, sum variants, and sum variant fields are no-ops in the
+analyzer because the active metadata is already in `ProgramGlobalContext`.
+
+### 9.1 Product Constructors and Fields
+
+Product constructor calls use ordinary call syntax and are resolved through
+constructor metadata after ordinary functions:
+
+```bred
+type Person(name: String, age: Int)
+
+val person: Person = Person("Nika", 7)
+```
+
+The argument list must match the product fields exactly by type and position.
+
+Field access chains are resolved from the root variable through product
+metadata. Each intermediate field must itself be a product type when another
+field follows. Unknown fields produce `UNKNOWN_FIELD`. The final field type is
+stored in the expression type table.
+
+Field assignment first resolves the final owner product and field type. The
+assigned value must equal the field type, and the final owner product type must
+be mutable:
+
+```bred
+type mut Address(city: String)
+type Person(address: Address)
+
+fun move(person: Person): Unit {
+    person.address.city = "Berlin"
+}
+```
+
+In this example the final owner is `Address`, so `Address` must be `mut`.
+
+### 9.2 Sum Constructors and When
+
+Sum variant constructors are resolved through the same constructor metadata as
+product constructors:
+
+```bred
+type MaybeInt = Nothing | Just<Int>
+
+val a: MaybeInt = Nothing
+val b: MaybeInt = Just(1)
+```
+
+The constructor result type is the owning sum type. Wrong payload types produce
+`CONSTRUCTOR_IS_FOUND_BUT_WRONG_ARGUMENTS`.
+
+For a `when` expression, the analyzer first analyzes the subject. If the subject
+type is a known sum type:
+
+- a branch condition written as a bare variable expression is treated as a sum
+  variant name;
+- duplicate variant branches and unknown variant names are rejected as
+  `TYPE_CHECKER_INCOMPATIBLE_TYPES`;
+- a branch condition that is not a bare variant expression is analyzed normally
+  and must have the same type as the subject;
+- without `else`, the set of bare variant branches must cover every variant.
+
+All branch bodies are analyzed as blocks in the current scope. The expression
+type stored for `when` is `Unit`; branch result values are not joined into a
+value-producing expression type.
+
+## 10. Control Flow and Returns
 
 The parser appends a synthetic non-explicit Unit return to functions with no
 top-level explicit return. The analyzer ignores non-explicit synthetic returns
@@ -396,7 +487,7 @@ Block flow checks ignore synthetic returns and detect:
 For-loop desugared content is visited with control-flow checks disabled for
 that synthetic block, but nested statements are still semantically analyzed.
 
-## 10. Typeclasses, Instances, and Templates
+## 11. Typeclasses, Instances, and Templates
 
 The semantic analyzer does not currently validate typeclass declarations or
 instance declarations directly.
@@ -410,6 +501,9 @@ This component:
 - clones instance methods using mangled names;
 - instantiates generic function calls by structurally matching parameter types
   against argument types, including `Array<T>` and scalar `T` in the same call;
+- instantiates generic product and sum type declarations when concrete
+  constructor calls provide type arguments;
+- infers generic mappings through product field chains;
 - normalizes inferred concrete types through `ProgramGlobalContext` before
   comparing mappings;
 - replaces generic parameter types in generated function arguments, return
@@ -422,7 +516,7 @@ This component:
 Because this is outside the current analyzer traversal, semantic validation of
 raw typeclass and instance declarations remains incomplete.
 
-## 11. Standard Library and Extern Functions
+## 12. Standard Library and Extern Functions
 
 Root compilation implicitly prepends declarations from `stdlib.bred` before
 the user program. These declarations are parsed, resolved, instantiated,
@@ -455,7 +549,7 @@ currentTimeMillis(): Long
 The semantic tests cover representative externs such as `println`,
 `readInt`, `stringEquals`, `longToString`, and `currentTimeMillis`.
 
-## 12. Known Gaps
+## 13. Known Gaps
 
 The current implementation and tests leave several open items. Actionable
 entries are maintained in `docs/TODO.md`.
@@ -463,7 +557,9 @@ entries are maintained in `docs/TODO.md`.
 Important known gaps:
 
 - semantic validation for typeclasses and instances is incomplete;
-- `mut` is lexed but unused by the parser;
+- `when` payload binding is not implemented;
+- value-producing `when` expressions are not implemented; the current
+  expression type is `Unit`;
 - mixed numeric comparison behavior is still a design decision;
 - global initializers cannot call user functions;
 - empty array initializer expressions still do not carry their own element

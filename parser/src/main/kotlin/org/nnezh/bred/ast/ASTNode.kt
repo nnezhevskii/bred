@@ -25,6 +25,10 @@ data class FunctionCallExpressionASTNode(
     var isConstructorCalling: Boolean = true,
 ) : ExpressionASTNode
 data class FieldAccessChainExpressionASTNode(val root: String, val next: FieldAccessChainExpressionASTNode? = null) : ExpressionASTNode, LeftValue
+data class WhenExpressionASTNode(
+    val subject: ExpressionASTNode,
+    val branches: List<WhenBranchAstNode>,
+) : ExpressionASTNode
 
 data class BinaryExpressionASTNode(
     val left: ExpressionASTNode,

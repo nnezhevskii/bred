@@ -342,8 +342,8 @@ class LLTAGCompileExpectationsTest {
   fun `product types emit struct field load and store TAC`() {
     val tac = formattedTac(
       """
-      type Address(city: String)
-      type Person(name: String, age: Int, address: Address)
+      type mut Address(city: String)
+      type mut Person(name: String, age: Int, address: Address)
 
       fun main(): Unit {
           var address: Address = Address("Berlin")
@@ -399,6 +399,98 @@ class LLTAGCompileExpectationsTest {
     assertTrue(
       tac.none { it.contains("TypeRef") || it.contains("PrimitiveTypeSign") },
       "unresolved/internal type leaked into TAC:\n${tac.joinToString("\n")}",
+    )
+  }
+
+  @Test
+  fun `sum types emit struct constructor and when tag TAC`() {
+    val tac = formattedTac(
+      """
+      type MaybeInt = Nothing | Just<Int>
+
+      fun main(): Unit {
+          val present: MaybeInt = Just(7)
+          val absent: MaybeInt = Nothing
+          var result: Int = 0
+          when (present) {
+              Just -> { result = 1 }
+              Nothing -> { result = 0 }
+          }
+      }
+      """.trimIndent(),
+    )
+
+    assertTrue(
+      tac.any { it.startsWith("STRUCT_DEF") && it.contains("MaybeInt") },
+      "expected MaybeInt struct definition, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
+      tac.any { it.startsWith("FIELD") && it.contains("tag:Int") },
+      "expected tag field definition, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
+      tac.any { it.startsWith("FIELD") && it.contains("Just_value0:Int") },
+      "expected Just payload field definition, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
+      tac.any { it.startsWith("SUM_VARIANT") && it.contains("Just:MaybeInt") },
+      "expected Just variant metadata, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
+      tac.any { it.startsWith("CALL") && it.contains("present:MaybeInt") && it.contains("Just:MaybeInt") },
+      "expected Just constructor call, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
+      tac.any { it.startsWith("CALL") && it.contains("absent:MaybeInt") && it.contains("Nothing:MaybeInt") },
+      "expected Nothing constructor call, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
+      tac.any { it.startsWith("LOAD_FIELD") && it.contains("tag:Int") },
+      "expected tag load in when lowering, got:\n${tac.joinToString("\n")}",
+    )
+  }
+
+  @Test
+  fun `sum type named payload fields emit flattened TAC metadata`() {
+    val tac = formattedTac(
+      """
+      type Response = Success(value: Int, message: String) | Failure
+
+      fun main(): Unit {
+          val response: Response = Success(200, "ok")
+          val failed: Response = Failure
+      }
+      """.trimIndent(),
+    )
+
+    assertTrue(
+      tac.any { it.startsWith("FIELD") && it.contains("Success_value:Int") },
+      "expected named Success value field, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
+      tac.any { it.startsWith("FIELD") && it.contains("Success_message:String") },
+      "expected named Success message field, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
+      tac.any {
+        it.startsWith("SUM_VARIANT_FIELD") &&
+          it.contains("Success:Response") &&
+          it.contains("Success_value:Int")
+      },
+      "expected Success value variant metadata, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
+      tac.any {
+        it.startsWith("CALL") &&
+          it.contains("response:Response") &&
+          it.contains("Success:Response") &&
+          it.contains("2:Int")
+      },
+      "expected Success constructor call with two args, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
+      tac.any { it.startsWith("CALL") && it.contains("failed:Response") && it.contains("Failure:Response") },
+      "expected Failure nullary constructor call, got:\n${tac.joinToString("\n")}",
     )
   }
 
