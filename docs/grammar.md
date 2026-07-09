@@ -472,7 +472,7 @@ Examples:
 ```bred
 when (value) {
     Nothing -> { println("empty") }
-    Just -> { println("present") }
+    Just(payload) -> { println(intToString(payload)) }
 }
 
 when (status) {
@@ -486,8 +486,14 @@ call after `->` is invalid. `else` must be the last branch and may appear only
 once.
 
 For sum-typed subjects, bare variant names such as `Nothing` and `Just` are
-validated against the subject sum type. A sum `when` without `else` must cover
-every variant exactly once. Payload binding is not part of the current grammar.
+validated against the subject sum type. A branch may also use a variant pattern
+written with call syntax, for example `Just(payload)` or
+`Success(code, message)`. Pattern names bind payload fields positionally as
+immutable branch-local variables; the number of names must match the variant
+payload field count. Pattern names must be unique and currently may not
+redeclare another visible variable. A bare variant branch still matches the
+variant while ignoring its payload. A sum `when` without `else` must cover every
+variant exactly once.
 
 For non-sum subjects, each branch condition is an expression whose semantic
 type must equal the subject type.
@@ -589,7 +595,6 @@ expression is not supported by the active pipeline.
 - No `else if` syntax.
 - No general member/method access beyond identifier-rooted product field
   chains.
-- No payload binding in `when` branches.
 - No value-producing `when` expression lowering; the active `when` type is
   `Unit`.
 - No indirect calls or first-class function syntax.

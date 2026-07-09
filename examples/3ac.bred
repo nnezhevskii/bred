@@ -93,10 +93,10 @@ fun absorb(audit: FleetAudit, service: ServiceSnapshot): FleetAudit {
         Healthy -> {
             next.healthy = next.healthy + 1
         }
-        Degraded -> {
+        Degraded(score) -> {
             next.degraded = next.degraded + 1
         }
-        Critical -> {
+        Critical(score) -> {
             next.critical = next.critical + 1
         }
         Offline -> {
@@ -114,11 +114,11 @@ fun healthLabel(health: Health): String {
         Healthy -> {
             label = "HEALTHY"
         }
-        Degraded -> {
-            label = "DEGRADED"
+        Degraded(score) -> {
+            label = "DEGRADED(" + intToString(score) + ")"
         }
-        Critical -> {
-            label = "CRITICAL"
+        Critical(score) -> {
+            label = "CRITICAL(" + intToString(score) + ")"
         }
         Offline -> {
             label = "OFFLINE"
@@ -185,8 +185,8 @@ fun main(): Unit {
     println("boxed best score=" + intToString(bestBox.value))
 
     when (checkpoint) {
-        Just -> {
-            println("checkpoint captured for the current best score")
+        Just(bestScore) -> {
+            println("checkpoint captured for best score=" + intToString(bestScore))
         }
         Nothing -> {
             println("no score checkpoint was captured")
@@ -197,8 +197,10 @@ fun main(): Unit {
         NoAlert -> {
             println("decision: ship it")
         }
-        Notify -> {
+        Notify(level, message) -> {
             println("decision: hold deploy and page the owner")
+            println("alert level=" + intToString(level))
+            println("reason: " + message)
         }
     }
 }

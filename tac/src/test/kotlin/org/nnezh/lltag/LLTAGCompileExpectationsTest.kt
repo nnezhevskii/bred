@@ -413,7 +413,7 @@ class LLTAGCompileExpectationsTest {
           val absent: MaybeInt = Nothing
           var result: Int = 0
           when (present) {
-              Just -> { result = 1 }
+              Just(payload) -> { result = payload }
               Nothing -> { result = 0 }
           }
       }
@@ -448,6 +448,15 @@ class LLTAGCompileExpectationsTest {
       tac.any { it.startsWith("LOAD_FIELD") && it.contains("tag:Int") },
       "expected tag load in when lowering, got:\n${tac.joinToString("\n")}",
     )
+    assertTrue(
+      tac.any {
+        it.startsWith("LOAD_FIELD") &&
+          it.contains("present:MaybeInt") &&
+          it.contains("Just_value0:Int") &&
+          it.contains("payload:Int")
+      },
+      "expected Just payload LOAD_FIELD in when lowering, got:\n${tac.joinToString("\n")}",
+    )
   }
 
   @Test
@@ -459,6 +468,15 @@ class LLTAGCompileExpectationsTest {
       fun main(): Unit {
           val response: Response = Success(200, "ok")
           val failed: Response = Failure
+          var result: Int = 0
+          var status: String = ""
+          when (response) {
+              Success(code, message) -> {
+                  result = code
+                  status = message
+              }
+              Failure -> { result = -1 }
+          }
       }
       """.trimIndent(),
     )
@@ -491,6 +509,24 @@ class LLTAGCompileExpectationsTest {
     assertTrue(
       tac.any { it.startsWith("CALL") && it.contains("failed:Response") && it.contains("Failure:Response") },
       "expected Failure nullary constructor call, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
+      tac.any {
+        it.startsWith("LOAD_FIELD") &&
+          it.contains("response:Response") &&
+          it.contains("Success_value:Int") &&
+          it.contains("code:Int")
+      },
+      "expected Success value payload LOAD_FIELD, got:\n${tac.joinToString("\n")}",
+    )
+    assertTrue(
+      tac.any {
+        it.startsWith("LOAD_FIELD") &&
+          it.contains("response:Response") &&
+          it.contains("Success_message:String") &&
+          it.contains("message:String")
+      },
+      "expected Success message payload LOAD_FIELD, got:\n${tac.joinToString("\n")}",
     )
   }
 

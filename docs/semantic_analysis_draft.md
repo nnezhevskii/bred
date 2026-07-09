@@ -446,15 +446,23 @@ type is a known sum type:
 
 - a branch condition written as a bare variable expression is treated as a sum
   variant name;
+- a branch condition written as a function-call expression whose callee is a
+  variant name is treated as a payload pattern, for example `Just(payload)` or
+  `Success(code, message)`;
+- payload pattern arguments must be simple variable names, must match the
+  variant payload arity, must not duplicate or redeclare visible variable
+  names, and are put into a branch-local scope with the corresponding payload
+  field types;
 - duplicate variant branches and unknown variant names are rejected as
   `TYPE_CHECKER_INCOMPATIBLE_TYPES`;
 - a branch condition that is not a bare variant expression is analyzed normally
   and must have the same type as the subject;
 - without `else`, the set of bare variant branches must cover every variant.
 
-All branch bodies are analyzed as blocks in the current scope. The expression
-type stored for `when` is `Unit`; branch result values are not joined into a
-value-producing expression type.
+All branch bodies are analyzed as blocks under a branch-local scope. Payload
+bindings are visible inside the branch body and do not escape after the branch.
+The expression type stored for `when` is `Unit`; branch result values are not
+joined into a value-producing expression type.
 
 ## 10. Control Flow and Returns
 
@@ -557,7 +565,6 @@ entries are maintained in `docs/TODO.md`.
 Important known gaps:
 
 - semantic validation for typeclasses and instances is incomplete;
-- `when` payload binding is not implemented;
 - value-producing `when` expressions are not implemented; the current
   expression type is `Unit`;
 - mixed numeric comparison behavior is still a design decision;

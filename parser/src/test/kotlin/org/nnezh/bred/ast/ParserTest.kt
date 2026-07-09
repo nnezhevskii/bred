@@ -335,6 +335,29 @@ class ParserTest {
     }
 
     @Test
+    fun `when statement parses sum variant payload pattern as branch condition call`() {
+        val root = parse(
+            """
+            fun main(): Unit {
+                when (maybe) {
+                    Just(value) -> { println(value) }
+                    Nothing -> { println("empty") }
+                }
+            }
+            """.trimIndent()
+        )
+
+        val statement = assertInstanceOf(WhenStatementAstNode::class.java, root.functions.single().body.statements.first())
+        val expression = statement.expression
+        val justPattern = assertInstanceOf(FunctionCallExpressionASTNode::class.java, expression.branches[0].condition)
+
+        assertEquals("Just", justPattern.name)
+        assertTrue(justPattern.typeArguments.isEmpty())
+        assertEquals("value", assertInstanceOf(VariableExpressionASTNode::class.java, justPattern.arguments.single()).token.lexeme)
+        assertEquals("Nothing", assertInstanceOf(VariableExpressionASTNode::class.java, expression.branches[1].condition).token.lexeme)
+    }
+
+    @Test
     fun `when expression parses in initializer`() {
         val root = parse(
             """

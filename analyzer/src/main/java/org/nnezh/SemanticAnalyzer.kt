@@ -46,6 +46,8 @@ import org.nnezh.bred.common.TypeSign
 import org.nnezh.bred.common.toTypeRef
 import org.nnezh.bred.context.DeclaredFunctionMeta
 import org.nnezh.bred.context.ProgramGlobalContext
+import org.nnezh.bred.context.SumTypeDefinition
+import org.nnezh.bred.context.SumVariantDefinition
 import java.util.Collections.singletonList
 import java.util.IdentityHashMap
 import kotlin.collections.flatMap
@@ -839,6 +841,11 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
         val fieldType: TypeSign,
     )
 
+    private data class SumBranchPattern(
+        val variant: SumVariantDefinition,
+        val bindings: List<VariableExpressionASTNode>,
+    )
+
     private fun fieldAccessTarget(node: FieldAccessChainExpressionASTNode, scope: Scope): FieldAccessTarget? {
         var ownerType = scope.findVariable(node.root)?.first ?: return null
         var current = node.next ?: return null
@@ -870,14 +877,44 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
 
         node.branches.forEach { branch ->
             val condition = branch.condition
+            val branchScope = scope.innerScope()
             if (condition == null) {
                 hasElse = true
-            } else if (sumDefinition != null && condition is VariableExpressionASTNode) {
-                val variantName = condition.token.lexeme
-                if (sumDefinition.variants.none { it.name == variantName } || !seenVariants.add(variantName)) {
-                    return buildError(condition, SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES).left()
+            } else if (sumDefinition != null) {
+                when (val patternResult = sumBranchPattern(condition, sumDefinition, scope)) {
+                    is SumBranchPatternResult.Error -> return singletonList(patternResult.error).left()
+                    SumBranchPatternResult.NotPattern -> {
+                        visit(condition, scope).fold(
+                            ifLeft = { return it.left() },
+                            ifRight = { warnings.addAll(it) }
+                        )
+                        val conditionType = scope.get(condition)
+                        if (conditionType != subjectType) {
+                            return singletonList(
+                                SemanticError.TypeSemanticError(
+                                    condition,
+                                    SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
+                                    SemanticDiagnosticDetail.TypeMismatch(
+                                        "match when branch against ${subjectType.render()}",
+                                        subjectType,
+                                        conditionType,
+                                    )
+                                )
+                            ).left()
+                        }
+                    }
+                    is SumBranchPatternResult.Pattern -> {
+                        val pattern = patternResult.pattern
+                        if (!seenVariants.add(pattern.variant.name)) {
+                            return buildError(condition, SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES).left()
+                        }
+                        scope.put(condition, subjectType)
+                        pattern.bindings.zip(pattern.variant.fields).forEach { (binding, field) ->
+                            branchScope.put(binding.token.lexeme, field.type, false)
+                            branchScope.put(binding, field.type)
+                        }
+                    }
                 }
-                scope.put(condition, subjectType)
             } else {
                 visit(condition, scope).fold(
                     ifLeft = { return it.left() },
@@ -899,7 +936,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                 }
             }
 
-            visit(branch.bodyBlock, scope).fold(
+            visit(branch.bodyBlock, branchScope).fold(
                 ifLeft = { return it.left() },
                 ifRight = { warnings.addAll(it) }
             )
@@ -923,6 +960,67 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
         scope.put(node, unitType())
         return warnings.right()
     }
+
+    private sealed interface SumBranchPatternResult {
+        data class Pattern(val pattern: SumBranchPattern) : SumBranchPatternResult
+        object NotPattern : SumBranchPatternResult
+        data class Error(val error: SemanticError) : SumBranchPatternResult
+    }
+
+    private fun sumBranchPattern(
+        condition: ExpressionASTNode,
+        sumDefinition: SumTypeDefinition,
+        scope: Scope,
+    ): SumBranchPatternResult {
+        val variant = when (condition) {
+            is VariableExpressionASTNode -> sumDefinition.variants.singleOrNull { it.name == condition.token.lexeme }
+                ?: return SumBranchPatternResult.Error(sumPatternError(condition, "unknown sum variant '${condition.token.lexeme}'."))
+            is FunctionCallExpressionASTNode -> sumDefinition.variants.singleOrNull { it.name == condition.name }
+                ?: return SumBranchPatternResult.NotPattern
+            else -> return SumBranchPatternResult.NotPattern
+        }
+
+        if (condition is VariableExpressionASTNode) {
+            return SumBranchPatternResult.Pattern(SumBranchPattern(variant, emptyList()))
+        }
+
+        condition as FunctionCallExpressionASTNode
+        if (condition.arguments.size != variant.fields.size) {
+            return SumBranchPatternResult.Error(
+                sumPatternError(
+                    condition,
+                    "variant '${variant.name}' expects ${variant.fields.size} payload binding(s), got ${condition.arguments.size}.",
+                )
+            )
+        }
+
+        val bindings = mutableListOf<VariableExpressionASTNode>()
+        val seenNames = mutableSetOf<String>()
+        condition.arguments.forEach { argument ->
+            val binding = argument as? VariableExpressionASTNode
+                ?: return SumBranchPatternResult.Error(sumPatternError(argument, "sum payload binding must be a variable name."))
+            val bindingName = binding.token.lexeme
+            if (!seenNames.add(bindingName) || scope.findVariable(bindingName) != null) {
+                return SumBranchPatternResult.Error(
+                    SemanticError.TypeSemanticError(
+                        binding,
+                        SemanticErrorType.VARIABLE_REDECLARATION,
+                        SemanticDiagnosticDetail.VariableRedeclaration(bindingName),
+                    )
+                )
+            }
+            bindings.add(binding)
+        }
+
+        return SumBranchPatternResult.Pattern(SumBranchPattern(variant, bindings))
+    }
+
+    private fun sumPatternError(node: ASTNode, message: String): SemanticError =
+        SemanticError.TypeSemanticError(
+            node,
+            SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
+            SemanticDiagnosticDetail.ControlFlow(message),
+        )
 
     private fun unitType(): TypeSign = globalContext.unitType
 

@@ -197,8 +197,10 @@ The active `when` support is statement-oriented:
 
 - for a sum-typed subject, branch conditions written as bare variant names are
   checked against the subject's variants;
+- variant patterns such as `Just(payload)` and `Success(code, message)` bind
+  payload fields positionally as immutable branch-local variables; binding
+  names must be unique and may not redeclare visible variables;
 - a sum `when` without `else` must cover all variants exactly once;
-- payload binding is not modelled yet;
 - the semantic type of `when` is `Unit`.
 
 TAC lowers sum declarations to by-value tagged structs. The generated struct
@@ -210,6 +212,10 @@ calls as designated compound literals such as:
 ```c
 (MaybeInt){.tag = 1, .Just_value0 = value}
 ```
+
+For sum `when` payload patterns, TAC first checks the `tag` and then emits
+`LOAD_FIELD` instructions from flattened payload fields into the branch-local
+binding variables.
 
 The current backend does not use a heap allocation, pointer, or C union model
 for sum values.
@@ -297,11 +303,11 @@ Coverage exists at these layers:
   product fields, and generic product/sum constructors;
 - analyzer tests check resolved global primitive types and template-generated
   code, product field mutability, sum constructors, and sum `when`
-  exhaustiveness;
+  exhaustiveness/payload binding;
 - TAC tests check mangled generic-array functions, `Long` lowering, and that
   internal type class names such as `TypeRef` or `PrimitiveTypeSign` do not
   leak into 3AC output; they also cover product/sum struct metadata and sum
-  `when` tag lowering;
+  `when` tag/payload lowering;
 - C backend tests check primitive rendering including `Long -> long long` and
   sum constructor compound literals;
 - root tests compile `examples/3ac.bred` through the active front end.

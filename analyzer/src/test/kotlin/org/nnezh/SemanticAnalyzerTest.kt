@@ -778,6 +778,141 @@ class SemanticAnalyzerTest {
     }
 
     @Test
+    fun `when over sum binds positional payload in branch body`() {
+        assertNoSemanticDiagnostics(
+            """
+            type MaybeInt = Nothing | Just<Int>
+
+            fun main(): Unit {
+                val maybe: MaybeInt = Just(41)
+                var result: Int = 0
+                when (maybe) {
+                    Just(payload) -> { result = payload + 1 }
+                    Nothing -> { result = -1 }
+                }
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `when over sum binds named payload fields positionally`() {
+        assertNoSemanticDiagnostics(
+            """
+            type Response = Success(value: Int, message: String) | Failure
+
+            fun main(): Unit {
+                val response: Response = Success(200, "ok")
+                var result: Int = 0
+                when (response) {
+                    Success(code, text) -> {
+                        val copy: String = text
+                        result = code
+                    }
+                    Failure -> { result = -1 }
+                }
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `when over sum rejects payload binding count mismatch`() {
+        assertSingleSemanticError(
+            """
+            type MaybeInt = Nothing | Just<Int>
+
+            fun main(): Unit {
+                val maybe: MaybeInt = Just(1)
+                when (maybe) {
+                    Just(payload, extra) -> { println("present") }
+                    Nothing -> { println("empty") }
+                }
+            }
+            """.trimIndent(),
+            SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
+            FunctionCallExpressionASTNode::class.java,
+        )
+    }
+
+    @Test
+    fun `when over sum rejects non variable payload binding`() {
+        assertSingleSemanticError(
+            """
+            type MaybeInt = Nothing | Just<Int>
+
+            fun main(): Unit {
+                val maybe: MaybeInt = Just(1)
+                when (maybe) {
+                    Just(1) -> { println("present") }
+                    Nothing -> { println("empty") }
+                }
+            }
+            """.trimIndent(),
+            SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
+        )
+    }
+
+    @Test
+    fun `when over sum rejects duplicate payload binding name`() {
+        assertSingleSemanticError(
+            """
+            type PairBox = Empty | Pair<Int, Int>
+
+            fun main(): Unit {
+                val box: PairBox = Pair(1, 2)
+                when (box) {
+                    Pair(item, item) -> { println(intToString(item)) }
+                    Empty -> { println("empty") }
+                }
+            }
+            """.trimIndent(),
+            SemanticErrorType.VARIABLE_REDECLARATION,
+            VariableExpressionASTNode::class.java,
+        )
+    }
+
+    @Test
+    fun `when over sum rejects payload binding that redeclares visible variable`() {
+        assertSingleSemanticError(
+            """
+            type MaybeInt = Nothing | Just<Int>
+
+            fun main(): Unit {
+                val payload: Int = 0
+                val maybe: MaybeInt = Just(1)
+                when (maybe) {
+                    Just(payload) -> { println(intToString(payload)) }
+                    Nothing -> { println("empty") }
+                }
+            }
+            """.trimIndent(),
+            SemanticErrorType.VARIABLE_REDECLARATION,
+            VariableExpressionASTNode::class.java,
+        )
+    }
+
+    @Test
+    fun `when payload binding is scoped to its branch body`() {
+        assertSingleSemanticError(
+            """
+            type MaybeInt = Nothing | Just<Int>
+
+            fun main(): Unit {
+                val maybe: MaybeInt = Just(1)
+                when (maybe) {
+                    Just(payload) -> { println(intToString(payload)) }
+                    Nothing -> { println("empty") }
+                }
+                val leaked: Int = payload
+            }
+            """.trimIndent(),
+            SemanticErrorType.UNKNOWN_VARIABLE,
+            VariableExpressionASTNode::class.java,
+        )
+    }
+
+    @Test
     fun `when over sum may use else for remaining variants`() {
         assertNoSemanticDiagnostics(
             """
