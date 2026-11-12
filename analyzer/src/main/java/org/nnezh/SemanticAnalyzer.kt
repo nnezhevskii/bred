@@ -41,6 +41,8 @@ import org.nnezh.bred.ast.WhenExpressionASTNode
 import org.nnezh.bred.ast.WhenStatementAstNode
 import org.nnezh.bred.ast.WhileStatementAstNode
 import org.nnezh.bred.common.FunctionSignature
+import org.nnezh.bred.common.SymbolId
+import org.nnezh.bred.common.SymbolIdGenerator
 import org.nnezh.bred.common.TypeRef
 import org.nnezh.bred.common.TypeSign
 import org.nnezh.bred.common.toTypeRef
@@ -51,15 +53,18 @@ import org.nnezh.bred.context.SumVariantDefinition
 import java.util.Collections.singletonList
 import java.util.IdentityHashMap
 import kotlin.collections.flatMap
+import kotlin.collections.listOf
 import kotlin.collections.set
 
 data class SemanticAnalysisResult(
     val warnings: List<SemanticError.SemanticWarning>,
     val expressionTypes: Map<ExpressionASTNode, TypeSign>,
+    val resolvedSymbols: Map<ASTNode, SymbolId>,
 )
 
 class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
     private val typeValidator = TypeValidator(globalContext)
+    private val idGenerator: SymbolIdGenerator = SymbolIdGenerator()
 
     fun analyze(root: ProgramRoot): Either<List<SemanticError>, List<SemanticError.SemanticWarning>> {
         return analyzeWithResult(root).fold(
@@ -71,7 +76,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
     fun analyzeWithResult(root: ProgramRoot): Either<List<SemanticError>, SemanticAnalysisResult> {
         val scope = Scope()
 
-        globalContext.externFunctionSignatures.forEach { scope.registerFunction(it) }
+        globalContext.externFunctionSignatures.forEach { scope.registerFunction(idGenerator.nextFunction(it.name, isExtern = true), it) }
 
         root.globalVariables.forEach {
             visit(it, scope).fold(
@@ -94,18 +99,23 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                     )
                 ).left()
             }
+            val fnId = idGenerator.nextFunction(name, isExtern = false)
+            scope.bindSymbol(function, fnId) // связываем само объявление функции с её ID
             scope.registerFunction(
-                FunctionSignature(
-                    name,
-                    args,
-                    function.result
-                )
+                id = fnId,
+                function = FunctionSignature(name, args, function.result)
             )
         }
 
         return visit(root, scope).fold(
             ifLeft = { it.left() },
-            ifRight = { SemanticAnalysisResult(it, scope.expressionTypesSnapshot()).right() },
+            ifRight = {
+                SemanticAnalysisResult(
+                    warnings = it,
+                    expressionTypes = scope.expressionTypesSnapshot(),
+                    resolvedSymbols = scope.resolvedSymbolsSnapshot(),
+                ).right()
+            },
         )
     }
 
@@ -129,9 +139,21 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
 
             is FunctionDeclAstNode -> {
                 val newScope = scope.innerScope(node.result)
+                val paramWarnings = mutableListOf<SemanticError.SemanticWarning>()
                 node.arguments.forEach { arg ->
                     val argType = if (arg.isArray) globalContext.arrayOf(arg.type) else arg.type
-                    newScope.put(arg.name, argType, false)
+                    declareVariable(
+                        node = node,
+                        name = arg.name,
+                        id = idGenerator.nextParam(arg.name),
+                        type = argType,
+                        isMutable = false,
+                        scope = newScope, // <-- в newScope, не в scope!
+                        warnings = paramWarnings,
+                    ).fold(
+                        ifLeft = { return it.left() },
+                        ifRight = {}
+                    )
                 }
                 visit(node.body, newScope).fold(
                     ifLeft = { return it.left() },
@@ -146,7 +168,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                                 )
                             ).left()
                         }
-                        return warnings.right()
+                        return (paramWarnings + warnings).right()
                     }
                 )
             }
@@ -172,19 +194,18 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
 
             is DeclareGlobalVariableASTNode -> {
                 val warnings = mutableListOf<SemanticError.SemanticWarning>()
-                val pair = scope.findVariable(node.name)
-                if (pair != null) {
-                    if (pair.second == 0) {
-                        return singletonList(
-                            SemanticError.TypeSemanticError(
-                                node,
-                                SemanticErrorType.VARIABLE_REDECLARATION,
-                                SemanticDiagnosticDetail.VariableRedeclaration(node.name)
-                            )
-                        ).left()
-                    }
-                    warnings.add(SemanticError.SemanticWarning(node, SemanticErrorType.VARIABLE_OVERSHADOW))
-                }
+                declareVariable(
+                    node = node,
+                    name = node.name,
+                    id = idGenerator.nextLocal(node.name), // или nextGlobal для глобальной
+                    type = node.type,                      // или node.scopeType() для глобальной
+                    isMutable = node.isMutable,
+                    scope = scope,
+                    warnings = warnings,
+                ).fold(
+                    ifLeft = { return it.left() },
+                    ifRight = {}
+                )
 
                 val declaredType = requireNotNull(node.type) { "global variable type is required" }
                 val arraySize = node.size
@@ -246,7 +267,16 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
 
                 }
 
-                scope.put(node.name, node.scopeType(), node.isMutable)
+                declareVariable(
+                    node = node,
+                    scope = scope,
+                    name = node.name,
+                    id = idGenerator.nextGlobal(node.name),
+                    type = node.scopeType(),
+                    isMutable = node.isMutable,
+                    warnings = warnings,
+                )
+
                 return warnings.right()
             }
 
@@ -279,12 +309,12 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                     )
                 ).left()
 
-                if (!variable.isArray) {
+                if (!variable.type.isArray) {
                     return singletonList(
                         SemanticError.VariableScopeSemanticError(
                             node,
                             SemanticErrorType.ARRAY_IS_EXPECTED_BUT_GOT_SCALAR,
-                            SemanticDiagnosticDetail.ArrayExpected(node.name, variable)
+                            SemanticDiagnosticDetail.ArrayExpected(node.name, variable.type)
                         )
                     ).left()
                 }
@@ -303,7 +333,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                                 )
                             ).left()
                         } else {
-                            scope.put(node, scope.findVariable(node.name)!!.first.elementTypeOrNull!!)
+                            scope.put(node, scope.findVariable(node.name)!!.first.type.elementTypeOrNull!!)
                             warnings.right()
                         }
 
@@ -447,7 +477,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                         )
                     ).left()
                 } else {
-                    scope.put(node, type)
+                    scope.put(node, type.type)
                     return emptyList<SemanticError.SemanticWarning>().right()
                 }
             }
@@ -569,8 +599,15 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                         scope.endInitializing(node.name)
                     }
                 }
-                val type = node.type.asArrayType()
-                scope.put(node.name, type , node.isMutable)
+                declareVariable(
+                    node = node,
+                    scope = scope,
+                    name = node.name,
+                    id = idGenerator.nextLocal(node.name),
+                    type = node.type.asArrayType(),
+                    isMutable = node.isMutable,
+                    warnings = warnings,
+                )
                 return warnings.right()
             }
 
@@ -614,7 +651,15 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                         )
                     ).left()
                 }
-                scope.put(node.name, node.type, node.isMutable)
+                declareVariable(
+                    node = node,
+                    scope = scope,
+                    name = node.name,
+                    id = idGenerator.nextLocal(node.name),
+                    type = node.type,
+                    isMutable = node.isMutable,
+                    warnings = warnings,
+                )
                 return warnings.right()
             }
 
@@ -739,26 +784,49 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
         }
     }
 
+    private data class VariableBinding(
+        val id: SymbolId,
+        val type: TypeSign,
+        val isMutable: Boolean
+    )
+
+    private data class FunctionBinding(
+        val id: SymbolId.Function,
+        val signature: FunctionSignature,
+    )
 
     private data class Scope(
         val parentScope: Scope? = null,
-        private val variablesType: MutableMap<String, Pair<TypeSign, Boolean>> = mutableMapOf(),
+        private val variables: MutableMap<String, VariableBinding> = mutableMapOf(),
         private val expressionTypeTable: IdentityHashMap<ExpressionASTNode, TypeSign> = IdentityHashMap(),
-        private val registeredFunctions: MutableList<FunctionSignature> = mutableListOf(),
+        private val resolvedSymbols: IdentityHashMap<ASTNode, SymbolId> = IdentityHashMap(),
+        private val registeredFunctions: MutableList<FunctionBinding> = mutableListOf(),
         private val initializingVariables: MutableSet<String> = mutableSetOf(),
+
         val expectedReturnType: TypeSign? = null,
         val checkControlFlow: Boolean = true
     ) {
 
-        fun innerScope(expectedReturnType: TypeSign? = this.expectedReturnType) =
-            Scope(this, mutableMapOf(), expressionTypeTable, mutableListOf(), mutableSetOf(), expectedReturnType, checkControlFlow)
-
-        fun withControlFlowChecks(enabled: Boolean) =
-            Scope(parentScope, variablesType, expressionTypeTable, registeredFunctions, initializingVariables, expectedReturnType, enabled)
-
-        fun put(variable: String, type: TypeSign, isMutable: Boolean) {
-            variablesType[variable] = Pair(type, isMutable)
+        fun putVariable(name: String, binding: VariableBinding) {
+            variables[name] = binding
         }
+
+        fun bindSymbol(node: ASTNode, symbolId: SymbolId) {
+            resolvedSymbols[node] = symbolId
+        }
+
+        fun innerScope(expectedReturnType: TypeSign? = this.expectedReturnType) = Scope(
+            parentScope = this,
+            variables = mutableMapOf(),
+            expressionTypeTable = expressionTypeTable, // общий на весь файл
+            resolvedSymbols = resolvedSymbols,         // общий на весь файл!
+            registeredFunctions = mutableListOf(),
+            initializingVariables = mutableSetOf(),
+            expectedReturnType = expectedReturnType,
+            checkControlFlow = checkControlFlow,
+        )
+
+        fun withControlFlowChecks(enabled: Boolean) = copy(checkControlFlow = enabled)
 
         fun beginInitializing(variable: String) {
             initializingVariables.add(variable)
@@ -775,15 +843,15 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
             expressionTypeTable[expression] = type
         }
 
-        fun registerFunction(function: FunctionSignature) {
-            registeredFunctions.add(function)
+        fun registerFunction(id: SymbolId.Function, function: FunctionSignature) {
+            registeredFunctions.add(FunctionBinding(id, function))
         }
 
         fun expressionTypesSnapshot(): Map<ExpressionASTNode, TypeSign> =
             IdentityHashMap(expressionTypeTable)
 
         fun functionExist(name: String): Boolean { // any function with this name exist. Signature may differ
-            if (registeredFunctions.any { it.name == name }) {
+            if (registeredFunctions.any { it.signature.name == name }) {
                 return true
             }
             if (parentScope == null) {
@@ -793,32 +861,29 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
         }
 
         fun functionCandidates(name: String): List<FunctionSignature> =
-            registeredFunctions.filter { it.name == name } + (parentScope?.functionCandidates(name) ?: emptyList())
+            (registeredFunctions.filter { it.signature.name == name }).map { it.signature } + (parentScope?.functionCandidates(name) ?: emptyList())
+
 
         fun getFunction(name: String, args: List<TypeSign>): FunctionSignature? {
-            return registeredFunctions.find {
-                it.name == name &&
-                        it.args == args
-            } ?: parentScope?.getFunction(name, args)
+            return (registeredFunctions.find { binding ->
+                binding.signature.name == name &&
+                        binding.signature.args == args
+            }?.signature ?: parentScope?.getFunction(name, args))
         }
 
-        private fun get(variable: String): TypeSign? = variablesType[variable]?.first ?: parentScope?.get(variable)
         fun get(expression: ExpressionASTNode): TypeSign? = expressionTypeTable[expression]
 
-
-        fun findVariable(variable: String): Pair<TypeSign, Int>? {
-            if (variablesType[variable] != null) {
-                return Pair(variablesType[variable]!!.first, 0)
+        fun findVariable(variable: String): Pair<VariableBinding, Int>? {
+            val local = variables[variable]
+            if (local != null) {
+                return Pair(local, 0)
             }
-            if (parentScope == null) {
-                return null
-            }
-            val pair = parentScope.findVariable(variable) ?: return null
-            return Pair(pair.first, pair.second + 1)
+            val parentPair = parentScope?.findVariable(variable) ?: return null
+            return Pair(parentPair.first, parentPair.second + 1)
         }
 
         fun isMutable(variable: String): Boolean {
-            return variablesType[variable]?.second ?: parentScope?.isMutable(variable) ?: false
+            return variables[variable]?.isMutable ?: parentScope?.isMutable(variable) ?: false
         }
     }
 
@@ -847,7 +912,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
     )
 
     private fun fieldAccessTarget(node: FieldAccessChainExpressionASTNode, scope: Scope): FieldAccessTarget? {
-        var ownerType = scope.findVariable(node.root)?.first ?: return null
+        var ownerType: TypeSign = scope.findVariable(node.root)?.first?.type ?: return null
         var current = node.next ?: return null
         while (true) {
             val fields = productFields(ownerType) ?: return null
@@ -910,7 +975,15 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                         }
                         scope.put(condition, subjectType)
                         pattern.bindings.zip(pattern.variant.fields).forEach { (binding, field) ->
-                            branchScope.put(binding.token.lexeme, field.type, false)
+                            declareVariable(
+                                node = node,
+                                scope = scope,
+                                name = binding.token.lexeme,
+                                id = idGenerator.nextLocal(binding.token.lexeme),
+                                type = field.type,
+                                isMutable = false,
+                                warnings = warnings,
+                            )
                             branchScope.put(binding, field.type)
                         }
                     }
@@ -1187,6 +1260,33 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
             )
         )
 
+    }
+
+    private fun declareVariable(
+        node: ASTNode,
+        name: String,
+        id: SymbolId,
+        type: TypeSign,
+        isMutable: Boolean,
+        scope: Scope,
+        warnings: MutableList<SemanticError.SemanticWarning>,
+    ): Either<List<SemanticError>, Unit> {
+        val existing = scope.findVariable(name)
+        if (existing != null) {
+            if (existing.second == 0) {
+                return singletonList(
+                    SemanticError.TypeSemanticError(
+                        node,
+                        SemanticErrorType.VARIABLE_REDECLARATION,
+                        SemanticDiagnosticDetail.VariableRedeclaration(name)
+                    )
+                ).left()
+            }
+            warnings.add(SemanticError.SemanticWarning(node, SemanticErrorType.VARIABLE_OVERSHADOW))
+        }
+        scope.putVariable(name, VariableBinding(id, type, isMutable))
+        scope.bindSymbol(node, id) // Запоминаем ID самого объявления для 3АК!
+        return Unit.right()
     }
 
     private fun List<TypeSign>.renderArguments(): String =

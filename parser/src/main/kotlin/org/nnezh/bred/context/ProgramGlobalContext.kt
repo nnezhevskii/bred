@@ -22,24 +22,15 @@ class ProgramGlobalContext(
     val instances: MutableMap<InstanceKey, InstanceMeta> = mutableMapOf(),
     val externalFunctionSpecs: List<ExternalFunctionSpecs.ExternalFunctionSpec> = ExternalFunctionSpecs.specs,
 ) {
-    val intType: TypeSign
-    val longType: TypeSign
-    val doubleType: TypeSign
-    val stringType: TypeSign
-    val booleanType: TypeSign
-    val unitType: TypeSign
+    val intType: TypeSign = typeRegistry.declarePrimitive(TypeNames.INT)
+    val longType: TypeSign = typeRegistry.declarePrimitive(TypeNames.LONG)
+    val doubleType: TypeSign = typeRegistry.declarePrimitive(TypeNames.DOUBLE)
+    val stringType: TypeSign = typeRegistry.declarePrimitive(TypeNames.STRING)
+    val booleanType: TypeSign = typeRegistry.declarePrimitive(TypeNames.BOOLEAN)
+    val unitType: TypeSign = typeRegistry.declarePrimitive(TypeNames.UNIT)
 
     val types: Map<String, TypeSign>
         get() = typeRegistry.allTypes().associateBy { it.name }
-
-    init {
-        intType = typeRegistry.declarePrimitive(TypeNames.INT)
-        longType = typeRegistry.declarePrimitive(TypeNames.LONG)
-        doubleType = typeRegistry.declarePrimitive(TypeNames.DOUBLE)
-        stringType = typeRegistry.declarePrimitive(TypeNames.STRING)
-        booleanType = typeRegistry.declarePrimitive(TypeNames.BOOLEAN)
-        unitType = typeRegistry.declarePrimitive(TypeNames.UNIT)
-    }
 
     val externFunctionSignatures: List<FunctionSignature>
         get() = ExternalFunctionSpecs.signatures(externalFunctionSpecs) { ref -> resolveOrThrow(ref) }
