@@ -24,11 +24,11 @@ lbl3:
   STORE a:Array var20:Int temp:Int
 lbl5:
   ASSIGN var23:Int 1:Int
-  ADD j:Int j:Int var23:Int
+  ADD_i32 j:Int j:Int var23:Int
   JMP lbl3
 lbl4:
   ASSIGN var25:Int 1:Int
-  ADD i:Int i:Int var25:Int
+  ADD_i32 i:Int i:Int var25:Int
   JMP lbl1
 lbl2:
   RET Unit
@@ -48,7 +48,7 @@ lbl6:
   CALL var30:Int random:Int 2:Int
   STORE arr:Array var29:Int var30:Int
   ASSIGN var34:Int 1:Int
-  ADD i:Int i:Int var34:Int
+  ADD_i32 i:Int i:Int var34:Int
   JMP lbl6
 lbl7:
   PARAM arr:Array
@@ -106,7 +106,7 @@ lbl10:
   ASSIGN var68:String  :String
   ADD buff:String var62:String var68:String
   ASSIGN var70:Int 1:Int
-  ADD i:Int i:Int var70:Int
+  ADD_i32 i:Int i:Int var70:Int
   JMP lbl10
 lbl11:
   ASSIGN var76:Int 1:Int

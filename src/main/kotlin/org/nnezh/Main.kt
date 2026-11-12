@@ -1,14 +1,16 @@
 package org.nnezh
 
+import java.io.IOException
 import kotlin.system.exitProcess
 
 private const val DEFAULT_SOURCE_PATH = "examples/3ac.bred"
 private const val DEFAULT_EXE_OUTPUT_PATH = "main.exe"
+private const val GENERATED_EXECUTABLE_PREFIX = "Generated executable: "
 
 fun main(args: Array<String>) {
     val sourcePath = args.getOrNull(0) ?: DEFAULT_SOURCE_PATH
     val exeOutputPath = args.getOrNull(1) ?: DEFAULT_EXE_OUTPUT_PATH
-    val keepIntermediateC = args.getOrNull(2)?.toBooleanStrictOrNull() ?: false
+    val keepIntermediateC = args.getOrNull(2)?.toBooleanStrictOrNull() ?: true
     val standardLibraryProvider = StandardLibraryProvider()
 
     val cLines = BredToCCompilerFactory(standardLibraryProvider = standardLibraryProvider)
@@ -29,12 +31,27 @@ fun main(args: Array<String>) {
     )
 
     messages.forEach(::println)
-    val hasError = messages.any { message ->
-        message.contains("error", ignoreCase = true) ||
-            message.contains("failed", ignoreCase = true) ||
-            message.contains("not found", ignoreCase = true)
-    }
-    if (hasError) {
+    val executablePath = messages.lastOrNull()
+        ?.takeIf { it.startsWith(GENERATED_EXECUTABLE_PREFIX) }
+        ?.removePrefix(GENERATED_EXECUTABLE_PREFIX)
+        ?: exitProcess(1)
+
+    val process = try {
+        ProcessBuilder(executablePath)
+            .inheritIO()
+            .start()
+    } catch (error: IOException) {
+        System.err.println("Could not start executable $executablePath: ${error.message}")
         exitProcess(1)
     }
+
+    val exitCode = try {
+        process.waitFor()
+    } catch (error: InterruptedException) {
+        process.destroy()
+        Thread.currentThread().interrupt()
+        System.err.println("Executable run was interrupted: ${error.message}")
+        exitProcess(1)
+    }
+    exitProcess(exitCode)
 }

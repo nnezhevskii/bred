@@ -4,6 +4,9 @@
 #include <time.h>
 #include <string.h>
 #include <math.h>
+#include <stdint.h>
+#include <limits.h>
+#include <stdio.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -286,6 +289,15 @@ String doubleToString(double val) {
 // 18. random(min, max) -> Int
 int random(int min, int max) {
     return rand() % (max - min + 1) + min;
+}
+
+int checked_add_i32(int a, int b, const char *position) {
+    int64_t result = (int64_t)a + b;
+    if (result < INT32_MIN || result > INT32_MAX) {
+        fprintf(stderr, "Integer overflow at %s\n", position);
+        exit(1);
+    }
+    return (int) result;
 }
 
 long long currentTimeMillis() {

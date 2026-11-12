@@ -210,7 +210,7 @@ class CTranspile {
                 val dest = instruction.expectLeftValue(instruction.destination, "destination").asLeftValue()
                 val value = instruction.expectRightValue(instruction.arg1, "arg1").asRightValue()
 
-
+                // TODO change it
                 if (destination.type.isStringType()) {
                     val escaped = escapeCString(value)
                     cCode.add("$dest = create_string(\"$escaped\", strlen(\"$escaped\"));")
@@ -231,6 +231,12 @@ class CTranspile {
             LLTACOperation.LLTAC_OR -> {
                 cCode.add(generateSimpleOperation(instruction))
             }
+
+
+            LLTACOperation.LLTAC_ADD_I32 -> {
+                cCode.add(generateSafeOperation(instruction))
+            }
+
             LLTACOperation.LLTAC_CALL -> {
                 val callingFunctionName = instruction.expectFunctionCall(instruction.arg1, "arg1").name
                 val destination = instruction.destination as? LeftValue
@@ -320,6 +326,7 @@ class CTranspile {
             LLTACOperation.LLTAC_FIELD,
             LLTACOperation.LLTAC_SUM_VARIANT,
             LLTACOperation.LLTAC_SUM_VARIANT_FIELD -> { /* emitted before function prototypes */ }
+
         }
         } catch (error: CTranspileException) {
             throw CTranspileException(
@@ -408,6 +415,22 @@ class CTranspile {
         return listOf(
             returnInstruction
         )
+    }
+
+    private fun generateSafeOperation(instruction: LLTACInstruction): String {
+        val left = instruction.expectLeftValue(instruction.destination, "destination").asLeftValue()
+        val arg1 = instruction.expectLeftValue(instruction.arg1, "arg1").asLeftValue()
+        val arg2 = instruction.expectLeftValue(instruction.arg2, "arg2").asLeftValue()
+
+        when (instruction.opcode) {
+            LLTACOperation.LLTAC_ADD_I32 -> {
+                return "${left}=checked_add_i32(${arg1}, ${arg2}, \"${instruction.location ?: "<no location>"}\");"
+            }
+            else -> {
+                throw CTranspileException("Unsupported safe TAC opcode ${instruction.opcode} in instruction: $instruction")
+            }
+        }
+
     }
 
     private fun generateSimpleOperation(instruction: LLTACInstruction): String {

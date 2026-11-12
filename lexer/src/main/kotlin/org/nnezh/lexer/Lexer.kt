@@ -100,7 +100,7 @@ class Lexer(private val source: String) {
                 ?: raise(LexerError.InvalidNumber(start, "Invalid double literal: $text"))
             Token.Literal.DoubleLiteral(value, text, start)
         } else {
-            val value = text.toLongOrNull()
+            val value = text.toIntOrNull()
                 ?: raise(LexerError.InvalidNumber(start, "Integer literal out of range: $text"))
             Token.Literal.IntLiteral(value, text, start)
         }

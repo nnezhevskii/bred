@@ -20,6 +20,11 @@ enum class LLTACOperation {
     LLTAC_ADD {
         override fun toString() = "ADD"
     },
+
+    LLTAC_ADD_I32 {
+        override fun toString() = "ADD_i32"
+    },
+
     LLTAC_SUB {
         override fun toString() = "SUB"
     },

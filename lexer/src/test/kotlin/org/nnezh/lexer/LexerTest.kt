@@ -124,7 +124,7 @@ class LexerTest {
     fun `integer literals are parsed with their numeric value`() {
         val tokens = meaningfulTokens("0 7 42 1000000")
         val literals = tokens.map { assertInstanceOf(Token.Literal.IntLiteral::class.java, it) }
-        assertEquals(listOf(0L, 7L, 42L, 1_000_000L), literals.map { it.value })
+        assertEquals(listOf(0, 7, 42, 1_000_000), literals.map { it.value })
     }
 
     @Test
@@ -150,7 +150,7 @@ class LexerTest {
         assertEquals(2, tokens.size)
         assertInstanceOf(Token.Punctuation.Dot::class.java, tokens[0])
         val int = assertInstanceOf(Token.Literal.IntLiteral::class.java, tokens[1])
-        assertEquals(5L, int.value)
+        assertEquals(5, int.value)
     }
 
     @Test
@@ -169,7 +169,7 @@ class LexerTest {
         val tokens = meaningfulTokens("3.")
         assertEquals(2, tokens.size)
         val int = assertInstanceOf(Token.Literal.IntLiteral::class.java, tokens[0])
-        assertEquals(3L, int.value)
+        assertEquals(3, int.value)
         assertInstanceOf(Token.Punctuation.Dot::class.java, tokens[1])
     }
 

@@ -28,7 +28,7 @@ func fillData:
   PARAM seed:Int
   CALL var16:Int positiveSeed:Int 1:Int
   ASSIGN var18:Int 17:Int
-  ADD state:Int var16:Int var18:Int
+  ADD_i32 state:Int var16:Int var18:Int
   ASSIGN i:Int 0:Int
   ASSIGN _right_borderi:Int size:Int
 lbl4:
@@ -37,7 +37,7 @@ lbl4:
   ASSIGN var25:Int 37:Int
   MUL var23:Int state:Int var25:Int
   ASSIGN var26:Int 23:Int
-  ADD var22:Int var23:Int var26:Int
+  ADD_i32 var22:Int var23:Int var26:Int
   ASSIGN var27:Int 101:Int
   MOD state:Int var22:Int var27:Int
   ASSIGN var28:Int i:Int
@@ -45,7 +45,7 @@ lbl4:
   SUB var29:Int state:Int var31:Int
   STORE arr:Array var28:Int var29:Int
   ASSIGN var33:Int 1:Int
-  ADD i:Int i:Int var33:Int
+  ADD_i32 i:Int i:Int var33:Int
   JMP lbl4
 lbl5:
   RET Unit
@@ -62,7 +62,7 @@ lbl6:
   LOAD var40:Int source:Array i:Int
   STORE target:Array var37:Int var40:Int
   ASSIGN var42:Int 1:Int
-  ADD i:Int i:Int var42:Int
+  ADD_i32 i:Int i:Int var42:Int
   JMP lbl6
 lbl7:
   RET Unit
@@ -76,9 +76,9 @@ lbl8:
   LT var43:Boolean i:Int _right_borderi:Int
   JMP_IF_NOT lbl9 var43:Boolean
   LOAD var49:Int arr:Array i:Int
-  ADD total:Int total:Int var49:Int
+  ADD_i32 total:Int total:Int var49:Int
   ASSIGN var51:Int 1:Int
-  ADD i:Int i:Int var51:Int
+  ADD_i32 i:Int i:Int var51:Int
   JMP lbl8
 lbl9:
   RET total:Int
@@ -105,7 +105,7 @@ lbl11:
   ASSIGN result:Int var68:Int
 lbl13:
   ASSIGN var70:Int 1:Int
-  ADD i:Int i:Int var70:Int
+  ADD_i32 i:Int i:Int var70:Int
   JMP lbl11
 lbl12:
   RET result:Int
@@ -132,7 +132,7 @@ lbl15:
   ASSIGN result:Int var87:Int
 lbl17:
   ASSIGN var89:Int 1:Int
-  ADD i:Int i:Int var89:Int
+  ADD_i32 i:Int i:Int var89:Int
   JMP lbl15
 lbl16:
   RET result:Int
@@ -150,10 +150,10 @@ lbl18:
   LT var94:Boolean var97:Int threshold:Int
   JMP_IF_NOT lbl20 var94:Boolean
   ASSIGN var100:Int 1:Int
-  ADD count:Int count:Int var100:Int
+  ADD_i32 count:Int count:Int var100:Int
 lbl20:
   ASSIGN var102:Int 1:Int
-  ADD i:Int i:Int var102:Int
+  ADD_i32 i:Int i:Int var102:Int
   JMP lbl18
 lbl19:
   RET count:Int
@@ -171,10 +171,10 @@ lbl21:
   GE var107:Boolean var110:Int threshold:Int
   JMP_IF_NOT lbl23 var107:Boolean
   ASSIGN var113:Int 1:Int
-  ADD count:Int count:Int var113:Int
+  ADD_i32 count:Int count:Int var113:Int
 lbl23:
   ASSIGN var115:Int 1:Int
-  ADD i:Int i:Int var115:Int
+  ADD_i32 i:Int i:Int var115:Int
   JMP lbl21
 lbl22:
   RET count:Int
@@ -194,10 +194,10 @@ lbl24:
   EQ var120:Boolean var121:Int var126:Int
   JMP_IF_NOT lbl26 var120:Boolean
   ASSIGN var128:Int 1:Int
-  ADD count:Int count:Int var128:Int
+  ADD_i32 count:Int count:Int var128:Int
 lbl26:
   ASSIGN var130:Int 1:Int
-  ADD i:Int i:Int var130:Int
+  ADD_i32 i:Int i:Int var130:Int
   JMP lbl24
 lbl25:
   RET count:Int
@@ -212,11 +212,11 @@ lbl27:
   JMP_IF_NOT lbl28 var132:Boolean
   LOAD var139:Int arr:Array i:Int
   ASSIGN var142:Int 1:Int
-  ADD var140:Int i:Int var142:Int
+  ADD_i32 var140:Int i:Int var142:Int
   MUL var136:Int var139:Int var140:Int
-  ADD result:Int result:Int var136:Int
+  ADD_i32 result:Int result:Int var136:Int
   ASSIGN var144:Int 1:Int
-  ADD i:Int i:Int var144:Int
+  ADD_i32 i:Int i:Int var144:Int
   JMP lbl27
 lbl28:
   RET result:Int
@@ -532,7 +532,7 @@ lbl40:
   ADD text:String var341:String var344:String
 lbl41:
   ASSIGN var349:Int 1:Int
-  ADD i:Int i:Int var349:Int
+  ADD_i32 i:Int i:Int var349:Int
   JMP lbl38
 lbl39:
   RET text:String
@@ -568,11 +568,11 @@ lbl44:
   STORE arr:Array var376:Int tmp:Int
 lbl46:
   ASSIGN var381:Int 1:Int
-  ADD j:Int j:Int var381:Int
+  ADD_i32 j:Int j:Int var381:Int
   JMP lbl44
 lbl45:
   ASSIGN var383:Int 1:Int
-  ADD pass:Int pass:Int var383:Int
+  ADD_i32 pass:Int pass:Int var383:Int
   JMP lbl42
 lbl43:
   RET Unit
@@ -593,7 +593,7 @@ lbl47:
 lbl48:
   LE var391:Boolean left:Int right:Int
   JMP_IF_NOT lbl49 var391:Boolean
-  ADD var394:Int left:Int right:Int
+  ADD_i32 var394:Int left:Int right:Int
   ASSIGN var397:Int 2:Int
   DIV middle:Int var394:Int var397:Int
   LOAD var401:Int arr:Array middle:Int
@@ -613,7 +613,7 @@ lbl50:
   JMP lbl52
 lbl51:
   ASSIGN var412:Int 1:Int
-  ADD left:Int middle:Int var412:Int
+  ADD_i32 left:Int middle:Int var412:Int
 lbl52:
   JMP lbl48
 lbl49:
@@ -639,7 +639,7 @@ lbl53:
   RET var427:Boolean
 lbl55:
   ASSIGN var429:Int 1:Int
-  ADD i:Int i:Int var429:Int
+  ADD_i32 i:Int i:Int var429:Int
   JMP lbl53
 lbl54:
   ASSIGN var430:Boolean true:Boolean

@@ -62,7 +62,7 @@ Example:
 .\gradlew run --args="examples/3ac.bred build/out/demo.exe true"
 ```
 
-The CLI prints build messages from the executable builder. It exits with a non-zero code when the Bred compile step returns errors or the executable build messages contain an error/failure.
+The CLI prints build messages, then launches the executable after the builder reports success. The program inherits console input and output, and the CLI waits for it to finish and returns its exit code. Compilation, build, and launch failures return a non-zero code.
 
 Generated root-level artifacts such as `main.c`, `main.obj`, and `main.exe`
 are ignored. If they were tracked in an older checkout, remove them from the

@@ -186,12 +186,14 @@ sealed interface LLTACElement {
             arg1Type: TypeSign,
             arg2Name: String,
             arg2Type: TypeSign,
+            location: String? = null
         ): LLTACElement =
             LLTACInstruction(
                 opcode = opcode,
                 destination = Operand.Variable(name = varName, type = varType),
                 arg1 = Operand.Variable(arg1Name, arg1Type),
                 arg2 = Operand.Variable(arg2Name, arg2Type),
+                location = location
             )
 
         fun unOp(
@@ -213,6 +215,7 @@ sealed interface LLTACElement {
                 destination = resVariable?.let { Operand.Variable(name = it, type = resType) },
                 arg1 = Operand.FunctionCall(funName, resType),
                 arg2 = Operand.IntConst(amountOfArgs.toLong()),
+
             )
     }
 }
@@ -222,6 +225,7 @@ data class LLTACInstruction(
     val destination: Operand?,
     val arg1: Operand? = null,
     val arg2: Operand? = null,
+    val location: String? = null
 ): LLTACElement {
     override fun toString(): String {
         val sb = StringBuilder()

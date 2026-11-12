@@ -1,18 +1,11 @@
-type Shape = Circle(radius: Double) | Rectangle(a: Double, b: Double) | Square(a: Double)
-
-fun square(shape: Shape): Double {
-    var value: Double = 0.0
-    when (shape) {
-        Circle(radius) -> { value = radius * radius * 3.1417 }
-        Rectangle(a, b) -> { value = a * b }
-        Square(a) -> { value = a * a }
+fun factorialRecursion(n: Int): Int {
+    if (n < 1) {
+        return 1
     }
-    return 0.0
+    return n * factorialRecursion(n - 1)
 }
 
 fun main() {
-    println("Square of circle: " + doubleToString(square(Circle(2.0))))
-    println("Square of rectangle: " + doubleToString(square(Rectangle(2.0, 4.0))))
-    println("Square of square: " + doubleToString(square(Square(4.0))))
-    readInt()
+    val n: Int = readInt()
+    println(intToString(factorialRecursion(n)))
 }

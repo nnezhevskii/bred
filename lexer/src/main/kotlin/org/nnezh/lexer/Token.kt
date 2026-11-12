@@ -6,6 +6,7 @@ package org.nnezh.lexer
 
 import org.nnezh.lexer.Token.Keyword.In
 import org.nnezh.lexer.Token.Keyword.Mut
+import java.math.BigInteger
 
 /**
  * Position of a token in the source file. Both [line] and [column] are 1-based.
@@ -129,7 +130,7 @@ sealed class Token {
     // region Literals
     sealed class Literal : Token() {
         data class IntLiteral(
-            val value: Long,
+            val value: Int,
             override val lexeme: String,
             override val position: Position,
         ) : Literal()

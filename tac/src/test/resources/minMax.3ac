@@ -21,7 +21,7 @@ lbl2:
   ASSIGN result:Int i:Int
 lbl4:
   ASSIGN var17:Int 1:Int
-  ADD i:Int i:Int var17:Int
+  ADD_i32 i:Int i:Int var17:Int
   JMP lbl2
 lbl3:
   RET result:Int
@@ -48,7 +48,7 @@ lbl6:
   ASSIGN result:Int i:Int
 lbl8:
   ASSIGN var35:Int 1:Int
-  ADD i:Int i:Int var35:Int
+  ADD_i32 i:Int i:Int var35:Int
   JMP lbl6
 lbl7:
   RET result:Int
@@ -69,7 +69,7 @@ lbl9:
   CALL var41:Int random:Int 2:Int
   STORE arr:Array var40:Int var41:Int
   ASSIGN var46:Int 1:Int
-  ADD i:Int i:Int var46:Int
+  ADD_i32 i:Int i:Int var46:Int
   JMP lbl9
 lbl10:
   PARAM arr:Array

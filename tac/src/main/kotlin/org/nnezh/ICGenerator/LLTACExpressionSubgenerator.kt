@@ -20,6 +20,7 @@ import org.nnezh.bred.ast.WhenExpressionASTNode
 import org.nnezh.bred.common.TypeSign
 import org.nnezh.bred.context.ProgramGlobalContext
 import org.nnezh.org.nnezh.ICGenerator.LLTACElement.Companion.binOp
+import kotlin.math.exp
 
 data class LLTACExpressionSubgeneratorResult(
     val instructions: List<LLTACElement>,
@@ -124,17 +125,36 @@ class LLTACExpressionSubgenerator(
                 instructions.addAll(rightOperand.instructions)
 
                 val destination = variable ?: lltacError("binary expression TAC destination is required", expression)
-                instructions.add(
-                    binOp(
-                        opcode = binaryOperatorToTACCommand.getValue(expression.operator.kind),
-                        varName = destination,
-                        varType = type,
-                        arg1Name = leftOperand.finalVariable!!,
-                        arg1Type = leftOperand.finalType,
-                        arg2Name = rightOperand.finalVariable!!,
-                        arg2Type = rightOperand.finalType,
+                if (leftOperand.finalType == globalContext.intType &&
+                    rightOperand.finalType == globalContext.intType &&
+                    (binaryOperatorToTACCommand.getValue(expression.operator.kind) == LLTACOperation.LLTAC_ADD)
+                    ) {
+                    instructions.add(
+                        binOp(
+                            opcode = LLTACOperation.LLTAC_ADD_I32,
+                            varName = destination,
+                            varType = type,
+                            arg1Name = leftOperand.finalVariable!!,
+                            arg1Type = leftOperand.finalType,
+                            arg2Name = rightOperand.finalVariable!!,
+                            arg2Type = rightOperand.finalType,
+                            location = expression.operator.position.toString()
+                        )
                     )
-                )
+                } else {
+                    instructions.add(
+                        binOp(
+                            opcode = binaryOperatorToTACCommand.getValue(expression.operator.kind),
+                            varName = destination,
+                            varType = type,
+                            arg1Name = leftOperand.finalVariable!!,
+                            arg1Type = leftOperand.finalType,
+                            arg2Name = rightOperand.finalVariable!!,
+                            arg2Type = rightOperand.finalType,
+                        )
+                    )
+                }
+
 
                 LLTACExpressionSubgeneratorResult(instructions, destination, type)
             }
@@ -339,6 +359,15 @@ class LLTACExpressionSubgenerator(
             is StringLiteralExpressionASTNode -> globalContext.stringType
             else -> lltacError("missing semantic type for expression", expression)
         }
+
+    private fun safeInferLiteralTacType(expression: ExpressionASTNode): TypeSign? = when (expression) {
+        is BooleanLiteralExpressionASTNode -> globalContext.booleanType
+        is DoubleLiteralExpressionASTNode -> globalContext.doubleType
+        is IntLiteralExpressionASTNode -> globalContext.intType
+        is LongLiteralExpressionASTNode -> globalContext.longType
+        is StringLiteralExpressionASTNode -> globalContext.stringType
+        else -> null
+    }
 
     private data class FieldAccessTarget(
         val ownerPath: String,

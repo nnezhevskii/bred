@@ -32,6 +32,10 @@ application {
     mainClass.set("org.nnezh.MainKt")
 }
 
+tasks.named<JavaExec>("run") {
+    standardInput = System.`in`
+}
+
 sourceSets {
     main {
         kotlin.setSrcDirs(listOf("src/main/kotlin"))
