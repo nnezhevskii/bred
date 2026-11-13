@@ -17,15 +17,7 @@ fun main(): Unit {
     var zeroTrip: Int = sumRange(arr, 5, 1)
 
     // Edge: single-iteration loop.
-    var single: Int = sumRange(arr, 2, 2)
+    var single: Int = sumRange(arr, 2, 3)
 
-    var zStr: String = ""
-    intToString(zeroTrip, zStr, 1024)
-    var sStr: String = ""
-    intToString(single, sStr, 1024)
-    var part: String = ""
-    stringConcat(zStr, ":", part, 1024)
-    var line: String = ""
-    stringConcat(part, sStr, line, 1024)
-    println(line)
+    println(intToString(zeroTrip) + ":" + intToString(single))
 }

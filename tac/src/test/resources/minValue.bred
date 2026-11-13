@@ -1,34 +1,31 @@
-fun maxIndex(arr: Int[], size: Int): Int {
+fun minIndex(arr: Int[], size: Int): Int {
     if (size <= 0) {
         return -1
     }
 
-    var max: Int = 0
+    var min: Int = 0
     for (i in 1 to size) {
-        if (arr[i] > arr[max]) {
-            max = i
+        if (arr[i] < arr[min]) {
+            min = i
         }
     }
-    return max
+    return min
 }
 
 fun main() {
     val arr: Int[100]
     val size: Int = readInt()
-    if (size >= 100) {
+    if (size > 100) {
         println("technical restrictions")
+        return
     }
     for (i in 0 to size) {
         arr[i] = random(0, 100)
     }
-    val maxInd: Int = maxIndex(arr, size)
-    if (maxInd == -1) {
+    val minInd: Int = minIndex(arr, size)
+    if (minInd == -1) {
         println("array is empty")
     } else {
-        var elemStr: String = ""
-        intToString(arr[maxInd], elemStr, 1024)
-        var msg: String = ""
-        stringConcat("min element is", elemStr, msg, 1024)
-        println(msg)
+        println("min element is " + intToString(arr[minInd]))
     }
 }

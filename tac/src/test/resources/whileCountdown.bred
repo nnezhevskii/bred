@@ -10,7 +10,5 @@ fun countdown(start: Int): Int {
 
 fun main(): Unit {
     var result: Int = countdown(4)
-    var out: String = ""
-    intToString(result, out, 1024)
-    println(out)
+    println(intToString(result))
 }

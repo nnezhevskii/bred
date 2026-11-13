@@ -1,89 +1,89 @@
 func minIndex:
-  GET_PARAM arr:Array
-  GET_PARAM size:Int
-  ASSIGN var3:Int 0:Int
-  EQ var1:Boolean size:Int var3:Int
-  JMP_IF_NOT lbl1 var1:Boolean
-  ASSIGN var5:Int 1:Int
-  NEG var4:Int var5:Int
+  GET_PARAM  param_arr_21:Array
+  GET_PARAM  param_size_22:Int
+  ASSIGN  var3:Int 0:Int
+  EQ  var1:Boolean param_size_22:Int var3:Int
+  JMP_IF_NOT  lbl1 var1:Boolean
+  ASSIGN  var5:Int 1:Int
+  NEG  var4:Int var5:Int
   RET var4:Int
 lbl1:
-  ASSIGN result:Int 0:Int
-  ASSIGN i:Int 1:Int
-  ASSIGN _right_borderi:Int size:Int
+  ASSIGN  local_result_23:Int 0:Int
+  ASSIGN  local_i_24:Int 1:Int
+  ASSIGN  local_$_right_borderi_25:Int param_size_22:Int
 lbl2:
-  LT var6:Boolean i:Int _right_borderi:Int
-  JMP_IF_NOT lbl3 var6:Boolean
-  LOAD var12:Int arr:Array i:Int
-  LOAD var15:Int arr:Array result:Int
-  LT var9:Boolean var12:Int var15:Int
-  JMP_IF_NOT lbl4 var9:Boolean
-  ASSIGN result:Int i:Int
+  LT  var6:Boolean local_i_24:Int local_$_right_borderi_25:Int
+  JMP_IF_NOT  lbl3 var6:Boolean
+  LOAD  var12:Int param_arr_21:Array local_i_24:Int
+  LOAD  var15:Int param_arr_21:Array local_result_23:Int
+  LT  var9:Boolean var12:Int var15:Int
+  JMP_IF_NOT  lbl4 var9:Boolean
+  ASSIGN  local_result_23:Int local_i_24:Int
 lbl4:
-  ASSIGN var17:Int 1:Int
-  ADD_i32 i:Int i:Int var17:Int
-  JMP lbl2
+  ASSIGN  var17:Int 1:Int
+  ADD_i32  local_i_24:Int local_i_24:Int var17:Int
+  JMP  lbl2
 lbl3:
-  RET result:Int
+  RET local_result_23:Int
 func maxIndex:
-  GET_PARAM arr:Array
-  GET_PARAM size:Int
-  ASSIGN var21:Int 0:Int
-  EQ var19:Boolean size:Int var21:Int
-  JMP_IF_NOT lbl5 var19:Boolean
-  ASSIGN var23:Int 1:Int
-  NEG var22:Int var23:Int
+  GET_PARAM  param_arr_26:Array
+  GET_PARAM  param_size_27:Int
+  ASSIGN  var21:Int 0:Int
+  EQ  var19:Boolean param_size_27:Int var21:Int
+  JMP_IF_NOT  lbl5 var19:Boolean
+  ASSIGN  var23:Int 1:Int
+  NEG  var22:Int var23:Int
   RET var22:Int
 lbl5:
-  ASSIGN result:Int 0:Int
-  ASSIGN i:Int 1:Int
-  ASSIGN _right_borderi:Int size:Int
+  ASSIGN  local_result_28:Int 0:Int
+  ASSIGN  local_i_29:Int 1:Int
+  ASSIGN  local_$_right_borderi_30:Int param_size_27:Int
 lbl6:
-  LT var24:Boolean i:Int _right_borderi:Int
-  JMP_IF_NOT lbl7 var24:Boolean
-  LOAD var30:Int arr:Array i:Int
-  LOAD var33:Int arr:Array result:Int
-  GT var27:Boolean var30:Int var33:Int
-  JMP_IF_NOT lbl8 var27:Boolean
-  ASSIGN result:Int i:Int
+  LT  var24:Boolean local_i_29:Int local_$_right_borderi_30:Int
+  JMP_IF_NOT  lbl7 var24:Boolean
+  LOAD  var30:Int param_arr_26:Array local_i_29:Int
+  LOAD  var33:Int param_arr_26:Array local_result_28:Int
+  GT  var27:Boolean var30:Int var33:Int
+  JMP_IF_NOT  lbl8 var27:Boolean
+  ASSIGN  local_result_28:Int local_i_29:Int
 lbl8:
-  ASSIGN var35:Int 1:Int
-  ADD_i32 i:Int i:Int var35:Int
-  JMP lbl6
+  ASSIGN  var35:Int 1:Int
+  ADD_i32  local_i_29:Int local_i_29:Int var35:Int
+  JMP  lbl6
 lbl7:
-  RET result:Int
+  RET local_result_28:Int
 func main:
-  ASSIGN arraySize:Int 50:Int
-  ALLOC arr:Array Int 1024:Int
-  ASSIGN i:Int 0:Int
-  ASSIGN _right_borderi:Int arraySize:Int
+  ASSIGN  local_arraySize_31:Int 50:Int
+  ALLOC  local_arr_32:Array Int 1024:Int
+  ASSIGN  local_i_33:Int 0:Int
+  ASSIGN  local_$_right_borderi_34:Int local_arraySize_31:Int
 lbl9:
-  LT var37:Boolean i:Int _right_borderi:Int
-  JMP_IF_NOT lbl10 var37:Boolean
-  ASSIGN var40:Int i:Int
-  ASSIGN var43:Int 1000:Int
-  NEG var42:Int var43:Int
-  ASSIGN var44:Int 1000:Int
-  PARAM var42:Int
-  PARAM var44:Int
-  CALL var41:Int random:Int 2:Int
-  STORE arr:Array var40:Int var41:Int
-  ASSIGN var46:Int 1:Int
-  ADD_i32 i:Int i:Int var46:Int
-  JMP lbl9
+  LT  var37:Boolean local_i_33:Int local_$_right_borderi_34:Int
+  JMP_IF_NOT  lbl10 var37:Boolean
+  ASSIGN  var40:Int local_i_33:Int
+  ASSIGN  var43:Int 1000:Int
+  NEG  var42:Int var43:Int
+  ASSIGN  var44:Int 1000:Int
+  PARAM  var42:Int
+  PARAM  var44:Int
+  CALL  var41:Int random:Int 2:Int
+  STORE  local_arr_32:Array var40:Int var41:Int
+  ASSIGN  var46:Int 1:Int
+  ADD_i32  local_i_33:Int local_i_33:Int var46:Int
+  JMP  lbl9
 lbl10:
-  PARAM arr:Array
-  PARAM arraySize:Int
-  CALL var48:Int minIndex:Int 2:Int
-  PARAM var48:Int
-  CALL var47:String intToString:String 1:Int
-  PARAM var47:String
+  PARAM  local_arr_32:Array
+  PARAM  local_arraySize_31:Int
+  CALL  var48:Int minIndex:Int 2:Int
+  PARAM  var48:Int
+  CALL  var47:String intToString:String 1:Int
+  PARAM  var47:String
   CALL  println:Unit 1:Int
-  PARAM arr:Array
-  PARAM arraySize:Int
-  CALL var52:Int maxIndex:Int 2:Int
-  PARAM var52:Int
-  CALL var51:String intToString:String 1:Int
-  PARAM var51:String
+  PARAM  local_arr_32:Array
+  PARAM  local_arraySize_31:Int
+  CALL  var52:Int maxIndex:Int 2:Int
+  PARAM  var52:Int
+  CALL  var51:String intToString:String 1:Int
+  PARAM  var51:String
   CALL  println:Unit 1:Int
   RET Unit

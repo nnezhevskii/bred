@@ -1,11 +1,5 @@
-fun factorialRecursion(n: Int): Int {
-    if (n < 1) {
-        return 1
-    }
-    return n * factorialRecursion(n - 1)
-}
+            val values: Int[2]
 
-fun main() {
-    val n: Int = readInt()
-    println(intToString(factorialRecursion(n)))
-}
+            fun main(): Unit {
+                val first: Int = values[0]
+            }

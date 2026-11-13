@@ -1,56 +1,36 @@
-func neverRuns_:
-  ASSIGN marker:Int 99:Int
+func neverRuns:
+  ASSIGN  local_marker_21:Int 99:Int
 lbl1:
-  ASSIGN var1:Boolean false:Boolean
-  JMP_IF_NOT lbl2 var1:Boolean
-  ASSIGN marker:Int 0:Int
-  JMP lbl1
+  ASSIGN  var1:Boolean false:Boolean
+  JMP_IF_NOT  lbl2 var1:Boolean
+  ASSIGN  local_marker_21:Int 0:Int
+  JMP  lbl1
 lbl2:
-  RET marker:Int
-func conditionFalseFromStart_Int:
-  GET_PARAM bound:Int
-  ASSIGN acc:Int 0:Int
+  RET local_marker_21:Int
+func conditionFalseFromStart:
+  GET_PARAM  param_bound_22:Int
+  ASSIGN  local_acc_23:Int 0:Int
 lbl3:
-  ASSIGN var5:Int 100:Int
-  GT var3:Boolean bound:Int var5:Int
-  JMP_IF_NOT lbl4 var3:Boolean
-  ASSIGN var7:Int 1:Int
-  ADD acc:Int acc:Int var7:Int
-  JMP lbl3
+  ASSIGN  var5:Int 100:Int
+  GT  var3:Boolean param_bound_22:Int var5:Int
+  JMP_IF_NOT  lbl4 var3:Boolean
+  ASSIGN  var7:Int 1:Int
+  ADD_i32  local_acc_23:Int local_acc_23:Int var7:Int
+  JMP  lbl3
 lbl4:
-  RET acc:Int
+  RET local_acc_23:Int
 func main:
-  CALL a:Int neverRuns_:Int 0:Int
-  ASSIGN var9:Int 5:Int
-  PARAM var9:Int
-  CALL b:Int conditionFalseFromStart_Int:Int 1:Int
-  ASSIGN line:String :String
-  ASSIGN var12:Int 1024:Int
-  PARAM a:Int
-  PARAM line:String
-  PARAM var12:Int
-  CALL  intToString:Unit 3:Int
-  ASSIGN suffix:String :String
-  ASSIGN var15:Int 1024:Int
-  PARAM b:Int
-  PARAM suffix:String
-  PARAM var15:Int
-  CALL  intToString:Unit 3:Int
-  ASSIGN part:String :String
-  ASSIGN var17:String ::String
-  ASSIGN var19:Int 1024:Int
-  PARAM line:String
-  PARAM var17:String
-  PARAM part:String
-  PARAM var19:Int
-  CALL  stringConcat:Unit 4:Int
-  ASSIGN out:String :String
-  ASSIGN var23:Int 1024:Int
-  PARAM part:String
-  PARAM suffix:String
-  PARAM out:String
-  PARAM var23:Int
-  CALL  stringConcat:Unit 4:Int
-  PARAM out:String
+  CALL  local_a_24:Int neverRuns:Int 0:Int
+  ASSIGN  var9:Int 5:Int
+  PARAM  var9:Int
+  CALL  local_b_25:Int conditionFalseFromStart:Int 1:Int
+  PARAM  local_a_24:Int
+  CALL  var12:String intToString:String 1:Int
+  ASSIGN  var14:String ::String
+  ADD  var11:String var12:String var14:String
+  PARAM  local_b_25:Int
+  CALL  var15:String intToString:String 1:Int
+  ADD  var10:String var11:String var15:String
+  PARAM  var10:String
   CALL  println:Unit 1:Int
   RET Unit

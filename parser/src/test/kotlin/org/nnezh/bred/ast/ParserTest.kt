@@ -844,7 +844,7 @@ class ParserTest {
         assertTrue(counter.isMutable)
 
         val rightBorder = assertInstanceOf(ScalarVariableInitializationASTNode::class.java, desugared[1])
-        assertEquals("_right_borderi", rightBorder.name)
+        assertEquals("\$_right_borderi", rightBorder.name)
         assertEquals(TypeRef("Int"), rightBorder.type)
         assertFalse(rightBorder.isMutable)
 
@@ -852,7 +852,7 @@ class ParserTest {
         val condition = assertInstanceOf(BinaryExpressionASTNode::class.java, loop.condition)
         assertEquals(BinaryOperator.Lt, condition.operator.kind)
         assertEquals("i", assertInstanceOf(VariableExpressionASTNode::class.java, condition.left).token.lexeme)
-        assertEquals("_right_borderi", assertInstanceOf(VariableExpressionASTNode::class.java, condition.right).token.lexeme)
+        assertEquals("\$_right_borderi", assertInstanceOf(VariableExpressionASTNode::class.java, condition.right).token.lexeme)
 
         val increment = assertInstanceOf(AssignmentStatementAstNode::class.java, loop.bodyBlock.statements.last())
         assertEquals("i", assertInstanceOf(VariableExpressionASTNode::class.java, increment.lValue).token.lexeme)

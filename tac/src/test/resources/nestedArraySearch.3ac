@@ -1,87 +1,81 @@
-func findPairSum_Array_Int_Int:
-  GET_PARAM arr:Array
-  GET_PARAM size:Int
-  GET_PARAM target:Int
-  ASSIGN var3:Int 1:Int
-  LT var1:Boolean size:Int var3:Int
-  JMP_IF_NOT lbl1 var1:Boolean
-  ASSIGN var5:Int 1:Int
-  NEG var4:Int var5:Int
+func findPairSum:
+  GET_PARAM  param_arr_20:Array
+  GET_PARAM  param_size_21:Int
+  GET_PARAM  param_target_22:Int
+  ASSIGN  var3:Int 1:Int
+  LT  var1:Boolean param_size_21:Int var3:Int
+  JMP_IF_NOT  lbl1 var1:Boolean
+  ASSIGN  var5:Int 1:Int
+  NEG  var4:Int var5:Int
   RET var4:Int
 lbl1:
-  ASSIGN i:Int 0:Int
-  ASSIGN _right_borderi:Int size:Int
+  ASSIGN  local_i_23:Int 0:Int
+  ASSIGN  local_$_right_borderi_24:Int param_size_21:Int
 lbl2:
-  LT var6:Boolean i:Int _right_borderi:Int
-  JMP_IF_NOT lbl3 var6:Boolean
-  ASSIGN var10:Int 1:Int
-  ADD j:Int i:Int var10:Int
-  ASSIGN _right_borderj:Int size:Int
+  LT  var6:Boolean local_i_23:Int local_$_right_borderi_24:Int
+  JMP_IF_NOT  lbl3 var6:Boolean
+  ASSIGN  var10:Int 1:Int
+  ADD_i32  local_j_25:Int local_i_23:Int var10:Int
+  ASSIGN  local_$_right_borderj_26:Int param_size_21:Int
 lbl4:
-  LT var11:Boolean j:Int _right_borderj:Int
-  JMP_IF_NOT lbl5 var11:Boolean
-  ASSIGN var16:Int 0:Int
-  LOAD var16:Int arr:Array i:Int
-  ASSIGN var19:Int 0:Int
-  LOAD var19:Int arr:Array j:Int
-  ADD sum:Int var16:Int var19:Int
-  EQ var20:Boolean sum:Int target:Int
-  JMP_IF_NOT lbl6 var20:Boolean
-  RET i:Int
+  LT  var11:Boolean local_j_25:Int local_$_right_borderj_26:Int
+  JMP_IF_NOT  lbl5 var11:Boolean
+  LOAD  var16:Int param_arr_20:Array local_i_23:Int
+  LOAD  var19:Int param_arr_20:Array local_j_25:Int
+  ADD_i32  local_sum_27:Int var16:Int var19:Int
+  EQ  var20:Boolean local_sum_27:Int param_target_22:Int
+  JMP_IF_NOT  lbl6 var20:Boolean
+  RET local_i_23:Int
 lbl6:
-  ASSIGN var25:Int 1:Int
-  ADD j:Int j:Int var25:Int
-  JMP lbl4
+  ASSIGN  var25:Int 1:Int
+  ADD_i32  local_j_25:Int local_j_25:Int var25:Int
+  JMP  lbl4
 lbl5:
-  ASSIGN var27:Int 1:Int
-  ADD i:Int i:Int var27:Int
-  JMP lbl2
+  ASSIGN  var27:Int 1:Int
+  ADD_i32  local_i_23:Int local_i_23:Int var27:Int
+  JMP  lbl2
 lbl3:
-  ASSIGN var29:Int 1:Int
-  NEG var28:Int var29:Int
+  ASSIGN  var29:Int 1:Int
+  NEG  var28:Int var29:Int
   RET var28:Int
 func main:
-  ALLOC data:Array Int 6:Int
-  ASSIGN var30:Int 0:Int
-  ASSIGN var31:Int 2:Int
-  STORE data:Array var30:Int var31:Int
-  ASSIGN var32:Int 1:Int
-  ASSIGN var33:Int 7:Int
-  STORE data:Array var32:Int var33:Int
-  ASSIGN var34:Int 2:Int
-  ASSIGN var35:Int 11:Int
-  STORE data:Array var34:Int var35:Int
-  ASSIGN var36:Int 3:Int
-  ASSIGN var37:Int 15:Int
-  STORE data:Array var36:Int var37:Int
-  ASSIGN var38:Int 4:Int
-  ASSIGN var39:Int 4:Int
-  STORE data:Array var38:Int var39:Int
-  ASSIGN var40:Int 5:Int
-  ASSIGN var41:Int 9:Int
-  STORE data:Array var40:Int var41:Int
-  ASSIGN var43:Int 5:Int
-  ASSIGN var44:Int 18:Int
-  PARAM data:Array
-  PARAM var43:Int
-  PARAM var44:Int
-  CALL idx:Int findPairSum_Array_Int_Int:Int 3:Int
-  ASSIGN var48:Int 1:Int
-  NEG var47:Int var48:Int
-  EQ var45:Boolean idx:Int var47:Int
-  JMP_IF_NOT lbl7 var45:Boolean
-  ASSIGN var49:String not found:String
-  PARAM var49:String
+  ALLOC  local_data_28:Array Int 6:Int
+  ASSIGN  var30:Int 0:Int
+  ASSIGN  var31:Int 2:Int
+  STORE  local_data_28:Array var30:Int var31:Int
+  ASSIGN  var32:Int 1:Int
+  ASSIGN  var33:Int 7:Int
+  STORE  local_data_28:Array var32:Int var33:Int
+  ASSIGN  var34:Int 2:Int
+  ASSIGN  var35:Int 11:Int
+  STORE  local_data_28:Array var34:Int var35:Int
+  ASSIGN  var36:Int 3:Int
+  ASSIGN  var37:Int 15:Int
+  STORE  local_data_28:Array var36:Int var37:Int
+  ASSIGN  var38:Int 4:Int
+  ASSIGN  var39:Int 4:Int
+  STORE  local_data_28:Array var38:Int var39:Int
+  ASSIGN  var40:Int 5:Int
+  ASSIGN  var41:Int 9:Int
+  STORE  local_data_28:Array var40:Int var41:Int
+  ASSIGN  var43:Int 6:Int
+  ASSIGN  var44:Int 18:Int
+  PARAM  local_data_28:Array
+  PARAM  var43:Int
+  PARAM  var44:Int
+  CALL  local_idx_29:Int findPairSum:Int 3:Int
+  ASSIGN  var48:Int 1:Int
+  NEG  var47:Int var48:Int
+  EQ  var45:Boolean local_idx_29:Int var47:Int
+  JMP_IF_NOT  lbl7 var45:Boolean
+  ASSIGN  var49:String not found:String
+  PARAM  var49:String
   CALL  println:Unit 1:Int
-  JMP lbl8
+  JMP  lbl8
 lbl7:
-  ASSIGN msg:String :String
-  ASSIGN var52:Int 1024:Int
-  PARAM idx:Int
-  PARAM msg:String
-  PARAM var52:Int
-  CALL  intToString:Unit 3:Int
-  PARAM msg:String
+  PARAM  local_idx_29:Int
+  CALL  var50:String intToString:String 1:Int
+  PARAM  var50:String
   CALL  println:Unit 1:Int
 lbl8:
   RET Unit

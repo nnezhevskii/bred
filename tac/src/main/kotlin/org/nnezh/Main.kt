@@ -43,7 +43,10 @@ fun main(args: Array<String>) {
             .analyzeWithResult(resolvedInstantiatedAst)
             .bind()
 
-        val tac = LLTACGenerator(typeTable = analysis.expressionTypes, globalContext = instantiatedContext).build(resolvedInstantiatedAst)
+        val tac = LLTACGenerator(
+            typeTable = analysis.expressionTypes,
+            resolvedSymbols = analysis.resolvedSymbols,
+            globalContext = instantiatedContext).build(resolvedInstantiatedAst)
         stringBuilder.append(PrettyPrinter().format(tac).joinToString("\n"))
         stringBuilder.toString()
     }

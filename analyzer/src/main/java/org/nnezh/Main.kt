@@ -35,9 +35,13 @@ fun main(args: Array<String>) {
 
         stringBuilder.append("\nAST:\n")
         stringBuilder.append(AstPrettyPrinter().render(resolvedInstantiatedAst))
+        val result = SemanticAnalyzer(newGlobalContext).analyzeWithResult(resolvedInstantiatedAst)
+
+        stringBuilder.append("\nSemantic analyze result:\n")
+        stringBuilder.append(result.toString())
+
         stringBuilder.toString()
 
-        SemanticAnalyzer(newGlobalContext).analyze(resolvedInstantiatedAst)
     }
 
     result.fold(

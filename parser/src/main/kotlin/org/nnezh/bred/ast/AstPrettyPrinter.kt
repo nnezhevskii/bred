@@ -37,6 +37,7 @@ class AstPrettyPrinter(
                 is StatementAstNode -> statement(node, level)
                 is ExpressionASTNode -> expression(node, level)
                 EmptyNode -> line(level, "<empty>")
+                is FunctionArgument -> TODO()
             }
         }
 

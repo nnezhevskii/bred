@@ -1,143 +1,160 @@
 func main:
-  CALL arrSize:Int readInt:Int 0:Int
-  ALLOC arr:Array Int 1024:Int
-  ASSIGN i:Int 0:Int
-  ASSIGN _right_borderi:Int arrSize:Int
+  CALL  local_arrSize_25:Int readInt:Int 0:Int
+  ASSIGN  var4:Int 0:Int
+  LT  var2:Boolean local_arrSize_25:Int var4:Int
+  ASSIGN  var7:Int 1024:Int
+  GT  var5:Boolean local_arrSize_25:Int var7:Int
+  OR  var1:Boolean var2:Boolean var5:Boolean
+  JMP_IF_NOT  lbl1 var1:Boolean
+  RET Unit
 lbl1:
-  LT var1:Boolean i:Int _right_borderi:Int
-  JMP_IF_NOT lbl2 var1:Boolean
-  ASSIGN var4:Int i:Int
-  ASSIGN var7:Int 2:Int
-  MUL var5:Int i:Int var7:Int
-  STORE arr:Array var4:Int var5:Int
-  ASSIGN var9:Int 1:Int
-  ADD_i32 i:Int i:Int var9:Int
-  JMP lbl1
+  ALLOC  local_arr_26:Array Int 1024:Int
+  ASSIGN  local_i_27:Int 0:Int
+  ASSIGN  local_$_right_borderi_28:Int local_arrSize_25:Int
 lbl2:
-  ASSIGN var12:Int 1:Int
-  SUB var10:Int arrSize:Int var12:Int
-  ASSIGN var17:Int 1:Int
-  SUB var15:Int arrSize:Int var17:Int
-  LOAD var18:Int arr:Array var15:Int
-  ASSIGN var19:Int 11:Int
-  MUL var13:Int var18:Int var19:Int
-  STORE arr:Array var10:Int var13:Int
-  PARAM arr:Array
-  PARAM arrSize:Int
-  CALL var20:String arrayToString_Array_Int_Int_String:String 2:Int
-  PARAM var20:String
+  LT  var8:Boolean local_i_27:Int local_$_right_borderi_28:Int
+  JMP_IF_NOT  lbl3 var8:Boolean
+  ASSIGN  var11:Int local_i_27:Int
+  ASSIGN  var14:Int 2:Int
+  MUL  var12:Int local_i_27:Int var14:Int
+  STORE  local_arr_26:Array var11:Int var12:Int
+  ASSIGN  var16:Int 1:Int
+  ADD_i32  local_i_27:Int local_i_27:Int var16:Int
+  JMP  lbl2
+lbl3:
+  ASSIGN  var19:Int 0:Int
+  GT  var17:Boolean local_arrSize_25:Int var19:Int
+  JMP_IF_NOT  lbl4 var17:Boolean
+  ASSIGN  var22:Int 1:Int
+  SUB  var20:Int local_arrSize_25:Int var22:Int
+  ASSIGN  var27:Int 1:Int
+  SUB  var25:Int local_arrSize_25:Int var27:Int
+  LOAD  var28:Int local_arr_26:Array var25:Int
+  ASSIGN  var29:Int 11:Int
+  MUL  var23:Int var28:Int var29:Int
+  STORE  local_arr_26:Array var20:Int var23:Int
+lbl4:
+  PARAM  local_arr_26:Array
+  PARAM  local_arrSize_25:Int
+  CALL  var30:String arrayToString_Array_Int_Int_String:String 2:Int
+  PARAM  var30:String
   CALL  println:Unit 1:Int
-  CALL elementToSeek:Int readInt:Int 0:Int
-  ASSIGN var24:String index = :String
-  PARAM arr:Array
-  PARAM arrSize:Int
-  PARAM elementToSeek:Int
-  CALL var26:Int binarySearch_Array_Int_Int_Int_Int:Int 3:Int
-  PARAM var26:Int
-  CALL var25:String intToString:String 1:Int
-  ADD var23:String var24:String var25:String
-  PARAM var23:String
+  CALL  local_elementToSeek_29:Int readInt:Int 0:Int
+  ASSIGN  var34:String index = :String
+  PARAM  local_arr_26:Array
+  PARAM  local_arrSize_25:Int
+  PARAM  local_elementToSeek_29:Int
+  CALL  var36:Int binarySearch_Array_Int_Int_Int_Int:Int 3:Int
+  PARAM  var36:Int
+  CALL  var35:String intToString:String 1:Int
+  ADD  var33:String var34:String var35:String
+  PARAM  var33:String
   CALL  println:Unit 1:Int
   CALL  readInt:Unit 0:Int
   RET Unit
 func toString_Int_String:
-  GET_PARAM value:Int
-  PARAM value:Int
-  CALL var30:String intToString:String 1:Int
-  RET var30:String
+  GET_PARAM  param_value_30:Int
+  PARAM  param_value_30:Int
+  CALL  var40:String intToString:String 1:Int
+  RET var40:String
 func equals_Int_Int_Boolean:
-  GET_PARAM a:Int
-  GET_PARAM b:Int
-  EQ var32:Boolean a:Int b:Int
-  RET var32:Boolean
+  GET_PARAM  param_a_31:Int
+  GET_PARAM  param_b_32:Int
+  EQ  var42:Boolean param_a_31:Int param_b_32:Int
+  RET var42:Boolean
 func less_Int_Int_Boolean:
-  GET_PARAM a:Int
-  GET_PARAM b:Int
-  LT var35:Boolean a:Int b:Int
-  RET var35:Boolean
+  GET_PARAM  param_a_33:Int
+  GET_PARAM  param_b_34:Int
+  LT  var45:Boolean param_a_33:Int param_b_34:Int
+  RET var45:Boolean
+func greater_Int_Int_Boolean:
+  GET_PARAM  param_a_35:Int
+  GET_PARAM  param_b_36:Int
+  GT  var48:Boolean param_a_35:Int param_b_36:Int
+  RET var48:Boolean
 func arrayToString_Array_Int_Int_String:
-  GET_PARAM arr:Array
-  GET_PARAM size:Int
-  ASSIGN buff:String :String
-  ASSIGN var40:Int 0:Int
-  EQ var38:Boolean size:Int var40:Int
-  JMP_IF_NOT lbl3 var38:Boolean
-  ASSIGN var41:String :String
-  RET var41:String
-lbl3:
-  ASSIGN var44:Int 1:Int
-  EQ var42:Boolean size:Int var44:Int
-  JMP_IF_NOT lbl4 var42:Boolean
-  ASSIGN var47:Int 0:Int
-  LOAD var48:Int arr:Array var47:Int
-  PARAM var48:Int
-  CALL var45:String intToString:String 1:Int
-  RET var45:String
-lbl4:
-  ASSIGN i:Int 0:Int
-  ASSIGN var50:Int 1:Int
-  SUB _right_borderi:Int size:Int var50:Int
+  GET_PARAM  param_arr_37:Array
+  GET_PARAM  param_size_38:Int
+  ASSIGN  local_buff_39:String :String
+  ASSIGN  var53:Int 0:Int
+  EQ  var51:Boolean param_size_38:Int var53:Int
+  JMP_IF_NOT  lbl5 var51:Boolean
+  ASSIGN  var54:String :String
+  RET var54:String
 lbl5:
-  LT var51:Boolean i:Int _right_borderi:Int
-  JMP_IF_NOT lbl6 var51:Boolean
-  LOAD var59:Int arr:Array i:Int
-  PARAM var59:Int
-  CALL var56:String intToString:String 1:Int
-  ADD var54:String buff:String var56:String
-  ASSIGN var60:String  :String
-  ADD buff:String var54:String var60:String
-  ASSIGN var62:Int 1:Int
-  ADD_i32 i:Int i:Int var62:Int
-  JMP lbl5
+  ASSIGN  var57:Int 1:Int
+  EQ  var55:Boolean param_size_38:Int var57:Int
+  JMP_IF_NOT  lbl6 var55:Boolean
+  ASSIGN  var60:Int 0:Int
+  LOAD  var61:Int param_arr_37:Array var60:Int
+  PARAM  var61:Int
+  CALL  var58:String toString_Int_String:String 1:Int
+  RET var58:String
 lbl6:
-  ASSIGN var68:Int 1:Int
-  SUB var66:Int size:Int var68:Int
-  LOAD var69:Int arr:Array var66:Int
-  PARAM var69:Int
-  CALL var64:String intToString:String 1:Int
-  ADD buff:String buff:String var64:String
-  RET buff:String
-func binarySearch_Array_Int_Int_Int_Int:
-  GET_PARAM arr:Array
-  GET_PARAM size:Int
-  GET_PARAM element:Int
-  ASSIGN var73:Int 0:Int
-  EQ var71:Boolean size:Int var73:Int
-  JMP_IF_NOT lbl7 var71:Boolean
-  ASSIGN var75:Int 1:Int
-  NEG var74:Int var75:Int
-  RET var74:Int
+  ASSIGN  local_i_40:Int 0:Int
+  ASSIGN  var63:Int 1:Int
+  SUB  local_$_right_borderi_41:Int param_size_38:Int var63:Int
 lbl7:
-  ASSIGN left:Int 0:Int
-  ASSIGN var77:Int 1:Int
-  SUB right:Int size:Int var77:Int
+  LT  var64:Boolean local_i_40:Int local_$_right_borderi_41:Int
+  JMP_IF_NOT  lbl8 var64:Boolean
+  LOAD  var72:Int param_arr_37:Array local_i_40:Int
+  PARAM  var72:Int
+  CALL  var69:String toString_Int_String:String 1:Int
+  ADD  var67:String local_buff_39:String var69:String
+  ASSIGN  var73:String  :String
+  ADD  local_buff_39:String var67:String var73:String
+  ASSIGN  var75:Int 1:Int
+  ADD_i32  local_i_40:Int local_i_40:Int var75:Int
+  JMP  lbl7
 lbl8:
-  LE var78:Boolean left:Int right:Int
-  JMP_IF_NOT lbl9 var78:Boolean
-  ADD_i32 var81:Int left:Int right:Int
-  ASSIGN var84:Int 2:Int
-  DIV mid:Int var81:Int var84:Int
-  LOAD var88:Int arr:Array mid:Int
-  PARAM var88:Int
-  PARAM element:Int
-  CALL var85:Boolean equals_Int_Int_Boolean:Boolean 2:Int
-  JMP_IF_NOT lbl10 var85:Boolean
-  RET mid:Int
-lbl10:
-  LOAD var95:Int arr:Array mid:Int
-  PARAM element:Int
-  PARAM var95:Int
-  CALL var91:Boolean less_Int_Int_Boolean:Boolean 2:Int
-  JMP_IF_NOT lbl11 var91:Boolean
-  ASSIGN var97:Int 1:Int
-  SUB right:Int mid:Int var97:Int
-  JMP lbl12
-lbl11:
-  ASSIGN var99:Int 1:Int
-  ADD_i32 left:Int mid:Int var99:Int
-lbl12:
-  JMP lbl8
+  ASSIGN  var81:Int 1:Int
+  SUB  var79:Int param_size_38:Int var81:Int
+  LOAD  var82:Int param_arr_37:Array var79:Int
+  PARAM  var82:Int
+  CALL  var77:String toString_Int_String:String 1:Int
+  ADD  local_buff_39:String local_buff_39:String var77:String
+  RET local_buff_39:String
+func binarySearch_Array_Int_Int_Int_Int:
+  GET_PARAM  param_arr_42:Array
+  GET_PARAM  param_size_43:Int
+  GET_PARAM  param_element_44:Int
+  ASSIGN  var86:Int 0:Int
+  EQ  var84:Boolean param_size_43:Int var86:Int
+  JMP_IF_NOT  lbl9 var84:Boolean
+  ASSIGN  var88:Int 1:Int
+  NEG  var87:Int var88:Int
+  RET var87:Int
 lbl9:
-  ASSIGN var101:Int 1:Int
-  NEG var100:Int var101:Int
-  RET var100:Int
+  ASSIGN  local_left_45:Int 0:Int
+  ASSIGN  var90:Int 1:Int
+  SUB  local_right_46:Int param_size_43:Int var90:Int
+lbl10:
+  LE  var91:Boolean local_left_45:Int local_right_46:Int
+  JMP_IF_NOT  lbl11 var91:Boolean
+  ADD_i32  var94:Int local_left_45:Int local_right_46:Int
+  ASSIGN  var97:Int 2:Int
+  DIV  local_mid_47:Int var94:Int var97:Int
+  LOAD  var101:Int param_arr_42:Array local_mid_47:Int
+  PARAM  var101:Int
+  PARAM  param_element_44:Int
+  CALL  var98:Boolean equals_Int_Int_Boolean:Boolean 2:Int
+  JMP_IF_NOT  lbl12 var98:Boolean
+  RET local_mid_47:Int
+lbl12:
+  LOAD  var108:Int param_arr_42:Array local_mid_47:Int
+  PARAM  param_element_44:Int
+  PARAM  var108:Int
+  CALL  var104:Boolean less_Int_Int_Boolean:Boolean 2:Int
+  JMP_IF_NOT  lbl13 var104:Boolean
+  ASSIGN  var110:Int 1:Int
+  SUB  local_right_46:Int local_mid_47:Int var110:Int
+  JMP  lbl14
+lbl13:
+  ASSIGN  var112:Int 1:Int
+  ADD_i32  local_left_45:Int local_mid_47:Int var112:Int
+lbl14:
+  JMP  lbl10
+lbl11:
+  ASSIGN  var114:Int 1:Int
+  NEG  var113:Int var114:Int
+  RET var113:Int

@@ -1,27 +1,23 @@
-func countdown_Int:
-  GET_PARAM start:Int
-  ASSIGN n:Int start:Int
-  ASSIGN sum:Int 0:Int
+func countdown:
+  GET_PARAM  param_start_20:Int
+  ASSIGN  local_n_21:Int param_start_20:Int
+  ASSIGN  local_sum_22:Int 0:Int
 lbl1:
-  ASSIGN var3:Int 0:Int
-  GT var1:Boolean n:Int var3:Int
-  JMP_IF_NOT lbl2 var1:Boolean
-  ADD sum:Int sum:Int n:Int
-  ASSIGN var7:Int 1:Int
-  SUB n:Int n:Int var7:Int
-  JMP lbl1
+  ASSIGN  var3:Int 0:Int
+  GT  var1:Boolean local_n_21:Int var3:Int
+  JMP_IF_NOT  lbl2 var1:Boolean
+  ADD_i32  local_sum_22:Int local_sum_22:Int local_n_21:Int
+  ASSIGN  var7:Int 1:Int
+  SUB  local_n_21:Int local_n_21:Int var7:Int
+  JMP  lbl1
 lbl2:
-  RET sum:Int
+  RET local_sum_22:Int
 func main:
-  ASSIGN var9:Int 4:Int
-  PARAM var9:Int
-  CALL result:Int countdown_Int:Int 1:Int
-  ASSIGN out:String :String
-  ASSIGN var12:Int 1024:Int
-  PARAM result:Int
-  PARAM out:String
-  PARAM var12:Int
-  CALL  intToString:Unit 3:Int
-  PARAM out:String
+  ASSIGN  var9:Int 4:Int
+  PARAM  var9:Int
+  CALL  local_result_23:Int countdown:Int 1:Int
+  PARAM  local_result_23:Int
+  CALL  var10:String intToString:String 1:Int
+  PARAM  var10:String
   CALL  println:Unit 1:Int
   RET Unit

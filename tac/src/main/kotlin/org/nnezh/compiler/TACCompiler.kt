@@ -43,6 +43,9 @@ class TACCompilerImpl : TACCompiler {
                 error("semantic analysis failed:\n${errors.joinToString("\n") { semanticFormatter.format(it) }}")
             }
 
-        return LLTACGenerator(typeTable = analysis.expressionTypes, globalContext = instantiatedContext).build(resolvedInstantiatedRoot)
+        return LLTACGenerator(
+            typeTable = analysis.expressionTypes,
+            resolvedSymbols = analysis.resolvedSymbols,
+            globalContext = instantiatedContext).build(resolvedInstantiatedRoot)
     }
 }

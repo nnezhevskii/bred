@@ -25,23 +25,20 @@ class LLTAGSnapshotTester {
             "binarySearch",
             "complexShock",
             "deploymentHealthRadar",
-//        "sortThree",
-//        "isEven",
-//
-//        "minValue",
-//        "random_case_failed_for_no_reason",
-//
-//
-//        "nestedArraySearch",
-//        "zeroTripFor",
-//        "stringifyRow",
-//        "nestedControl",
-//        "arrayRotate",
-//        "earlyReturnArray",
-//        "whileCountdown",
-//        "whileZeroTrip",
-//        "whileEarlyReturn",
-//        "whileGuardedAccum",
+            "sortThree",
+            "isEven",
+            "minValue",
+            "random_case_failed_for_no_reason",
+            "nestedArraySearch",
+            "zeroTripFor",
+            "stringifyRow",
+            "nestedControl",
+            "arrayRotate",
+            "earlyReturnArray",
+            "whileCountdown",
+            "whileZeroTrip",
+            "whileEarlyReturn",
+            "whileGuardedAccum",
         )
     }
 
@@ -110,7 +107,6 @@ class LLTAGSnapshotTester {
         try {
             TACCompilerImpl().compile(src)
                 .let { PrettyPrinter().format(it) }
-                .map { it.replace(" ", "") }
         } catch (error: Throwable) {
             failSnapshot(testName, sourceCode, tacCodePath, "compile source to 3AC", error)
         }
@@ -122,7 +118,6 @@ class LLTAGSnapshotTester {
     ): List<String> =
         try {
             Files.readAllLines(tacCodePath)
-                .map { it.replace(" ", "") }
         } catch (error: Throwable) {
             failSnapshot(testName, sourceCode, tacCodePath, "read expected snapshot", error)
         }

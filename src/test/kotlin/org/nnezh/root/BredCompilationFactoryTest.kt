@@ -45,11 +45,11 @@ class BredCompilationFactoryTest {
             ifLeft = { errors -> error("expected C code, got: $errors") },
             ifRight = { cLines ->
                 assertTrue(
-                    cLines.any { it == "void printInt(int value);" },
+                    cLines.any { it.matches(Regex("""void printInt\(int param_value_\d+\);""")) },
                     "expected stdlib function prototype in C output: $cLines",
                 )
                 assertTrue(
-                    cLines.any { it == "void printInt(int value) {" },
+                    cLines.any { it.matches(Regex("""void printInt\(int param_value_\d+\) \{""")) },
                     "expected stdlib function body in C output: $cLines",
                 )
                 assertTrue(
@@ -143,12 +143,14 @@ class BredCompilationFactoryTest {
         result.fold(
             ifLeft = { errors -> error("expected C code, got: $errors") },
             ifRight = { cLines ->
+                val declaration = Regex("""int local_values_\d+\[3\] = \{1, 2, 3\};""")
+                val declarationIndex = cLines.indexOfFirst { it.matches(declaration) }
                 assertTrue(
-                    cLines.any { it == "int values[3] = {1, 2, 3};" },
+                    declarationIndex >= 0,
                     "expected global array declaration in C output: $cLines",
                 )
                 assertTrue(
-                    cLines.indexOf("int values[3] = {1, 2, 3};") < cLines.indexOfFirst { it.contains("int main") },
+                    declarationIndex < cLines.indexOfFirst { it.startsWith("int main(") },
                     "expected global array declaration before main: $cLines",
                 )
             },
@@ -174,7 +176,7 @@ class BredCompilationFactoryTest {
             ifLeft = { errors -> error("expected C code, got: $errors") },
             ifRight = { cLines ->
                 assertTrue(
-                    cLines.any { it == "int values[2];" },
+                    cLines.any { it == "int local_values_18[2];" },
                     "expected uninitialized global array declaration in C output: $cLines",
                 )
             },
@@ -247,19 +249,47 @@ class BredCompilationFactoryTest {
                     "expected MaybeInt tagged struct definition: $cLines",
                 )
                 assertTrue(
-                    cLines.any { it.contains("present = (MaybeInt){.tag = 1, .Just_value0 =") },
+                    cLines.any { it.matches(Regex("""local_present_\d+ = \(MaybeInt\)\{\.tag = 1, \.Just_value0 = \w+\};""")) },
                     "expected Just designated initializer: $cLines",
                 )
                 assertTrue(
-                    cLines.any { it == "absent = (MaybeInt){.tag = 0};" },
+                    cLines.any { it.matches(Regex("""local_absent_\d+ = \(MaybeInt\)\{\.tag = 0\};""")) },
                     "expected Nothing designated initializer: $cLines",
                 )
                 assertTrue(
-                    cLines.any { it.contains(".tag") },
+                    cLines.any { it.matches(Regex("""\w+ = local_present_\d+\.tag;""")) },
                     "expected when lowering to inspect the sum tag: $cLines",
                 )
             },
         )
+    }
+
+    @Test
+    fun `product field write and read use the declared C variable`(@TempDir dir: Path) {
+        val source = dir.resolve("counter-field-access.bred")
+        source.writeText(
+            """
+            type mut Counter(value: Int)
+
+            fun main(): Unit {
+                val counter: Counter = Counter(1)
+                counter.value = 2
+                val observed: Int = counter.value
+            }
+            """.trimIndent(),
+        )
+
+        val cLines = BredToCCompilerFactory().create().compile(source).fold(
+            ifLeft = { errors -> error("expected C code, got: $errors") },
+            ifRight = { it },
+        ).map { it.trim() }
+        fun singleName(pattern: Regex): String =
+            cLines.mapNotNull { pattern.matchEntire(it)?.groupValues?.get(1) }.single()
+
+        val declared = singleName(Regex("""Counter\s+(\w+);"""))
+        val written = singleName(Regex("""(\w+)\.value\s*=.*;"""))
+        val read = singleName(Regex("""\w+\s*=\s*(\w+)\.value;"""))
+        assertEquals(listOf(declared, declared), listOf(written, read), "C receivers for field write and read")
     }
 
 //    @Test

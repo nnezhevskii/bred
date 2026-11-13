@@ -34,50 +34,50 @@
   SUM_VARIANT_FIELD  Maybe_Int Just:Maybe_Int Just_value:Int
   SUM_VARIANT  Maybe_Int Nothing:Maybe_Int 1:Int
 func healthLabel:
-  GET_PARAM  health:Health
-  ASSIGN  label:String :String
-  LOAD_FIELD  var2:Int health:Health tag:Int
+  GET_PARAM  param_health_22:Health
+  ASSIGN  local_label_23:String :String
+  LOAD_FIELD  var2:Int param_health_22:Health tag:Int
   ASSIGN  var3:Int 0:Int
   EQ  var4:Boolean var2:Int var3:Int
   JMP_IF_NOT  lbl2 var4:Boolean
-  ASSIGN  label:String HEALTHY:String
+  ASSIGN  local_label_23:String HEALTHY:String
   JMP  lbl1
 lbl2:
-  LOAD_FIELD  var5:Int health:Health tag:Int
+  LOAD_FIELD  var5:Int param_health_22:Health tag:Int
   ASSIGN  var6:Int 1:Int
   EQ  var7:Boolean var5:Int var6:Int
   JMP_IF_NOT  lbl3 var7:Boolean
-  LOAD_FIELD  score:Int health:Health Degraded_value0:Int
+  LOAD_FIELD  local_score_24:Int param_health_22:Health Degraded_value0:Int
   ASSIGN  var9:String DEGRADED(:String
-  PARAM  score:Int
+  PARAM  local_score_24:Int
   CALL  var10:String intToString:String 1:Int
   ADD  var8:String var9:String var10:String
   ASSIGN  var12:String ):String
-  ADD  label:String var8:String var12:String
+  ADD  local_label_23:String var8:String var12:String
   JMP  lbl1
 lbl3:
-  LOAD_FIELD  var13:Int health:Health tag:Int
+  LOAD_FIELD  var13:Int param_health_22:Health tag:Int
   ASSIGN  var14:Int 2:Int
   EQ  var15:Boolean var13:Int var14:Int
   JMP_IF_NOT  lbl4 var15:Boolean
-  LOAD_FIELD  score:Int health:Health Critical_score:Int
+  LOAD_FIELD  local_score_25:Int param_health_22:Health Critical_score:Int
   ASSIGN  var17:String CRITICAL(:String
-  PARAM  score:Int
+  PARAM  local_score_25:Int
   CALL  var18:String intToString:String 1:Int
   ADD  var16:String var17:String var18:String
   ASSIGN  var20:String ):String
-  ADD  label:String var16:String var20:String
+  ADD  local_label_23:String var16:String var20:String
   JMP  lbl1
 lbl4:
-  LOAD_FIELD  var21:Int health:Health tag:Int
+  LOAD_FIELD  var21:Int param_health_22:Health tag:Int
   ASSIGN  var22:Int 3:Int
   EQ  var23:Boolean var21:Int var22:Int
   JMP_IF_NOT  lbl5 var23:Boolean
-  ASSIGN  label:String OFFLINE:String
+  ASSIGN  local_label_23:String OFFLINE:String
   JMP  lbl1
 lbl5:
 lbl1:
-  RET label:String
+  RET local_label_23:String
 func main:
   ASSIGN  var25:String search-index:String
   ASSIGN  var26:Int 64:Int
@@ -87,34 +87,34 @@ func main:
   PARAM  var25:String
   PARAM  var26:Int
   PARAM  var27:Health
-  CALL  service:ServiceSnapshot ServiceSnapshot:ServiceSnapshot 3:Int
-  LOAD_FIELD  var29:Int service:ServiceSnapshot score:Int
+  CALL  local_service_26:ServiceSnapshot ServiceSnapshot:ServiceSnapshot 3:Int
+  LOAD_FIELD  var29:Int local_service_26:ServiceSnapshot score:Int
   PARAM  var29:Int
-  CALL  bestBox:ScoreBox_Int boxScore_Int_ScoreBox_Int:ScoreBox_Int 1:Int
-  LOAD_FIELD  var30:Int bestBox:ScoreBox_Int value:Int
+  CALL  local_bestBox_27:ScoreBox_Int boxScore_Int_ScoreBox_Int:ScoreBox_Int 1:Int
+  LOAD_FIELD  var30:Int local_bestBox_27:ScoreBox_Int value:Int
   PARAM  var30:Int
-  CALL  checkpoint:Maybe_Int remember_Int_Maybe_Int:Maybe_Int 1:Int
+  CALL  local_checkpoint_28:Maybe_Int remember_Int_Maybe_Int:Maybe_Int 1:Int
   ASSIGN  var31:Int 2:Int
-  LOAD_FIELD  var33:Health service:ServiceSnapshot health:Health
+  LOAD_FIELD  var33:Health local_service_26:ServiceSnapshot health:Health
   PARAM  var33:Health
   CALL  var32:String healthLabel:String 1:Int
   PARAM  var31:Int
   PARAM  var32:String
-  CALL  alert:Alert Notify:Alert 2:Int
-  LOAD_FIELD  var35:Int checkpoint:Maybe_Int tag:Int
+  CALL  local_alert_29:Alert Notify:Alert 2:Int
+  LOAD_FIELD  var35:Int local_checkpoint_28:Maybe_Int tag:Int
   ASSIGN  var36:Int 0:Int
   EQ  var37:Boolean var35:Int var36:Int
   JMP_IF_NOT  lbl7 var37:Boolean
-  LOAD_FIELD  bestScore:Int checkpoint:Maybe_Int Just_value:Int
+  LOAD_FIELD  local_bestScore_30:Int local_checkpoint_28:Maybe_Int Just_value:Int
   ASSIGN  var39:String best=:String
-  PARAM  bestScore:Int
+  PARAM  local_bestScore_30:Int
   CALL  var40:String intToString:String 1:Int
   ADD  var38:String var39:String var40:String
   PARAM  var38:String
   CALL  println:Unit 1:Int
   JMP  lbl6
 lbl7:
-  LOAD_FIELD  var42:Int checkpoint:Maybe_Int tag:Int
+  LOAD_FIELD  var42:Int local_checkpoint_28:Maybe_Int tag:Int
   ASSIGN  var43:Int 1:Int
   EQ  var44:Boolean var42:Int var43:Int
   JMP_IF_NOT  lbl8 var44:Boolean
@@ -124,7 +124,7 @@ lbl7:
   JMP  lbl6
 lbl8:
 lbl6:
-  LOAD_FIELD  var47:Int alert:Alert tag:Int
+  LOAD_FIELD  var47:Int local_alert_29:Alert tag:Int
   ASSIGN  var48:Int 0:Int
   EQ  var49:Boolean var47:Int var48:Int
   JMP_IF_NOT  lbl10 var49:Boolean
@@ -133,31 +133,31 @@ lbl6:
   CALL  println:Unit 1:Int
   JMP  lbl9
 lbl10:
-  LOAD_FIELD  var51:Int alert:Alert tag:Int
+  LOAD_FIELD  var51:Int local_alert_29:Alert tag:Int
   ASSIGN  var52:Int 1:Int
   EQ  var53:Boolean var51:Int var52:Int
   JMP_IF_NOT  lbl11 var53:Boolean
-  LOAD_FIELD  level:Int alert:Alert Notify_level:Int
-  LOAD_FIELD  message:String alert:Alert Notify_message:String
+  LOAD_FIELD  local_level_31:Int local_alert_29:Alert Notify_level:Int
+  LOAD_FIELD  local_message_32:String local_alert_29:Alert Notify_message:String
   ASSIGN  var55:String level=:String
-  PARAM  level:Int
+  PARAM  local_level_31:Int
   CALL  var56:String intToString:String 1:Int
   ADD  var54:String var55:String var56:String
   PARAM  var54:String
   CALL  println:Unit 1:Int
-  PARAM  message:String
+  PARAM  local_message_32:String
   CALL  println:Unit 1:Int
   JMP  lbl9
 lbl11:
 lbl9:
   RET Unit
 func boxScore_Int_ScoreBox_Int:
-  GET_PARAM  value:Int
-  PARAM  value:Int
+  GET_PARAM  param_value_33:Int
+  PARAM  param_value_33:Int
   CALL  var59:ScoreBox_Int ScoreBox_Int:ScoreBox_Int 1:Int
   RET var59:ScoreBox_Int
 func remember_Int_Maybe_Int:
-  GET_PARAM  value:Int
-  PARAM  value:Int
+  GET_PARAM  param_value_34:Int
+  PARAM  param_value_34:Int
   CALL  var61:Maybe_Int Just:Maybe_Int 1:Int
   RET var61:Maybe_Int

@@ -285,19 +285,19 @@ class LLTAGCompileExpectationsTest {
     )
 
     assertTrue(
-      tac.any { it.startsWith("global values:Array[2]") && it.contains("4:Long") && it.contains("5:Long") },
+      tac.any { it.matches(Regex("""global\s+local_values_\d+:Array\[2\]\s+\[4:Long, 5:Long\]""")) },
       "expected Long global array initializer, got:\n${tac.joinToString("\n")}",
     )
     assertTrue(
-      tac.any { it.startsWith("GET_PARAM") && it.contains("value:Long") },
+      tac.any { it.matches(Regex("""GET_PARAM\s+param_value_\d+:Long""")) },
       "expected Long function parameter, got:\n${tac.joinToString("\n")}",
     )
     assertTrue(
-      tac.any { it.startsWith("ADD") && it.contains(":Long") && it.contains("value:Long") },
+      tac.any { it.matches(Regex("""ADD\s+\S+:Long\s+param_value_\d+:Long\s+\S+:Long""")) },
       "expected Long ADD instruction, got:\n${tac.joinToString("\n")}",
     )
     assertTrue(
-      tac.any { it.startsWith("SUB") && it.contains(":Long") && it.contains("result:Long") },
+      tac.any { it.matches(Regex("""SUB\s+\S+:Long\s+local_result_\d+:Long\s+local_first_\d+:Long""")) },
       "expected Long SUB instruction, got:\n${tac.joinToString("\n")}",
     )
     assertTrue(
@@ -309,11 +309,11 @@ class LLTAGCompileExpectationsTest {
       "expected Long MOD instruction, got:\n${tac.joinToString("\n")}",
     )
     assertTrue(
-      tac.any { it.startsWith("CALL") && it.contains("result:Long") && it.contains("addOne:Long") },
+      tac.any { it.matches(Regex("""CALL\s+local_result_\d+:Long\s+addOne:Long\s+1:Int""")) },
       "expected Long function call result, got:\n${tac.joinToString("\n")}",
     )
     assertTrue(
-      tac.any { it.startsWith("CALL") && it.contains("text:String") && it.contains("longToString:String") },
+      tac.any { it.matches(Regex("""CALL\s+local_text_\d+:String\s+longToString:String\s+1:Int""")) },
       "expected longToString call result, got:\n${tac.joinToString("\n")}",
     )
     assertTrue(
@@ -333,7 +333,7 @@ class LLTAGCompileExpectationsTest {
     )
 
     assertTrue(
-      tac.any { it.startsWith("CALL ") && it.contains("startedAt:Long") && it.contains("currentTimeMillis:Long") },
+      tac.any { it.startsWith("CALL ") && it.contains("local_startedAt_19:Long") && it.contains("currentTimeMillis:Long") },
       "expected Long currentTimeMillis call, got:\n${tac.joinToString("\n")}",
     )
   }
@@ -373,27 +373,25 @@ class LLTAGCompileExpectationsTest {
       "expected address field definition, got:\n${tac.joinToString("\n")}",
     )
     assertTrue(
-      tac.any { it.startsWith("CALL") && it.contains("address:Address") && it.contains("Address:Address") },
+      tac.any { it.startsWith("CALL") && it.contains("local_address_19:Address") && it.contains("Address:Address") },
       "expected Address constructor call, got:\n${tac.joinToString("\n")}",
     )
+    val personCall = tac.single { it.startsWith("CALL") && it.contains(" Person:Person ") }
+    val person = personCall.split(Regex("""\s+"""))[1].substringBefore(':')
     assertTrue(
-      tac.any { it.startsWith("CALL") && it.contains("person:Person") && it.contains("Person:Person") },
-      "expected Person constructor call, got:\n${tac.joinToString("\n")}",
-    )
-    assertTrue(
-      tac.any { it.startsWith("LOAD_FIELD") && it.contains("person:Person") && it.contains("age:Int") },
+      tac.any { it.startsWith("LOAD_FIELD") && it.contains(" $person:Person ") && it.contains("age:Int") },
       "expected person.age LOAD_FIELD, got:\n${tac.joinToString("\n")}",
     )
     assertTrue(
-      tac.any { it.startsWith("LOAD_FIELD") && it.contains("person.address:Address") && it.contains("city:String") },
+      tac.any { it.startsWith("LOAD_FIELD") && it.contains(" $person.address:Address ") && it.contains("city:String") },
       "expected person.address.city LOAD_FIELD, got:\n${tac.joinToString("\n")}",
     )
     assertTrue(
-      tac.any { it.startsWith("STORE_FIELD") && it.contains("person:Person") && it.contains("age:Int") },
+      tac.any { it.startsWith("STORE_FIELD") && it.contains(" $person:Person ") && it.contains("age:Int") },
       "expected person.age STORE_FIELD, got:\n${tac.joinToString("\n")}",
     )
     assertTrue(
-      tac.any { it.startsWith("STORE_FIELD") && it.contains("person.address:Address") && it.contains("city:String") },
+      tac.any { it.startsWith("STORE_FIELD") && it.contains(" $person.address:Address ") && it.contains("city:String") },
       "expected person.address.city STORE_FIELD, got:\n${tac.joinToString("\n")}",
     )
     assertTrue(
@@ -437,11 +435,11 @@ class LLTAGCompileExpectationsTest {
       "expected Just variant metadata, got:\n${tac.joinToString("\n")}",
     )
     assertTrue(
-      tac.any { it.startsWith("CALL") && it.contains("present:MaybeInt") && it.contains("Just:MaybeInt") },
+      tac.any { it.startsWith("CALL") && it.contains("local_present_19:MaybeInt") && it.contains("Just:MaybeInt") },
       "expected Just constructor call, got:\n${tac.joinToString("\n")}",
     )
     assertTrue(
-      tac.any { it.startsWith("CALL") && it.contains("absent:MaybeInt") && it.contains("Nothing:MaybeInt") },
+      tac.any { it.startsWith("CALL") && it.contains("local_absent_20:MaybeInt") && it.contains("Nothing:MaybeInt") },
       "expected Nothing constructor call, got:\n${tac.joinToString("\n")}",
     )
     assertTrue(
@@ -451,9 +449,9 @@ class LLTAGCompileExpectationsTest {
     assertTrue(
       tac.any {
         it.startsWith("LOAD_FIELD") &&
-          it.contains("present:MaybeInt") &&
+          it.contains("local_present_19:MaybeInt") &&
           it.contains("Just_value0:Int") &&
-          it.contains("payload:Int")
+          Regex("""\blocal_payload_\d+:Int\b""").containsMatchIn(it)
       },
       "expected Just payload LOAD_FIELD in when lowering, got:\n${tac.joinToString("\n")}",
     )
@@ -500,34 +498,65 @@ class LLTAGCompileExpectationsTest {
     assertTrue(
       tac.any {
         it.startsWith("CALL") &&
-          it.contains("response:Response") &&
+          it.contains("local_response_19:Response") &&
           it.contains("Success:Response") &&
           it.contains("2:Int")
       },
       "expected Success constructor call with two args, got:\n${tac.joinToString("\n")}",
     )
     assertTrue(
-      tac.any { it.startsWith("CALL") && it.contains("failed:Response") && it.contains("Failure:Response") },
+      tac.any { it.startsWith("CALL") && it.contains("local_failed_20:Response") && it.contains("Failure:Response") },
       "expected Failure nullary constructor call, got:\n${tac.joinToString("\n")}",
     )
     assertTrue(
       tac.any {
         it.startsWith("LOAD_FIELD") &&
-          it.contains("response:Response") &&
+          it.contains("local_response_19:Response") &&
           it.contains("Success_value:Int") &&
-          it.contains("code:Int")
+          Regex("""\blocal_code_\d+:Int\b""").containsMatchIn(it)
       },
       "expected Success value payload LOAD_FIELD, got:\n${tac.joinToString("\n")}",
     )
     assertTrue(
       tac.any {
         it.startsWith("LOAD_FIELD") &&
-          it.contains("response:Response") &&
+          it.contains("local_response_19:Response") &&
           it.contains("Success_message:String") &&
-          it.contains("message:String")
+          Regex("""\blocal_message_\d+:String\b""").containsMatchIn(it)
       },
       "expected Success message payload LOAD_FIELD, got:\n${tac.joinToString("\n")}",
     )
+  }
+
+  @Test
+  fun `shadowed product and when payload field reads use their declared owners`() {
+    val tac = formattedTac(
+      """
+      type Counter(value: Int)
+      type Label(text: String)
+      type Box = Empty | Full(counter: Counter)
+
+      fun inspect(item: Counter): Int {
+          if (true) {
+              val item: Label = Label("inner")
+              val text: String = item.text
+          }
+          val box: Box = Full(item)
+          when (box) {
+              Full(payload) -> { val count: Int = payload.value }
+              Empty -> { }
+          }
+          return item.value
+      }
+      """.trimIndent(),
+    ).map { it.split(Regex("""\s+""")) }
+
+    val parameter = tac.single { it.first() == "GET_PARAM" }[1]
+    val inner = tac.single { it.first() == "CALL" && it[2] == "Label:Label" }[1]
+    val loads = tac.filter { it.first() == "LOAD_FIELD" }
+    val payload = loads.single { it.last() == "Full_counter:Counter" }[1]
+    assertEquals(inner, loads.single { it.last() == "text:String" }[2])
+    assertEquals(listOf(payload, parameter), loads.filter { it.last() == "value:Int" }.map { it[2] })
   }
 
   @Test
@@ -688,7 +717,7 @@ class LLTAGCompileExpectationsTest {
     )
 
     assertTrue(
-      tac.any { it.startsWith("ALLOC ") && it.contains("arr:Array") && it.contains("2:Int") },
+      tac.any { it.startsWith("ALLOC ") && it.contains("local_arr_19:Array") && it.contains("2:Int") },
       "expected ALLOC for arr[2], got:\n${tac.joinToString("\n")}",
     )
     assertEquals(2, tac.count { it.startsWith("STORE ") })
@@ -707,7 +736,7 @@ class LLTAGCompileExpectationsTest {
     )
 
     assertTrue(
-      tac.any { it.startsWith("global values:Array[2]") && it.contains("4:Int") && it.contains("5:Int") },
+      tac.any { it.startsWith("global local_values_18:Array[2]") && it.contains("4:Int") && it.contains("5:Int") },
       "expected global array declaration in 3AC output, got:\n${tac.joinToString("\n")}",
     )
     assertTrue(tac.any { it.startsWith("LOAD ") }, "expected LOAD from global array, got:\n${tac.joinToString("\n")}")
@@ -723,10 +752,10 @@ class LLTAGCompileExpectationsTest {
       }
       """.trimIndent(),
     )
-    val loadIndex = tac.indexOfFirst { it.startsWith("LOAD ") && it.contains("values:Array") }
+    val loadIndex = tac.indexOfFirst { it.startsWith("LOAD ") && it.contains("local_values_19:Array") }
 
     assertTrue(loadIndex > 0, "expected LOAD from values, got:\n${tac.joinToString("\n")}")
-    val loadDestination = Regex("""LOAD\s+(\S+:Int)\s+values:Array""")
+    val loadDestination = Regex("""LOAD\s+(\S+:Int)\s+local_values_19:Array""")
       .find(tac[loadIndex])
       ?.groupValues
       ?.get(1)
@@ -750,7 +779,7 @@ class LLTAGCompileExpectationsTest {
     )
 
     assertTrue(
-      tac.any { it == "global values:Array[2]" },
+      tac.any { it == "global local_values_18:Array[2]" },
       "expected uninitialized global array declaration in 3AC output, got:\n${tac.joinToString("\n")}",
     )
     assertTrue(tac.any { it.startsWith("LOAD ") }, "expected LOAD from global array, got:\n${tac.joinToString("\n")}")

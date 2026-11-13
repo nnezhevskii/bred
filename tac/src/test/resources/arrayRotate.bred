@@ -7,7 +7,7 @@ fun rotateLeft(arr: Int[], size: Int): Unit {
         var next: Int = i + 1
         arr[i] = arr[next]
     }
-    arr[size] = first
+    arr[size - 1] = first
 }
 
 fun main(): Unit {
@@ -16,15 +16,7 @@ fun main(): Unit {
     buf[1] = 20
     buf[2] = 30
     buf[3] = 40
-    rotateLeft(buf, 3)
+    rotateLeft(buf, 4)
 
-    var a: String = ""
-    intToString(buf[0], a, 1024)
-    var b: String = ""
-    intToString(buf[3], b, 1024)
-    var mid: String = ""
-    stringConcat(a, "-", mid, 1024)
-    var line: String = ""
-    stringConcat(mid, b, line, 1024)
-    println(line)
+    println(intToString(buf[0]) + "-" + intToString(buf[3]))
 }

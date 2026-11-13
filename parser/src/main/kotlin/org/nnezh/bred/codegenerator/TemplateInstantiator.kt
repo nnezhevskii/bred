@@ -288,7 +288,7 @@ class TemplateInstantiator(
         templateTypes[expression.name]?.let { template ->
             if (transformedTypeArguments.isNotEmpty()) {
                 val type = instantiateTemplateType(template, transformedTypeArguments)
-                return FunctionCallExpressionASTNode(type.name, transformedArguments, isConstructorCalling = true)
+                return FunctionCallExpressionASTNode(type.name, transformedArguments)
             }
         }
 
@@ -297,8 +297,7 @@ class TemplateInstantiator(
                 instantiateTemplateType(owner, transformedTypeArguments)
                 return FunctionCallExpressionASTNode(
                     name = expression.name,
-                    arguments = transformedArguments,
-                    isConstructorCalling = true,
+                    arguments = transformedArguments
                 )
             }
         }
@@ -321,7 +320,6 @@ class TemplateInstantiator(
             name = expression.name,
             arguments = transformedArguments,
             typeArguments = transformedTypeArguments,
-            isConstructorCalling = expression.isConstructorCalling,
         )
     }
 

@@ -20,6 +20,9 @@ instance Comparability<Int> {
     fun less(a: Int, b: Int): Boolean {
         return a < b
     }
+    fun greater(a: Int, b: Int): Boolean {
+        return a > b
+    }
 }
 
 fun printValue<T: Printable>(value: T) {
@@ -33,13 +36,13 @@ fun arrayToString<T: Printable>(arr: Array<T>, size: Int): String {
         return ""
     }
     if (size == 1) {
-        return intToString(arr[0])
+        return toString(arr[0])
     }
 
     for (i in 0 to size - 1) {
-        buff = buff + intToString(arr[i]) + " "
+        buff = buff + toString(arr[i]) + " "
     }
-    buff = buff + intToString(arr[size - 1])
+    buff = buff + toString(arr[size - 1])
 
     return buff
 }
@@ -68,12 +71,17 @@ fun binarySearch<T: Comparability>(arr: Array<T>, size: Int, element: T): Int {
 fun main(): Unit {
 
     val arrSize: Int = readInt()
+    if (arrSize < 0 || arrSize > 1024) {
+        return
+    }
     val arr: Array<Int>[1024]
 
     for (i in 0 to arrSize) {
         arr[i] = i * 2
     }
-    arr[arrSize - 1] = arr[arrSize - 1] * 11
+    if (arrSize > 0) {
+        arr[arrSize - 1] = arr[arrSize - 1] * 11
+    }
 
     println(arrayToString(arr, arrSize))
 

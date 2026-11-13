@@ -21,8 +21,7 @@ data class ArrayElementAccessASTNode(val name: String, val index: ExpressionASTN
 data class FunctionCallExpressionASTNode(
     val name: String,
     val arguments: List<ExpressionASTNode>,
-    val typeArguments: List<TypeSign> = emptyList(),
-    var isConstructorCalling: Boolean = true,
+    val typeArguments: List<TypeSign> = emptyList()
 ) : ExpressionASTNode
 data class FieldAccessChainExpressionASTNode(val root: String, val next: FieldAccessChainExpressionASTNode? = null) : ExpressionASTNode, LeftValue
 data class WhenExpressionASTNode(

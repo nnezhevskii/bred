@@ -1,7 +1,5 @@
-fun appendInt(buf: String, value: Int, out: String): Unit {
-    var tmp: String = ""
-    intToString(value, tmp, 1024)
-    stringConcat(buf, tmp, out, 1024)
+fun appendInt(buf: String, value: Int): String {
+    return buf + intToString(value)
 }
 
 fun formatRow(arr: Int[], size: Int): Unit {
@@ -10,16 +8,11 @@ fun formatRow(arr: Int[], size: Int): Unit {
         return
     }
     var line: String = ""
-    appendInt(line, arr[0], line)
-    if (size >= 1) {
-        var step1: String = ""
-        stringConcat(line, "|", step1, 1024)
-        appendInt(step1, arr[1], line)
-    }
-    if (size >= 2) {
-        var step2: String = ""
-        stringConcat(line, "|", step2, 1024)
-        appendInt(step2, arr[2], line)
+    for (i in 0 to size) {
+        if (i > 0) {
+            line = line + "|"
+        }
+        line = appendInt(line, arr[i])
     }
     println(line)
 }
@@ -29,5 +22,5 @@ fun main(): Unit {
     row[0] = 1
     row[1] = 2
     row[2] = 3
-    formatRow(row, 2)
+    formatRow(row, 3)
 }

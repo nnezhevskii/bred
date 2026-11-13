@@ -18,12 +18,10 @@ fun main(): Unit {
     data[0] = 1
     data[1] = -5
     data[2] = 3
-    var idx: Int = firstNegative(data, 2)
+    var idx: Int = firstNegative(data, 3)
     if (idx < 0) {
         println("none")
     } else {
-        var msg: String = ""
-        intToString(idx, msg, 1024)
-        println(msg)
+        println(intToString(idx))
     }
 }

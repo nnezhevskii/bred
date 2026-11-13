@@ -17,13 +17,5 @@ fun conditionFalseFromStart(bound: Int): Int {
 fun main(): Unit {
     var a: Int = neverRuns()
     var b: Int = conditionFalseFromStart(5)
-    var line: String = ""
-    intToString(a, line, 1024)
-    var suffix: String = ""
-    intToString(b, suffix, 1024)
-    var part: String = ""
-    stringConcat(line, ":", part, 1024)
-    var out: String = ""
-    stringConcat(part, suffix, out, 1024)
-    println(out)
+    println(intToString(a) + ":" + intToString(b))
 }

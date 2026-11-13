@@ -27,7 +27,5 @@ fun classify(n: Int, limit: Int): Int {
 
 fun main(): Unit {
     var result: Int = classify(7, 3)
-    var out: String = ""
-    intToString(result, out, 1024)
-    println(out)
+    println(intToString(result))
 }

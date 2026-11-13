@@ -1,6 +1,7 @@
 package org.nnezh.org.nnezh.ICGenerator
 
 import arrow.core.raise.result
+import org.nnezh.bred.ast.ASTNode
 import org.nnezh.bred.ast.ArrayElementAccessASTNode
 import org.nnezh.bred.ast.ArrayInitializationExpressionASTNode
 import org.nnezh.bred.ast.BinaryExpressionASTNode
@@ -17,6 +18,7 @@ import org.nnezh.bred.ast.UnaryExpressionASTNode
 import org.nnezh.bred.ast.UnaryOperator
 import org.nnezh.bred.ast.VariableExpressionASTNode
 import org.nnezh.bred.ast.WhenExpressionASTNode
+import org.nnezh.bred.common.SymbolId
 import org.nnezh.bred.common.TypeSign
 import org.nnezh.bred.context.ProgramGlobalContext
 import org.nnezh.org.nnezh.ICGenerator.LLTACElement.Companion.binOp
@@ -33,6 +35,7 @@ class LLTACExpressionSubgenerator(
     private val typeTable: Map<ExpressionASTNode, TypeSign>,
     private val globalContext: ProgramGlobalContext,
     private val mangledFunctionsCallback: () -> Map<String, String>,
+    private val resolvedSymbols: Map<ASTNode, SymbolId>,
     private val variableTypeLookup: (String) -> TypeSign?,
 ) {
 
@@ -227,7 +230,7 @@ class LLTACExpressionSubgenerator(
                 } else {
                     LLTACExpressionSubgeneratorResult(
                         instructions = emptyList(),
-                        finalVariable = expression.token.lexeme,
+                        finalVariable = resolvedSymbols[expression]!!.toString(),
                         finalType = expression.tacType(),
                     )
                 }
@@ -251,7 +254,7 @@ class LLTACExpressionSubgenerator(
                 val arrayType = globalContext.arrayOf(elementType)
                 instructions.add(
                     LLTACElement.load(
-                        array = expression.name,
+                        array = resolvedSymbols[expression]!!.toString(),
                         destination = destination,
                         index = index.finalVariable!!,
                         arrayType = arrayType,
@@ -312,9 +315,10 @@ class LLTACExpressionSubgenerator(
             lltacError("field access chain must contain at least one field", this)
         }
 
-        var ownerType = variableTypeLookup(names.first())
+        val rootSymbol = resolvedSymbols[this] ?: lltacError("missing symbol for field access root '$root'", this)
+        var ownerPath = rootSymbol.toString()
+        var ownerType = variableTypeLookup(ownerPath)
             ?: lltacError("missing TAC type for field access root '${names.first()}'", this)
-        var ownerPath = names.first()
 
         for (fieldName in names.drop(1).dropLast(1)) {
             val fieldType = fieldType(ownerType, fieldName, this)

@@ -57,7 +57,7 @@ data class FunctionArgument(
     val name: String,
     val type: TypeSign,
     val isArray: Boolean = false,
-)
+): ASTNode
 
 data class BlockAstNode(val statements: List<StatementAstNode>) : ASTNode
 

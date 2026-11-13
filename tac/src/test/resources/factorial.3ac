@@ -1,23 +1,23 @@
 func factorialRecursion:
-  GET_PARAM n:Int
-  ASSIGN var3:Int 1:Int
-  LT var1:Boolean n:Int var3:Int
-  JMP_IF_NOT lbl1 var1:Boolean
-  ASSIGN var4:Int 1:Int
+  GET_PARAM  param_n_20:Int
+  ASSIGN  var3:Int 1:Int
+  LT  var1:Boolean param_n_20:Int var3:Int
+  JMP_IF_NOT  lbl1 var1:Boolean
+  ASSIGN  var4:Int 1:Int
   RET var4:Int
 lbl1:
-  ASSIGN var10:Int 1:Int
-  SUB var8:Int n:Int var10:Int
-  PARAM var8:Int
-  CALL var7:Int factorialRecursion:Int 1:Int
-  MUL var5:Int n:Int var7:Int
+  ASSIGN  var10:Int 1:Int
+  SUB  var8:Int param_n_20:Int var10:Int
+  PARAM  var8:Int
+  CALL  var7:Int factorialRecursion:Int 1:Int
+  MUL  var5:Int param_n_20:Int var7:Int
   RET var5:Int
 func main:
-  CALL n:Int readInt:Int 0:Int
-  PARAM n:Int
-  CALL var12:Int factorialRecursion:Int 1:Int
-  PARAM var12:Int
-  CALL var11:String intToString:String 1:Int
-  PARAM var11:String
+  CALL  local_n_21:Int readInt:Int 0:Int
+  PARAM  local_n_21:Int
+  CALL  var12:Int factorialRecursion:Int 1:Int
+  PARAM  var12:Int
+  CALL  var11:String intToString:String 1:Int
+  PARAM  var11:String
   CALL  println:Unit 1:Int
   RET Unit

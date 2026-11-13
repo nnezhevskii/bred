@@ -31,6 +31,7 @@ import org.nnezh.bred.ast.VariableExpressionASTNode
 import org.nnezh.bred.ast.WhenExpressionASTNode
 import org.nnezh.bred.ast.WhenStatementAstNode
 import org.nnezh.bred.ast.WhileStatementAstNode
+import org.nnezh.bred.common.SymbolId
 import org.nnezh.bred.common.TypeSign
 import org.nnezh.bred.context.ProgramGlobalContext
 import org.nnezh.bred.context.SumTypeDefinition
@@ -42,6 +43,7 @@ import org.nnezh.org.nnezh.ICGenerator.LLTACElement.Companion.structDef
 class LLTACGenerator(
     private val nameEmitter: TACNameEmitter = TACNameEmitter(),
     private val typeTable: Map<ExpressionASTNode, TypeSign>,
+    private val resolvedSymbols: Map<ASTNode, SymbolId>,
     private val globalContext: ProgramGlobalContext,
 ) {
     private val sumTagFieldName = "tag"
@@ -52,11 +54,11 @@ class LLTACGenerator(
         typeTable = typeTable,
         globalContext = globalContext,
         mangledFunctionsCallback = { mangledFunctions },
+        resolvedSymbols = resolvedSymbols,
         variableTypeLookup = { name -> localVariableTypes[name] },
     )
 
-    fun build(root: ASTNode): List<LLTACElement> =
-        visit(root)
+    fun build(root: ASTNode): List<LLTACElement> = visit(root)
 
     fun visit(node: ASTNode): List<LLTACElement> {
         val instructions = mutableListOf<LLTACElement>()
@@ -74,8 +76,9 @@ class LLTACGenerator(
                 instructions.add(LLTACElement.function(functionName, node.result))
                 instructions.addAll(node.arguments.map {
                     val type = it.scopeType()
-                    localVariableTypes[it.name] = type
-                    LLTACElement.getParam(it.name, type)
+                    val parameter = resolvedSymbols[it]!!.toString()
+                    localVariableTypes[parameter] = type
+                    LLTACElement.getParam(parameter, type)
                 })
                 instructions.addAll(visit(node.body))
             }
@@ -108,7 +111,8 @@ class LLTACGenerator(
                         instructions.addAll(rightValue.instructions)
                         instructions.add(
                             LLTACElement.store(
-                                array = lValue.name,
+                                array = resolvedSymbols[lValue]?.toString()
+                                    ?: lltacError("missing symbol for array '${lValue.name}'", lValue),
                                 index = indexName,
                                 source = rightValue.finalVariable!!,
                                 arrayType = globalContext.arrayOf(rightType),
@@ -119,12 +123,12 @@ class LLTACGenerator(
                     }
 
                     is VariableExpressionASTNode -> {
-                        val varName = lValue.token.lexeme
+                        val variableName = resolvedSymbols[lValue]!!.toString()
                         val varType = lValue.tacType()
-                        val result = expressionLLTACGenerator.buildInstructionsForExpression(varName, varType, node.rValue)
+                        val result = expressionLLTACGenerator.buildInstructionsForExpression(variableName, varType, node.rValue)
                         instructions.addAll(result.instructions)
-                        if (varName != result.finalVariable) {
-                            result.finalVariable?.let { instructions.add(LLTACElement.assignVariable(varName, varType, it)) }
+                        if (variableName != result.finalVariable) {
+                            result.finalVariable?.let { instructions.add(LLTACElement.assignVariable(variableName, varType, it)) }
                         }
                     }
 
@@ -238,23 +242,25 @@ class LLTACGenerator(
             }
 
             is ScalarVariableInitializationASTNode -> {
-                localVariableTypes[node.name] = node.type
+                val variable = resolvedSymbols[node]!!.toString()
+                localVariableTypes[variable] = node.type
                 val result = expressionLLTACGenerator.buildInstructionsForExpression(
-                    variable = node.name,
+                    variable = variable,
                     type = node.type,
                     expression = node.expression,
                 )
                 instructions.addAll(result.instructions)
-                if (node.name != result.finalVariable) {
-                    instructions.add(LLTACElement.assignVariable(node.name, node.type, result.finalVariable!!))
+                if (variable != result.finalVariable) {
+                    instructions.add(LLTACElement.assignVariable(variable, node.type, result.finalVariable!!))
                 }
             }
 
             is ArrayDeclarationASTNode -> {
                 val elementType = node.type.arrayElementType()
                 val arrayType = globalContext.arrayOf(elementType)
-                localVariableTypes[node.name] = arrayType
-                instructions.add(LLTACElement.alloc(node.name, arrayType, node.size))
+                val variable = resolvedSymbols[node]!!.toString()
+                localVariableTypes[variable] = arrayType
+                instructions.add(LLTACElement.alloc(variable, arrayType, node.size))
 
                 val initializer = node.expression
                 if (initializer is ArrayInitializationExpressionASTNode) {
@@ -266,7 +272,7 @@ class LLTACGenerator(
                         instructions.addAll(result.instructions)
                         instructions.add(
                             LLTACElement.store(
-                                array = node.name,
+                                array = resolvedSymbols[node]!!.toString(),
                                 index = indexName,
                                 source = result.finalVariable!!,
                                 arrayType = arrayType,
@@ -307,7 +313,7 @@ class LLTACGenerator(
                     val initializer = (node.expression as? ArrayInitializationExpressionASTNode)
                         ?.args
                         ?.map { it.toGlobalInitializerOperand(elementType) }
-                    instructions.add(LLTACElement.globalArray(node.name, arrayType, size, initializer))
+                    instructions.add(LLTACElement.globalArray(resolvedSymbols[node]!!.toString(), arrayType, size, initializer))
                 }
             }
 
@@ -393,12 +399,8 @@ class LLTACGenerator(
                 instructions.add(LLTACElement.jumpIfNot(nextLabel, conditionVariable, globalContext.booleanType))
             }
 
-            val payloadBindings = pattern?.payloadBindingTypes().orEmpty()
-            val previousBindingTypes = rememberLocalVariableTypes(payloadBindings)
-            payloadBindings.forEach { (name, type) -> localVariableTypes[name] = type }
             pattern?.payloadLoads(subjectVariable, subjectType)?.let { instructions.addAll(it) }
             instructions.addAll(visit(branch.bodyBlock))
-            restoreLocalVariableTypes(previousBindingTypes)
             instructions.add(LLTACElement.jump(endLabel))
             instructions.add(nextLabel)
         }
@@ -440,19 +442,17 @@ class LLTACGenerator(
                         SumBranchPattern(
                             variant,
                             condition.arguments.map { argument ->
-                                (argument as? VariableExpressionASTNode)?.token?.lexeme
-                                    ?: lltacError("sum payload binding must be a variable name", argument)
+                                resolvedSymbols[argument]?.toString()
+                                    ?: lltacError("missing symbol for sum payload binding", argument)
                             },
                         )
                     }
             else -> null
         }
 
-    private fun SumBranchPattern.payloadBindingTypes(): List<Pair<String, TypeSign>> =
-        bindingNames.zip(variant.fields).map { (name, field) -> name to field.type }
-
     private fun SumBranchPattern.payloadLoads(subjectVariable: String, subjectType: TypeSign): List<LLTACElement> =
         bindingNames.zip(variant.fields).map { (name, field) ->
+            localVariableTypes[name] = field.type
             LLTACElement.loadField(
                 ownerPath = subjectVariable,
                 ownerType = subjectType,
@@ -461,19 +461,6 @@ class LLTACGenerator(
                 destination = name,
             )
         }
-
-    private fun rememberLocalVariableTypes(bindings: List<Pair<String, TypeSign>>): Map<String, TypeSign?> =
-        bindings.associate { (name, _) -> name to localVariableTypes[name] }
-
-    private fun restoreLocalVariableTypes(previousTypes: Map<String, TypeSign?>) {
-        previousTypes.forEach { (name, type) ->
-            if (type == null) {
-                localVariableTypes.remove(name)
-            } else {
-                localVariableTypes[name] = type
-            }
-        }
-    }
 
     private fun ExpressionASTNode.tacType(): TypeSign =
         typeTable[this] ?: inferLiteralTacType(this)

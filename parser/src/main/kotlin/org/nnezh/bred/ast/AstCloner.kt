@@ -64,6 +64,7 @@ object AstCloner {
             is InstanceDeclAstNode -> cloneInstance(node, replacement)
             is ExpressionASTNode -> cloneExpression(node, replacement)
             EmptyNode -> EmptyNode
+            is FunctionArgument -> TODO()
         }
 
     private fun cloneGlobalVariable(
@@ -199,7 +200,6 @@ object AstCloner {
                 name = node.name,
                 arguments = node.arguments.map { cloneExpression(it, replacement) },
                 typeArguments = node.typeArguments.map { cloneTypeSign(it, replacement) },
-                isConstructorCalling = node.isConstructorCalling,
             )
             is WhenExpressionASTNode -> WhenExpressionASTNode(
                 subject = cloneExpression(node.subject, replacement),

@@ -21,12 +21,10 @@ fun main(): Unit {
     data[3] = 15
     data[4] = 4
     data[5] = 9
-    var idx: Int = findPairSum(data, 5, 18)
+    var idx: Int = findPairSum(data, 6, 18)
     if (idx == -1) {
         println("not found")
     } else {
-        var msg: String = ""
-        intToString(idx, msg, 1024)
-        println(msg)
+        println(intToString(idx))
     }
 }

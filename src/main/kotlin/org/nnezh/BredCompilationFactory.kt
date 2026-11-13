@@ -86,7 +86,11 @@ class BredToCCompiler(
             .bind()
 
         val tac = Either.catch {
-            LLTACGenerator(typeTable = analysis.expressionTypes, globalContext = instantiatedContext).build(resolvedInstantiatedRoot)
+            LLTACGenerator(
+                typeTable = analysis.expressionTypes,
+                resolvedSymbols = analysis.resolvedSymbols,
+                globalContext = instantiatedContext
+            ).build(resolvedInstantiatedRoot)
         }.mapLeft { error ->
             listOf("TAC generation failed: ${error.message ?: error::class.qualifiedName}")
         }.bind()

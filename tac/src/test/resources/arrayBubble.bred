@@ -19,13 +19,13 @@ fun arrayToString<T: Printable>(arr: Array<T>, size: Int): String {
         return ""
     }
     if (size == 1) {
-        return intToString(arr[0])
+        return toString(arr[0])
     }
 
     for (i in 0 to size - 1) {
-        buff = buff + intToString(arr[i]) + " "
+        buff = buff + toString(arr[i]) + " "
     }
-    buff = buff + intToString(arr[size - 1])
+    buff = buff + toString(arr[size - 1])
 
     return buff
 }
@@ -45,6 +45,9 @@ fun bubbleSort(a: Array<Int>, size: Int) {
 fun main(): Unit {
 
     val arrSize: Int = readInt()
+    if (arrSize < 0 || arrSize > 1024) {
+        return
+    }
     val arr: Array<Int>[1024]
 
     for (i in 0 to arrSize) {

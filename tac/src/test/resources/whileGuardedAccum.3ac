@@ -1,57 +1,37 @@
-func boundedSum_Int_Int:
-  GET_PARAM limit:Int
-  GET_PARAM cap:Int
-  ASSIGN i:Int 0:Int
-  ASSIGN total:Int 0:Int
+func boundedSum:
+  GET_PARAM  param_limit_20:Int
+  GET_PARAM  param_cap_21:Int
+  ASSIGN  local_i_22:Int 0:Int
+  ASSIGN  local_total_23:Int 0:Int
 lbl1:
-  LT var2:Boolean i:Int limit:Int
-  LT var5:Boolean total:Int cap:Int
-  AND var1:Boolean var2:Boolean var5:Boolean
-  JMP_IF_NOT lbl2 var1:Boolean
-  ADD total:Int total:Int i:Int
-  ASSIGN var11:Int 1:Int
-  ADD i:Int i:Int var11:Int
-  JMP lbl1
+  LT  var2:Boolean local_i_22:Int param_limit_20:Int
+  LT  var5:Boolean local_total_23:Int param_cap_21:Int
+  AND  var1:Boolean var2:Boolean var5:Boolean
+  JMP_IF_NOT  lbl2 var1:Boolean
+  ADD_i32  local_total_23:Int local_total_23:Int local_i_22:Int
+  ASSIGN  var11:Int 1:Int
+  ADD_i32  local_i_22:Int local_i_22:Int var11:Int
+  JMP  lbl1
 lbl2:
-  RET total:Int
+  RET local_total_23:Int
 func main:
-  ASSIGN var13:Int 10:Int
-  ASSIGN var14:Int 50:Int
-  PARAM var13:Int
-  PARAM var14:Int
-  CALL small:Int boundedSum_Int_Int:Int 2:Int
-  ASSIGN var15:Int 100:Int
-  ASSIGN var16:Int 15:Int
-  PARAM var15:Int
-  PARAM var16:Int
-  CALL clipped:Int boundedSum_Int_Int:Int 2:Int
-  ASSIGN aStr:String :String
-  ASSIGN var19:Int 1024:Int
-  PARAM small:Int
-  PARAM aStr:String
-  PARAM var19:Int
-  CALL  intToString:Unit 3:Int
-  ASSIGN bStr:String :String
-  ASSIGN var22:Int 1024:Int
-  PARAM clipped:Int
-  PARAM bStr:String
-  PARAM var22:Int
-  CALL  intToString:Unit 3:Int
-  ASSIGN part:String :String
-  ASSIGN var24:String ,:String
-  ASSIGN var26:Int 1024:Int
-  PARAM aStr:String
-  PARAM var24:String
-  PARAM part:String
-  PARAM var26:Int
-  CALL  stringConcat:Unit 4:Int
-  ASSIGN line:String :String
-  ASSIGN var30:Int 1024:Int
-  PARAM part:String
-  PARAM bStr:String
-  PARAM line:String
-  PARAM var30:Int
-  CALL  stringConcat:Unit 4:Int
-  PARAM line:String
+  ASSIGN  var13:Int 10:Int
+  ASSIGN  var14:Int 50:Int
+  PARAM  var13:Int
+  PARAM  var14:Int
+  CALL  local_small_24:Int boundedSum:Int 2:Int
+  ASSIGN  var15:Int 100:Int
+  ASSIGN  var16:Int 15:Int
+  PARAM  var15:Int
+  PARAM  var16:Int
+  CALL  local_clipped_25:Int boundedSum:Int 2:Int
+  PARAM  local_small_24:Int
+  CALL  var19:String intToString:String 1:Int
+  ASSIGN  var21:String ,:String
+  ADD  var18:String var19:String var21:String
+  PARAM  local_clipped_25:Int
+  CALL  var22:String intToString:String 1:Int
+  ADD  var17:String var18:String var22:String
+  PARAM  var17:String
   CALL  println:Unit 1:Int
   RET Unit

@@ -3,6 +3,8 @@ package org.nnezh
 import arrow.core.Either
 import arrow.core.left
 import arrow.core.right
+import org.nnezh.SemanticDiagnosticDetail.*
+import org.nnezh.SemanticError.*
 import org.nnezh.bred.ast.ASTNode
 import org.nnezh.bred.ast.ArrayDeclarationASTNode
 import org.nnezh.bred.ast.ArrayElementAccessASTNode
@@ -19,6 +21,7 @@ import org.nnezh.bred.ast.EmptyNode
 import org.nnezh.bred.ast.ExpressionASTNode
 import org.nnezh.bred.ast.FieldAccessChainExpressionASTNode
 import org.nnezh.bred.ast.ForStatementAstNode
+import org.nnezh.bred.ast.FunctionArgument
 import org.nnezh.bred.ast.FunctionCallExpressionASTNode
 import org.nnezh.bred.ast.FunctionDeclAstNode
 import org.nnezh.bred.ast.IfStatementAstNode
@@ -113,7 +116,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                 SemanticAnalysisResult(
                     warnings = it,
                     expressionTypes = scope.expressionTypesSnapshot(),
-                    resolvedSymbols = scope.resolvedSymbolsSnapshot(),
+                    resolvedSymbols = scope.resolvedSymbols,
                 ).right()
             },
         )
@@ -143,7 +146,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                 node.arguments.forEach { arg ->
                     val argType = if (arg.isArray) globalContext.arrayOf(arg.type) else arg.type
                     declareVariable(
-                        node = node,
+                        node = arg,
                         name = arg.name,
                         id = idGenerator.nextParam(arg.name),
                         type = argType,
@@ -160,11 +163,11 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                     ifRight = { warnings ->
                         if (node.result != unitType() && !blockGuaranteesReturn(node.body)) {
                             return singletonList(
-                                SemanticError.ControlFlowSemanticError(
+                                ControlFlowSemanticError(
                                     node.body,
                                     true,
                                     SemanticErrorType.EXPLICIT_RETURN_IS_EXPECTED,
-                                    SemanticDiagnosticDetail.ControlFlow("function '${node.name}' must return ${node.result.render()} on all paths.")
+                                    ControlFlow("function '${node.name}' must return ${node.result.render()} on all paths.")
                                 )
                             ).left()
                         }
@@ -198,7 +201,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                     node = node,
                     name = node.name,
                     id = idGenerator.nextLocal(node.name), // или nextGlobal для глобальной
-                    type = node.type,                      // или node.scopeType() для глобальной
+                    type = node.scopeType(),
                     isMutable = node.isMutable,
                     scope = scope,
                     warnings = warnings,
@@ -226,10 +229,10 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                         val arrayInitializer = initializer as? ArrayInitializationExpressionASTNode
                         if (arrayInitializer != null && arraySize != arrayInitializer.args.size) {
                             return singletonList(
-                                SemanticError.TypeSemanticError(
+                                TypeSemanticError(
                                     node,
                                     SemanticErrorType.INVALID_AMOUNT_OF_ARGUMENTS_IN_ARRAYS_INITIALIZATION,
-                                    SemanticDiagnosticDetail.ArraySizeMismatch(node.name, arraySize, arrayInitializer.args.size)
+                                    ArraySizeMismatch(node.name, arraySize, arrayInitializer.args.size)
                                 )
                             ).left()
                         }
@@ -237,10 +240,10 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                         val initializerElementType = scope.get(initializer)
                         if (initializerElementType != null && initializerElementType != declaredElementType) {
                             return singletonList(
-                                SemanticError.TypeSemanticError(
+                                TypeSemanticError(
                                     node,
                                     SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
-                                    SemanticDiagnosticDetail.TypeMismatch(
+                                    TypeMismatch(
                                         "initialize global array '${node.name}: ${declaredElementType.render()}[$arraySize]'",
                                         declaredElementType,
                                         initializerElementType,
@@ -252,10 +255,10 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                         val initializerType = scope.get(initializer)
                         if (declaredType != initializerType) {
                             return singletonList(
-                                SemanticError.TypeSemanticError(
+                                TypeSemanticError(
                                     node,
                                     SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
-                                    SemanticDiagnosticDetail.TypeMismatch(
+                                    TypeMismatch(
                                         "initialize global '${node.name}: ${declaredType.render()}'",
                                         declaredType,
                                         initializerType,
@@ -293,28 +296,28 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
             is ArrayElementAccessASTNode -> {
                 if (scope.isInitializing(node.name)) {
                     return singletonList(
-                        SemanticError.VariableScopeSemanticError(
+                        VariableScopeSemanticError(
                             node,
                             SemanticErrorType.UNKNOWN_VARIABLE,
-                            SemanticDiagnosticDetail.UnknownVariable(node.name)
+                            UnknownVariable(node.name)
                         )
                     ).left()
                 }
 
                 val variable = scope.findVariable(node.name)?.first ?: return singletonList(
-                    SemanticError.VariableScopeSemanticError(
+                    VariableScopeSemanticError(
                         node,
                         SemanticErrorType.UNKNOWN_VARIABLE,
-                        SemanticDiagnosticDetail.UnknownVariable(node.name)
+                        UnknownVariable(node.name)
                     )
                 ).left()
 
                 if (!variable.type.isArray) {
                     return singletonList(
-                        SemanticError.VariableScopeSemanticError(
+                        VariableScopeSemanticError(
                             node,
                             SemanticErrorType.ARRAY_IS_EXPECTED_BUT_GOT_SCALAR,
-                            SemanticDiagnosticDetail.ArrayExpected(node.name, variable.type)
+                            ArrayExpected(node.name, variable.type)
                         )
                     ).left()
                 }
@@ -326,14 +329,16 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                         warnings.addAll(it)
                         return if (scope.get(node.index) != globalContext.intType) {
                             singletonList(
-                                SemanticError.VariableScopeSemanticError(
+                                VariableScopeSemanticError(
                                     node,
                                     SemanticErrorType.ARRAY_INDEX_IS_NOT_INTEGER,
-                                    SemanticDiagnosticDetail.ArrayIndexType(node.name, scope.get(node.index))
+                                    ArrayIndexType(node.name, scope.get(node.index))
                                 )
                             ).left()
                         } else {
-                            scope.put(node, scope.findVariable(node.name)!!.first.type.elementTypeOrNull!!)
+                            val s = scope.findVariable(node.name)!!.first
+                            scope.put(node, s.type.elementTypeOrNull!!)
+                            scope.bindSymbol(node, s.id)
                             warnings.right()
                         }
 
@@ -352,10 +357,10 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                 val types = node.args.map { arg -> scope.get(arg)!! }.toSet()
                 if (types.size > 1) {
                     return singletonList(
-                        SemanticError.VariableScopeSemanticError(
+                        VariableScopeSemanticError(
                             node,
                             SemanticErrorType.TYPE_CHECKER_INCONSISTENT_ARRAY_TYPE,
-                            SemanticDiagnosticDetail.ControlFlow(
+                            ControlFlow(
                                 "array initializer contains mixed element types: ${types.joinToString(", ") { it.render() }}."
                             )
                         )
@@ -382,10 +387,10 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
 
                 val type =
                     typeValidator.produceBinaryType(node.operator.kind, leftType, rightType) ?: return singletonList(
-                        SemanticError.TypeSemanticError(
+                        TypeSemanticError(
                             node,
                             SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
-                            SemanticDiagnosticDetail.TypeMismatch(
+                            TypeMismatch(
                                 "apply operator '${node.operator.lexeme}'",
                                 null,
                                 TypeRef("Operands", listOf(leftType.toTypeRef(), rightType.toTypeRef())),
@@ -434,10 +439,10 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                 val unaryType = typeValidator.produceUnaryType(node.operator.kind, operandType)
                 if (unaryType == null) {
                     return singletonList(
-                        SemanticError.TypeSemanticError(
+                        TypeSemanticError(
                             node,
                             SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
-                            SemanticDiagnosticDetail.TypeMismatch(
+                            TypeMismatch(
                                 "apply unary operator '${node.operator.lexeme}'",
                                 null,
                                 operandType,
@@ -452,15 +457,16 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
             is VariableExpressionASTNode -> {
                 if (scope.isInitializing(node.token.lexeme)) {
                     return singletonList(
-                        SemanticError.VariableScopeSemanticError(
+                        VariableScopeSemanticError(
                             node,
                             SemanticErrorType.UNKNOWN_VARIABLE,
-                            SemanticDiagnosticDetail.UnknownVariable(node.token.lexeme)
+                            UnknownVariable(node.token.lexeme)
                         )
                     ).left()
                 }
 
-                val type = scope.findVariable(node.token.lexeme)?.first
+                val type: Pair<VariableBinding, Int>? = scope.findVariable(node.token.lexeme)
+
                 if (type == null) {
                     val constructors = globalContext.constructorsByName(node.token.lexeme)
                         .filter { it.arguments.isEmpty() }
@@ -470,14 +476,15 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                     }
 
                     return singletonList(
-                        SemanticError.VariableScopeSemanticError(
+                        VariableScopeSemanticError(
                             node,
                             SemanticErrorType.UNKNOWN_VARIABLE,
-                            SemanticDiagnosticDetail.UnknownVariable(node.token.lexeme)
+                            UnknownVariable(node.token.lexeme)
                         )
                     ).left()
                 } else {
-                    scope.put(node, type.type)
+                    scope.bindSymbol(node, type.first.id)
+                    scope.put(node, type.first.type)
                     return emptyList<SemanticError.SemanticWarning>().right()
                 }
             }
@@ -486,10 +493,10 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
             is AssignmentStatementAstNode -> {
                 if (node.lValue !is LeftValue) {
                     return singletonList(
-                        SemanticError.TypeSemanticError(
+                        TypeSemanticError(
                             node,
                             SemanticErrorType.UNEXPECTED_LVALUE,
-                            SemanticDiagnosticDetail.ControlFlow("assignment target '${node.lValue.renderExpression()}' is not assignable.")
+                            ControlFlow("assignment target '${node.lValue.renderExpression()}' is not assignable.")
                         )
                     ).left()
                 }
@@ -512,10 +519,10 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                 if (node.lValue is VariableExpressionASTNode) {
                     if (!scope.isMutable((node.lValue as VariableExpressionASTNode).token.lexeme)) {
                         return singletonList(
-                            SemanticError.TypeSemanticError(
+                            TypeSemanticError(
                                 node,
                                 SemanticErrorType.VARIABLE_CHANGING_IMMUTABLE,
-                                SemanticDiagnosticDetail.ImmutableAssignment((node.lValue as VariableExpressionASTNode).token.lexeme)
+                                ImmutableAssignment((node.lValue as VariableExpressionASTNode).token.lexeme)
                             )
                         ).left()
                     }
@@ -526,10 +533,10 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                         ?: return buildError(node.lValue, SemanticErrorType.UNKNOWN_FIELD).left()
                     if (!globalContext.isMutableProduct(target.ownerType)) {
                         return singletonList(
-                            SemanticError.TypeSemanticError(
+                            TypeSemanticError(
                                 node,
                                 SemanticErrorType.VARIABLE_CHANGING_IMMUTABLE,
-                                SemanticDiagnosticDetail.ImmutableAssignment(node.lValue.renderExpression())
+                                ImmutableAssignment(node.lValue.renderExpression())
                             )
                         ).left()
                     }
@@ -537,10 +544,10 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
 
                 if (lValueType != rValueType) {
                     return singletonList(
-                        SemanticError.TypeSemanticError(
+                        TypeSemanticError(
                             node,
                             SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
-                            SemanticDiagnosticDetail.TypeMismatch(
+                            TypeMismatch(
                                 "assign to '${node.lValue.renderExpression()}'",
                                 lValueType,
                                 rValueType,
@@ -568,10 +575,10 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
 
                                 if (expectedSize != actualSize) {
                                     return singletonList(
-                                        SemanticError.TypeSemanticError(
+                                        TypeSemanticError(
                                             node,
                                             SemanticErrorType.INVALID_AMOUNT_OF_ARGUMENTS_IN_ARRAYS_INITIALIZATION,
-                                            SemanticDiagnosticDetail.ArraySizeMismatch(node.name, expectedSize, actualSize)
+                                            ArraySizeMismatch(node.name, expectedSize, actualSize)
                                         )
                                     ).left()
                                 }
@@ -579,10 +586,10 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                                 val initializerElementType = scope.get(initializer)
                                 if (initializerElementType != null && initializerElementType != node.type.arrayElementType()) {
                                     return singletonList(
-                                        SemanticError.TypeSemanticError(
+                                        TypeSemanticError(
                                             node,
                                             SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
-                                            SemanticDiagnosticDetail.TypeMismatch(
+                                            TypeMismatch(
                                                 "initialize array '${node.name}: ${node.type.arrayElementType().render()}[$expectedSize]'",
                                                 node.type.arrayElementType(),
                                                 initializerElementType,
@@ -617,14 +624,14 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                 if (pair != null) {
                     if (pair.second == 0) {
                         return singletonList(
-                            SemanticError.TypeSemanticError(
+                            TypeSemanticError(
                                 node,
                                 SemanticErrorType.VARIABLE_REDECLARATION,
-                                SemanticDiagnosticDetail.VariableRedeclaration(node.name)
+                                VariableRedeclaration(node.name)
                             )
                         ).left()
                     }
-                    warnings.add(SemanticError.SemanticWarning(node, SemanticErrorType.VARIABLE_OVERSHADOW))
+                    warnings.add(SemanticWarning(node, SemanticErrorType.VARIABLE_OVERSHADOW))
                 }
 
                 scope.beginInitializing(node.name)
@@ -640,10 +647,10 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                 val initializerType = scope.get(node.expression)
                 if (node.type != initializerType) {
                     return singletonList(
-                        SemanticError.TypeSemanticError(
+                        TypeSemanticError(
                             node,
                             SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
-                            SemanticDiagnosticDetail.TypeMismatch(
+                            TypeMismatch(
                                 "initialize '${node.name}: ${node.type.render()}'",
                                 node.type,
                                 initializerType,
@@ -675,10 +682,10 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                 )
                 if (scope.get(node.condition) != globalContext.booleanType) {
                     return singletonList(
-                        SemanticError.TypeSemanticError(
+                        TypeSemanticError(
                             node.condition,
                             SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
-                            SemanticDiagnosticDetail.TypeMismatch(
+                            TypeMismatch(
                                 "use if condition",
                                 globalContext.booleanType,
                                 scope.get(node.condition),
@@ -708,10 +715,10 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                 )
                 if (scope.get(node.condition) != globalContext.booleanType) {
                     return singletonList(
-                        SemanticError.TypeSemanticError(
+                        TypeSemanticError(
                             node.condition,
                             SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES,
-                            SemanticDiagnosticDetail.TypeMismatch(
+                            TypeMismatch(
                                 "use while condition",
                                 globalContext.booleanType,
                                 scope.get(node.condition),
@@ -748,10 +755,10 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
 
                 if (actualReturnType != expectedReturnType) {
                     return singletonList(
-                        SemanticError.TypeSemanticError(
+                        TypeSemanticError(
                             node,
                             SemanticErrorType.METHOD_HAS_WRONG_RETURN,
-                            SemanticDiagnosticDetail.WrongReturn(expectedReturnType, actualReturnType)
+                            WrongReturn(expectedReturnType, actualReturnType)
                         )
                     ).left()
                 }
@@ -781,6 +788,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
 
             is TypeClassDeclAstNode -> { TODO() /* Should not be there */ }
             is TypeClassMethodDeclAstNode -> { TODO() /* Should not be there */ }
+            is FunctionArgument -> TODO()
         }
     }
 
@@ -799,7 +807,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
         val parentScope: Scope? = null,
         private val variables: MutableMap<String, VariableBinding> = mutableMapOf(),
         private val expressionTypeTable: IdentityHashMap<ExpressionASTNode, TypeSign> = IdentityHashMap(),
-        private val resolvedSymbols: IdentityHashMap<ASTNode, SymbolId> = IdentityHashMap(),
+        val resolvedSymbols: IdentityHashMap<ASTNode, SymbolId> = IdentityHashMap(),
         private val registeredFunctions: MutableList<FunctionBinding> = mutableListOf(),
         private val initializingVariables: MutableSet<String> = mutableSetOf(),
 
@@ -912,12 +920,14 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
     )
 
     private fun fieldAccessTarget(node: FieldAccessChainExpressionASTNode, scope: Scope): FieldAccessTarget? {
-        var ownerType: TypeSign = scope.findVariable(node.root)?.first?.type ?: return null
+        val rootBinding = scope.findVariable(node.root)?.first ?: return null
+        var ownerType = rootBinding.type
         var current = node.next ?: return null
         while (true) {
             val fields = productFields(ownerType) ?: return null
             val fieldType = fields[current.root] ?: return null
             if (current.next == null) {
+                scope.bindSymbol(node, rootBinding.id)
                 return FieldAccessTarget(ownerType, fieldType)
             }
             ownerType = fieldType
@@ -946,14 +956,14 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
             if (condition == null) {
                 hasElse = true
             } else if (sumDefinition != null) {
-                when (val patternResult = sumBranchPattern(condition, sumDefinition, scope)) {
+                when (val patternResult = sumBranchPattern(condition, sumDefinition, branchScope)) {
                     is SumBranchPatternResult.Error -> return singletonList(patternResult.error).left()
                     SumBranchPatternResult.NotPattern -> {
-                        visit(condition, scope).fold(
+                        visit(condition, branchScope).fold(
                             ifLeft = { return it.left() },
                             ifRight = { warnings.addAll(it) }
                         )
-                        val conditionType = scope.get(condition)
+                        val conditionType = branchScope.get(condition)
                         if (conditionType != subjectType) {
                             return singletonList(
                                 SemanticError.TypeSemanticError(
@@ -973,27 +983,27 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                         if (!seenVariants.add(pattern.variant.name)) {
                             return buildError(condition, SemanticErrorType.TYPE_CHECKER_INCOMPATIBLE_TYPES).left()
                         }
-                        scope.put(condition, subjectType)
+                        branchScope.put(condition, subjectType)
                         pattern.bindings.zip(pattern.variant.fields).forEach { (binding, field) ->
                             declareVariable(
-                                node = node,
-                                scope = scope,
+                                node = binding,
+                                scope = branchScope,
                                 name = binding.token.lexeme,
                                 id = idGenerator.nextLocal(binding.token.lexeme),
                                 type = field.type,
                                 isMutable = false,
                                 warnings = warnings,
-                            )
+                            ).onLeft { return it.left() }
                             branchScope.put(binding, field.type)
                         }
                     }
                 }
             } else {
-                visit(condition, scope).fold(
+                visit(condition, branchScope).fold(
                     ifLeft = { return it.left() },
                     ifRight = { warnings.addAll(it) }
                 )
-                val conditionType = scope.get(condition)
+                val conditionType = branchScope.get(condition)
                 if (conditionType != subjectType) {
                     return singletonList(
                         SemanticError.TypeSemanticError(
@@ -1214,7 +1224,6 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
         val signature = newScope.getFunction(node.name, actualArgs)
 
         if (signature != null) {
-            node.isConstructorCalling = false
             newScope.put(node, signature.resultType)
             return emptyList<SemanticError.SemanticWarning>().right()
         }
@@ -1224,7 +1233,6 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
             val matchingConstructors = constructorCandidates.filter { it.arguments == actualArgs }
             val constructor = matchingConstructors.singleOrNull()
                 ?: return buildError(node, SemanticErrorType.CONSTRUCTOR_IS_FOUND_BUT_WRONG_ARGUMENTS).left()
-            node.isConstructorCalling = true
             newScope.put(node, constructor.resultType)
             return emptyList<SemanticError.SemanticWarning>().right()
         }

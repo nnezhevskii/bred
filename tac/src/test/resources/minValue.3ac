@@ -1,87 +1,75 @@
-func maxIndex_Array_Int:
-  GET_PARAM arr:Array
-  GET_PARAM size:Int
-  ASSIGN var3:Int 0:Int
-  LE var1:Boolean size:Int var3:Int
-  JMP_IF_NOT lbl1 var1:Boolean
-  ASSIGN var5:Int 1:Int
-  NEG var4:Int var5:Int
+func minIndex:
+  GET_PARAM  param_arr_20:Array
+  GET_PARAM  param_size_21:Int
+  ASSIGN  var3:Int 0:Int
+  LE  var1:Boolean param_size_21:Int var3:Int
+  JMP_IF_NOT  lbl1 var1:Boolean
+  ASSIGN  var5:Int 1:Int
+  NEG  var4:Int var5:Int
   RET var4:Int
 lbl1:
-  ASSIGN max:Int 0:Int
-  ASSIGN i:Int 1:Int
-  ASSIGN $right_borderi:Int size:Int
+  ASSIGN  local_min_22:Int 0:Int
+  ASSIGN  local_i_23:Int 1:Int
+  ASSIGN  local_$_right_borderi_24:Int param_size_21:Int
 lbl2:
-  LT var6:Boolean i:Int $right_borderi:Int
-  JMP_IF_NOT lbl3 var6:Boolean
-  ASSIGN var12:Int 0:Int
-  LOAD var12:Int arr:Array i:Int
-  ASSIGN var15:Int 0:Int
-  LOAD var15:Int arr:Array max:Int
-  GT var9:Boolean var12:Int var15:Int
-  JMP_IF_NOT lbl4 var9:Boolean
-  ASSIGN max:Int i:Int
+  LT  var6:Boolean local_i_23:Int local_$_right_borderi_24:Int
+  JMP_IF_NOT  lbl3 var6:Boolean
+  LOAD  var12:Int param_arr_20:Array local_i_23:Int
+  LOAD  var15:Int param_arr_20:Array local_min_22:Int
+  LT  var9:Boolean var12:Int var15:Int
+  JMP_IF_NOT  lbl4 var9:Boolean
+  ASSIGN  local_min_22:Int local_i_23:Int
 lbl4:
-  ASSIGN var17:Int 1:Int
-  ADD i:Int i:Int var17:Int
-  JMP lbl2
+  ASSIGN  var17:Int 1:Int
+  ADD_i32  local_i_23:Int local_i_23:Int var17:Int
+  JMP  lbl2
 lbl3:
-  RET max:Int
+  RET local_min_22:Int
 func main:
-  ALLOC arr:Array Int 100:Int
-  CALL size:Int readInt:Int 0:Int
-  ASSIGN var21:Int 100:Int
-  GE var19:Boolean size:Int var21:Int
-  JMP_IF_NOT lbl5 var19:Boolean
-  ASSIGN var22:String technical restrictions:String
-  PARAM var22:String
+  ALLOC  local_arr_25:Array Int 100:Int
+  CALL  local_size_26:Int readInt:Int 0:Int
+  ASSIGN  var21:Int 100:Int
+  GT  var19:Boolean local_size_26:Int var21:Int
+  JMP_IF_NOT  lbl5 var19:Boolean
+  ASSIGN  var22:String technical restrictions:String
+  PARAM  var22:String
   CALL  println:Unit 1:Int
+  RET Unit
 lbl5:
-  ASSIGN i:Int 0:Int
-  ASSIGN $right_borderi:Int size:Int
+  ASSIGN  local_i_27:Int 0:Int
+  ASSIGN  local_$_right_borderi_28:Int local_size_26:Int
 lbl6:
-  LT var23:Boolean i:Int $right_borderi:Int
-  JMP_IF_NOT lbl7 var23:Boolean
-  ASSIGN var26:Int i:Int
-  ASSIGN var28:Int 0:Int
-  ASSIGN var29:Int 100:Int
-  PARAM var28:Int
-  PARAM var29:Int
-  CALL var27:Int random:Int 2:Int
-  STORE arr:Array var26:Int var27:Int
-  ASSIGN var31:Int 1:Int
-  ADD i:Int i:Int var31:Int
-  JMP lbl6
+  LT  var23:Boolean local_i_27:Int local_$_right_borderi_28:Int
+  JMP_IF_NOT  lbl7 var23:Boolean
+  ASSIGN  var26:Int local_i_27:Int
+  ASSIGN  var28:Int 0:Int
+  ASSIGN  var29:Int 100:Int
+  PARAM  var28:Int
+  PARAM  var29:Int
+  CALL  var27:Int random:Int 2:Int
+  STORE  local_arr_25:Array var26:Int var27:Int
+  ASSIGN  var31:Int 1:Int
+  ADD_i32  local_i_27:Int local_i_27:Int var31:Int
+  JMP  lbl6
 lbl7:
-  PARAM arr:Array
-  PARAM size:Int
-  CALL maxInd:Int maxIndex_Array_Int:Int 2:Int
-  ASSIGN var37:Int 1:Int
-  NEG var36:Int var37:Int
-  EQ var34:Boolean maxInd:Int var36:Int
-  JMP_IF_NOT lbl8 var34:Boolean
-  ASSIGN var38:String array is empty:String
-  PARAM var38:String
+  PARAM  local_arr_25:Array
+  PARAM  local_size_26:Int
+  CALL  local_minInd_29:Int minIndex:Int 2:Int
+  ASSIGN  var37:Int 1:Int
+  NEG  var36:Int var37:Int
+  EQ  var34:Boolean local_minInd_29:Int var36:Int
+  JMP_IF_NOT  lbl8 var34:Boolean
+  ASSIGN  var38:String array is empty:String
+  PARAM  var38:String
   CALL  println:Unit 1:Int
-  JMP lbl9
+  JMP  lbl9
 lbl8:
-  ASSIGN elemStr:String :String
-  ASSIGN var41:Int 0:Int
-  LOAD var41:Int arr:Array maxInd:Int
-  ASSIGN var43:Int 1024:Int
-  PARAM var41:Int
-  PARAM elemStr:String
-  PARAM var43:Int
-  CALL  intToString:Unit 3:Int
-  ASSIGN msg:String :String
-  ASSIGN var44:String min element is:String
-  ASSIGN var47:Int 1024:Int
-  PARAM var44:String
-  PARAM elemStr:String
-  PARAM msg:String
-  PARAM var47:Int
-  CALL  stringConcat:Unit 4:Int
-  PARAM msg:String
+  ASSIGN  var40:String min element is :String
+  LOAD  var44:Int local_arr_25:Array local_minInd_29:Int
+  PARAM  var44:Int
+  CALL  var41:String intToString:String 1:Int
+  ADD  var39:String var40:String var41:String
+  PARAM  var39:String
   CALL  println:Unit 1:Int
 lbl9:
   RET Unit
