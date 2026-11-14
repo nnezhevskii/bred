@@ -489,7 +489,7 @@ func main:
   CALL  var319:Int checksum:Int 2:Int
   PARAM  var319:Int
   CALL  printValue_Int_Unit:Unit 1:Int
-  CALL  readInt:Unit 0:Int
+  CALL  readInt:Int 0:Int
   RET Unit
 func toString_Int_String:
   GET_PARAM  param_value_131:Int

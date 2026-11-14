@@ -8,6 +8,10 @@ import org.junit.jupiter.params.provider.ValueSource
 import org.nnezh.bred.context.ProgramGlobalContext
 import org.nnezh.org.nnezh.ICGenerator.LLTACElement
 import org.nnezh.org.nnezh.ICGenerator.LLTACFunc
+import org.nnezh.org.nnezh.ICGenerator.LLTACLabel
+import org.nnezh.org.nnezh.ICGenerator.LLTACOperation.LLTAC_ADD_I32
+import org.nnezh.org.nnezh.ICGenerator.LLTACOperation.LLTAC_FIELD
+import org.nnezh.org.nnezh.ICGenerator.LLTACOperation.LLTAC_LDX
 import org.nnezh.org.nnezh.ICGenerator.Operand
 
 class TACTestingFrameworkTest {
@@ -44,6 +48,98 @@ class TACTestingFrameworkTest {
         assertTrue(failure.message.orEmpty().contains("TAC[3]"))
         assertTrue(failure.message.orEmpty().contains("global_values_91"))
         assertTrue(failure.message.orEmpty().contains("global_values_92"))
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = [false, true])
+    fun `loading the second summand must not overwrite the first`(useGenericMatcher: Boolean) {
+        val arr = Operand.Variable("param_arr_7", arrayType)
+        val i = Operand.Variable("local_i_8", intType)
+        val j = Operand.Variable("local_j_9", intType)
+        val code = listOf(
+            LLTACElement.load(arr.name, "var16", i.name, arrayType, intType, intType),
+            LLTACElement.load(arr.name, "var16", j.name, arrayType, intType, intType),
+            LLTACElement.binOp(LLTAC_ADD_I32, "var17", intType, "var16", intType, "var16", intType),
+        )
+        val failure = assertThrows(AssertionError::class.java) {
+            verifyIR(types, code) {
+                val left = if (useGenericMatcher) {
+                    val destination = Operand.Variable("var16", intType)
+                    expectInstruction(LLTAC_LDX, destination, arr, i)
+                    destination
+                } else {
+                    expectLoad(arr, i)
+                }
+                val right = expectLoad(arr, j)
+                expectBinOp(LLTAC_ADD_I32, "var", intType, left, right)
+            }
+        }
+        assertTrue(failure.message.orEmpty().contains("TAC[1]"))
+        assertTrue(failure.message.orEmpty().contains("var16"))
+    }
+
+    @Test
+    fun `field metadata does not reserve a temporary of the same name`() {
+        val code = listOf(LLTACElement.field("var16", intType), LLTACElement.assign("var16", intType, 1L))
+        verifyIR(types, code) {
+            expectInstruction(LLTAC_FIELD, Operand.Variable("var16", intType))
+            expectAssign(Operand.IntConst(1), intType)
+        }
+    }
+
+    @Test
+    fun `unconditional jump must resolve in the final function`() {
+        val code = listOf(LLTACElement.function("main", types.unitType), LLTACElement.jump(LLTACLabel("lbl42")))
+        val failure = assertThrows(AssertionError::class.java) {
+            verifyIR(types, code) {
+                expectFunc("main", types.unitType)
+                expectJump()
+            }
+        }
+        assertTrue(failure.message.orEmpty().contains("TAC[1]"))
+        assertTrue(failure.message.orEmpty().contains("lbl42"))
+    }
+
+    @Test
+    fun `conditional jump cannot resolve to a label in the next function`() {
+        val condition = Operand.Variable("param_flag_3", types.booleanType)
+        val target = LLTACLabel("lbl42")
+        val code = listOf(
+            LLTACElement.function("first", types.unitType),
+            LLTACElement.getParam(condition.name, condition.type),
+            LLTACElement.jumpIfNot(target, condition.name, condition.type),
+            LLTACElement.function("second", types.unitType),
+            target,
+        )
+        val failure = assertThrows(AssertionError::class.java) {
+            verifyIR(types, code) {
+                expectFunc("first", types.unitType)
+                expectJumpIfNot(expectParam("flag", types.booleanType))
+                expectFunc("second", types.unitType)
+                expectLabel(target)
+            }
+        }
+        assertTrue(failure.message.orEmpty().contains("TAC[2]"))
+        assertTrue(failure.message.orEmpty().contains("lbl42"))
+    }
+
+    @Test
+    fun `functions may reuse labels and temporary names for independent values`() {
+        val target = LLTACLabel("lbl42")
+        val names = listOf("first", "second")
+        val code = names.flatMap { name ->
+            listOf(
+                LLTACElement.function(name, intType), LLTACElement.jump(target), target,
+                LLTACElement.assign("var1", intType, 1L), LLTACElement.ret("var1", intType),
+            )
+        }
+        verifyIR(types, code) {
+            for (name in names) {
+                expectFunc(name, intType)
+                expectLabel(expectJump())
+                expectRet(expectAssign(Operand.IntConst(1), intType))
+            }
+        }
     }
 
     @ParameterizedTest

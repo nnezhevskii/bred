@@ -187,7 +187,7 @@ class BredCompilationFactoryTest {
             ifLeft = { errors -> error("expected C code, got: $errors") },
             ifRight = { cLines ->
                 assertTrue(
-                    cLines.any { it == "int local_values_18[2];" },
+                    cLines.any { it == "int global_values_18[2];" },
                     "expected uninitialized global array declaration in C output: $cLines",
                 )
             },

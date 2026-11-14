@@ -75,7 +75,7 @@ lbl8:
   CALL  var48:String arrayToString_Array_Int_Int_String:String 2:Int
   PARAM  var48:String
   CALL  println:Unit 1:Int
-  CALL  readInt:Unit 0:Int
+  CALL  readInt:Int 0:Int
   RET Unit
 func toString_Int_String:
   GET_PARAM  param_value_33:Int

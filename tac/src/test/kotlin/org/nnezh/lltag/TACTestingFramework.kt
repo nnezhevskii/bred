@@ -3,6 +3,7 @@ package org.nnezh.lltag
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.nnezh.bred.common.TypeSign
 import org.nnezh.bred.context.ProgramGlobalContext
 import org.nnezh.org.nnezh.ICGenerator.LLTACElement
@@ -11,6 +12,7 @@ import org.nnezh.org.nnezh.ICGenerator.LLTACGlobalStaticArray
 import org.nnezh.org.nnezh.ICGenerator.LLTACInstruction
 import org.nnezh.org.nnezh.ICGenerator.LLTACLabel
 import org.nnezh.org.nnezh.ICGenerator.LLTACOperation
+import org.nnezh.org.nnezh.ICGenerator.LLTACOperation.*
 import org.nnezh.org.nnezh.ICGenerator.LLTACRetInstruction
 import org.nnezh.org.nnezh.ICGenerator.Operand
 
@@ -21,6 +23,10 @@ internal fun verifyIR(types: ProgramGlobalContext, code: List<LLTACElement>, blo
 internal class TACTestingFramework(private val types: ProgramGlobalContext,
                                    private val elements: List<LLTACElement>) {
     private var cursor = 0
+    private val definedLabels = mutableSetOf<LLTACLabel>()
+    private val pendingJumps = mutableMapOf<LLTACLabel, Int>()
+    private val temporaryNames = mutableSetOf<String>()
+    private val temporaryNamePattern = Regex("var[0-9]+")
 
     /** Checks one element in order. Custom matchers can add assertions in [check]. */
     inline fun <reified T : LLTACElement> expectNext(crossinline check: (T) -> Unit = {}): T =
@@ -31,7 +37,9 @@ internal class TACTestingFramework(private val types: ProgramGlobalContext,
             ?: throw AssertionError("TAC[$cursor] expected ${type.simpleName}, reached end of input")
         val typed = assertInstanceOf(type, current, "TAC[$cursor] $current")
         val result = try {
-            check(typed)
+            val value = check(typed)
+            recordElement(current)
+            value
         } catch (failure: AssertionError) {
             throw AssertionError("TAC[$cursor] $current\n${failure.message}", failure)
         }
@@ -41,6 +49,44 @@ internal class TACTestingFramework(private val types: ProgramGlobalContext,
 
     fun expectEnd() {
         elements.getOrNull(cursor)?.let { throw AssertionError("TAC[$cursor] expected end of input, found $it") }
+        assertJumpsResolved()
+    }
+
+    private fun recordElement(element: LLTACElement) {
+        when {
+            element is LLTACFunc -> {
+                assertJumpsResolved()
+                definedLabels.clear()
+                temporaryNames.clear()
+            }
+            element is LLTACLabel -> {
+                assertTrue(definedLabels.add(element), "Duplicate label ${element.name}")
+                pendingJumps.remove(element)
+            }
+            element is LLTACInstruction &&
+                (element.opcode == LLTACOperation.LLTAC_JMP || element.opcode == LLTACOperation.LLTAC_JMP_IF_NOT) -> {
+                val target = assertInstanceOf(Operand.Label::class.java, element.destination, "jump target").label
+                if (target !in definedLabels) pendingJumps.putIfAbsent(target, cursor)
+            }
+            element is LLTACInstruction && element.opcode.writesDestination -> {
+                val destination = element.destination as? Operand.Variable ?: return
+                if (temporaryNamePattern.matches(destination.name)) temporaryNames.add(destination.name)
+            }
+        }
+    }
+
+    private val LLTACOperation.writesDestination: Boolean
+        get() = when (this) {
+            LLTAC_GET_PARAM, LLTAC_ALLOC, LLTAC_ASSIGN, LLTAC_CALL, LLTAC_LDX, LLTAC_LDF,
+            LLTAC_ADD, LLTAC_ADD_I32, LLTAC_SUB, LLTAC_MUL, LLTAC_DIV, LLTAC_MOD, LLTAC_NEG,
+            LLTAC_EQ, LLTAC_NEQ, LLTAC_LT, LLTAC_GT, LLTAC_LE, LLTAC_GE, LLTAC_AND, LLTAC_OR, LLTAC_NOT -> true
+            LLTAC_PARAM, LLTAC_RET, LLTAC_JMP, LLTAC_JMP_IF_NOT, LLTAC_STX, LLTAC_STF,
+            LLTAC_STRUCT_DEF, LLTAC_STRUCT_DEF_END, LLTAC_FIELD, LLTAC_SUM_VARIANT, LLTAC_SUM_VARIANT_FIELD -> false
+        }
+
+    private fun assertJumpsResolved() {
+        val (label, position) = pendingJumps.entries.firstOrNull() ?: return
+        throw AssertionError("TAC[$position] jump to undefined label ${label.name} in this function")
     }
 
     fun expectGlobalArray(
@@ -65,8 +111,20 @@ internal class TACTestingFramework(private val types: ProgramGlobalContext,
         }
     }
 
-    fun expectAssign(source: Operand, type: TypeSign): Operand.Variable =
-        expectDestination(LLTACOperation.LLTAC_ASSIGN, "var", type, source)
+    fun expectAssign(source: Operand, type: TypeSign, localName: String? = null): Operand.Variable =
+        expectDestination(LLTACOperation.LLTAC_ASSIGN, localName?.let { "local_${it}_" } ?: "var", type, source)
+
+    fun intLiteral(n: Int, local: String? = null): Operand.Variable =
+        expectAssign(Operand.IntConst(n.toLong()), types.intType, local)
+
+    fun text(value: String, local: String? = null): Operand.Variable =
+        expectAssign(Operand.StringConst(value), types.stringType, local)
+
+    fun expectAlloc(baseName: String, elementType: TypeSign, size: Int): Operand.Variable =
+        expectDestination(
+            LLTACOperation.LLTAC_ALLOC, "local_${baseName}_", types.arrayOf(elementType),
+            Operand.TypeConst(elementType), Operand.IntConst(size.toLong()),
+        )
 
     fun expectLoad(array: Operand.Variable, index: Operand.Variable): Operand.Variable {
         val elementType = requireNotNull(array.type.elementTypeOrNull) { "Expected array operand, got $array" }
@@ -75,6 +133,16 @@ internal class TACTestingFramework(private val types: ProgramGlobalContext,
 
     fun expectNamedAssign(baseName: String, source: Operand.Variable): Operand.Variable =
         expectDestination(LLTACOperation.LLTAC_ASSIGN, "local_${baseName}_", source.type, source)
+
+    /** Checks an opcode and all three operands, including empty slots. */
+    fun expectInstruction(opcode: LLTACOperation, destination: Operand?, arg1: Operand? = null, arg2: Operand? = null) {
+        expectNext<LLTACInstruction> {
+            assertEquals(opcode, it.opcode, "opcode")
+            assertEquals(destination, it.destination, "destination")
+            assertEquals(arg1, it.arg1, "first operand")
+            assertEquals(arg2, it.arg2, "second operand")
+        }
+    }
 
     fun expectRet(value: Operand.Variable? = null) {
         val expected = value?.let { it.name to it.type }
@@ -103,9 +171,25 @@ internal class TACTestingFramework(private val types: ProgramGlobalContext,
             target.label
         }
 
-    fun expectLabel(target: LLTACLabel) {
-        expectNext<LLTACLabel> { assertEquals(target, it, "jump target") }
-    }
+    fun expectLabel(target: LLTACLabel? = null): LLTACLabel =
+        expectNext<LLTACLabel> {
+            assertGeneratedName(it.name, "lbl")
+            if (target != null) assertEquals(target, it, "jump target")
+        }
+
+    fun expectJump(target: LLTACLabel? = null): LLTACLabel =
+        matchNext(LLTACInstruction::class.java) {
+            assertEquals(LLTACOperation.LLTAC_JMP, it.opcode, "opcode")
+            assertNull(it.arg1, "first operand")
+            assertNull(it.arg2, "second operand")
+            val label = assertInstanceOf(Operand.Label::class.java, it.destination, "jump target").label
+            assertGeneratedName(label.name, "lbl")
+            if (target != null) assertEquals(target, label, "jump target")
+            label
+        }
+
+    fun expectNeg(source: Operand.Variable): Operand.Variable =
+        expectDestination(LLTACOperation.LLTAC_NEG, "var", source.type, source)
 
     fun expectBinOp(
         opcode: LLTACOperation,
@@ -116,13 +200,11 @@ internal class TACTestingFramework(private val types: ProgramGlobalContext,
     ): Operand.Variable =
         expectDestination(opcode, destinationPrefix, destinationType, arg1, arg2)
 
+    fun compare(op: LLTACOperation, left: Operand.Variable, right: Operand.Variable): Operand.Variable =
+        expectBinOp(op, "var", types.booleanType, left, right)
+
     fun expectCallArgument(value: Operand.Variable) {
-        expectNext<LLTACInstruction> {
-            assertEquals(LLTACOperation.LLTAC_PARAM, it.opcode, "opcode")
-            assertEquals(value, it.destination, "call argument")
-            assertNull(it.arg1, "first operand")
-            assertNull(it.arg2, "second operand")
-        }
+        expectInstruction(LLTACOperation.LLTAC_PARAM, value)
     }
 
     fun expectCall(
@@ -139,13 +221,27 @@ internal class TACTestingFramework(private val types: ProgramGlobalContext,
             Operand.IntConst(argumentCount.toLong()),
         )
 
-    fun expectUnitCall(name: String, argumentCount: Int) {
-        expectNext<LLTACInstruction> {
-            assertEquals(LLTACOperation.LLTAC_CALL, it.opcode, "opcode")
-            assertNull(it.destination, "call destination")
-            assertEquals(Operand.FunctionCall(name, types.unitType), it.arg1, "call target")
-            assertEquals(Operand.IntConst(argumentCount.toLong()), it.arg2, "argument count")
-        }
+    fun expectUnitCall(name: String, argumentCount: Int) = expectDiscardedCall(name, types.unitType, argumentCount)
+
+    fun valueCall(
+        name: String,
+        type: TypeSign,
+        vararg args: Operand.Variable,
+        local: String? = null,
+    ): Operand.Variable {
+        args.forEach { expectCallArgument(it) }
+        return expectCall(name, type, args.size, local)
+    }
+
+    fun printLine(value: Operand.Variable) {
+        expectCallArgument(value)
+        expectUnitCall("println", 1)
+    }
+
+    fun expectDiscardedCall(name: String, returnType: TypeSign, argumentCount: Int) {
+        expectInstruction(
+            LLTACOperation.LLTAC_CALL, null, Operand.FunctionCall(name, returnType), Operand.IntConst(argumentCount.toLong()),
+        )
     }
 
     private fun expectDestination(
@@ -162,6 +258,9 @@ internal class TACTestingFramework(private val types: ProgramGlobalContext,
             val destination = assertInstanceOf(Operand.Variable::class.java, it.destination, "destination")
             assertGeneratedName(destination.name, namePrefix)
             assertEquals(type, destination.type, "destination type")
+            if (namePrefix == "var") {
+                assertTrue(destination.name !in temporaryNames, "Expected a fresh temporary, reused ${destination.name}")
+            }
             destination
         }
 

@@ -50,7 +50,7 @@ lbl4:
   ADD  var33:String var34:String var35:String
   PARAM  var33:String
   CALL  println:Unit 1:Int
-  CALL  readInt:Unit 0:Int
+  CALL  readInt:Int 0:Int
   RET Unit
 func toString_Int_String:
   GET_PARAM  param_value_30:Int

@@ -197,7 +197,7 @@ class LLTACGenerator(
                 instructions.addAll(
                     expressionLLTACGenerator.buildInstructionsForExpression(
                         variable = null,
-                        type = globalContext.unitType,
+                        type = node.expression.tacType(),
                         expression = node.expression,
                     ).instructions
                 )
