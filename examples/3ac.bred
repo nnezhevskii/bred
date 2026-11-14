@@ -1,5 +1,11 @@
-            val values: Int[2]
+type Maybe<T> = Nothing | Just<T>(value: T)
 
-            fun main(): Unit {
-                val first: Int = values[0]
-            }
+fun main(): Unit {
+    val value: Int = readInt() // readInt - stdlib
+    val maybeValue: Maybe<Int> = Just<Int>(value)
+
+    when (maybeValue) {
+        Just(boxedValue) -> { println("value " + intToString(boxedValue)) }
+        Nothing -> { println("nothing") }
+    }
+}
