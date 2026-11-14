@@ -28,6 +28,21 @@ class ParserTest {
 
     private fun parseFails(source: String): Boolean = parseEither(source).isLeft()
 
+    @Test
+    fun `standalone function argument can be cloned`() {
+        val argument = parse("fun f(input: Int) { }").functions.single().arguments.single()
+        val cloned = cloneSubtree(argument)
+        assertEquals(argument, cloned)
+        assertNotSame(argument, cloned)
+    }
+
+    @Test
+    fun `standalone function argument can be printed`() {
+        val argument = parse("fun f(input: Int) { }").functions.single().arguments.single()
+        val rendered = AstPrettyPrinter().render(argument)
+        assertTrue(rendered.contains("input") && rendered.contains("Int"), rendered)
+    }
+
     private fun resolve(root: ProgramRoot): ProgramRoot {
         val initialContext = ProgramContextCollector().collect(root)
         return ProgramTypeResolver(initialContext)

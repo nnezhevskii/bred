@@ -14,6 +14,17 @@ import kotlin.io.path.writeText
 
 class BredCompilationFactoryTest {
     @Test
+    fun `loop lowering uses portable C identifiers`(@TempDir dir: Path) {
+        val source = dir.resolve("loop.bred")
+        source.writeText("fun main(): Int { for (i in 0 to 2) { printInt(i) } return 0 }")
+        val lines = BredToCCompilerFactory().create().compile(source).fold(
+            ifLeft = { error(it.joinToString("\n")) },
+            ifRight = { it },
+        )
+        assertTrue(lines.none { '$' in it }, lines.filter { '$' in it }.joinToString("\n"))
+    }
+
+    @Test
     fun `bred compiler returns c lines for valid source file`(@TempDir dir: Path) {
         val source = dir.resolve("main.bred")
         source.writeText("fun main(): Unit { }")

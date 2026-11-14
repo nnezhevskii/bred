@@ -1,5 +1,7 @@
 package org.nnezh
 
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.nnezh.bred.ast.ArrayDeclarationASTNode
@@ -8,6 +10,7 @@ import org.nnezh.bred.ast.ArrayInitializationExpressionASTNode
 import org.nnezh.bred.ast.AssignmentStatementAstNode
 import org.nnezh.bred.ast.BinaryExpressionASTNode
 import org.nnezh.bred.ast.BlockAstNode
+import org.nnezh.bred.ast.DeclareGlobalVariableASTNode
 import org.nnezh.bred.ast.FieldAccessChainExpressionASTNode
 import org.nnezh.bred.ast.FunctionCallExpressionASTNode
 import org.nnezh.bred.ast.FunctionDeclAstNode
@@ -16,6 +19,7 @@ import org.nnezh.bred.ast.ScalarVariableInitializationASTNode
 import org.nnezh.bred.ast.UnaryExpressionASTNode
 import org.nnezh.bred.ast.VariableExpressionASTNode
 import org.nnezh.bred.ast.WhenExpressionASTNode
+import org.nnezh.bred.common.SymbolId
 
 class SemanticAnalyzerTest {
     // region Positive baseline
@@ -1943,6 +1947,45 @@ class SemanticAnalyzerTest {
     // endregion
 
     // region Public pipeline and TODO regression coverage
+
+    @Test
+    fun `array cannot redeclare a scalar in the same block`() {
+        assertSingleSemanticError(
+            "fun f() { val a: Int = 1 val a: Int[1] = [2] }",
+            SemanticErrorType.VARIABLE_REDECLARATION,
+            ArrayDeclarationASTNode::class.java,
+        )
+    }
+
+    @Test
+    fun `second array declaration in the same block is rejected`() {
+        assertSingleSemanticError(
+            "fun f() { val a: Int[1] = [1] val a: Int[1] = [2] }",
+            SemanticErrorType.VARIABLE_REDECLARATION,
+            ArrayDeclarationASTNode::class.java,
+        )
+    }
+
+    @Test
+    fun `shadowing a parameter emits one warning for the local declaration`() {
+        val warnings = analyze("fun f(x: Int) { val x: Int = 1 }").fold(
+            ifLeft = { error("expected successful analysis, got $it") },
+            ifRight = { it },
+        )
+        assertEquals(listOf(SemanticErrorType.VARIABLE_OVERSHADOW), warnings.map { it.type })
+        assertInstanceOf(ScalarVariableInitializationASTNode::class.java, warnings.single().where)
+    }
+
+    @Test
+    fun `global array declaration and element access share a global symbol`() {
+        val analysis = analyzeAfterTemplateInstantiation("val a: Int[1] = [9] fun f(): Int { return a[0] }")
+            .fold(ifLeft = { error("expected successful analysis, got $it") }, ifRight = { it })
+        val symbols = analysis.resolvedSymbols.entries
+        val declaration = symbols.single { it.key is DeclareGlobalVariableASTNode }.value
+        val read = symbols.single { it.key is ArrayElementAccessASTNode }.value
+        assertInstanceOf(SymbolId.GlobalVar::class.java, declaration)
+        assertEquals(declaration, read)
+    }
 
     @Test
     fun `for loop desugared variables are scoped and typed`() {

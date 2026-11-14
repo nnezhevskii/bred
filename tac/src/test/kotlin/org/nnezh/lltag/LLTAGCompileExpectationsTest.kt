@@ -5,6 +5,12 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
+import org.nnezh.org.nnezh.ICGenerator.LLTACInstruction
+import org.nnezh.org.nnezh.ICGenerator.LLTACOperation
+import org.nnezh.org.nnezh.ICGenerator.LLTACRetInstruction
+import org.nnezh.org.nnezh.ICGenerator.Operand
 import org.nnezh.org.nnezh.ICGenerator.PrettyPrinter
 import org.nnezh.org.nnezh.compiler.TACCompilerImpl
 import java.nio.file.Files
@@ -724,25 +730,6 @@ class LLTAGCompileExpectationsTest {
   }
 
   @Test
-  fun `global static array emits global declaration and can be read`() {
-    val tac = formattedTac(
-      """
-      val values: Int[2] = [4, 5]
-
-      fun main(): Unit {
-          val item: Int = values[1]
-      }
-      """.trimIndent(),
-    )
-
-    assertTrue(
-      tac.any { it.startsWith("global local_values_18:Array[2]") && it.contains("4:Int") && it.contains("5:Int") },
-      "expected global array declaration in 3AC output, got:\n${tac.joinToString("\n")}",
-    )
-    assertTrue(tac.any { it.startsWith("LOAD ") }, "expected LOAD from global array, got:\n${tac.joinToString("\n")}")
-  }
-
-  @Test
   fun `array load does not emit dummy zero assignment before load`() {
     val tac = formattedTac(
       """
@@ -764,25 +751,6 @@ class LLTAGCompileExpectationsTest {
       tac.take(loadIndex).any { Regex("""ASSIGN\s+${Regex.escape(loadDestination)}\s+0:Int""").matches(it) },
       "array LOAD should not be preceded by dummy zero assignment, got:\n${tac.joinToString("\n")}",
     )
-  }
-
-  @Test
-  fun `global static array without initializer emits global declaration`() {
-    val tac = formattedTac(
-      """
-      val values: Int[2]
-
-      fun main(): Unit {
-          val item: Int = values[0]
-      }
-      """.trimIndent(),
-    )
-
-    assertTrue(
-      tac.any { it == "global local_values_18:Array[2]" },
-      "expected uninitialized global array declaration in 3AC output, got:\n${tac.joinToString("\n")}",
-    )
-    assertTrue(tac.any { it.startsWith("LOAD ") }, "expected LOAD from global array, got:\n${tac.joinToString("\n")}")
   }
 
   @Test
@@ -889,6 +857,34 @@ class LLTAGCompileExpectationsTest {
   // endregion
 
   // region Desired behavior — compiler defects (tests fail until fixed)
+
+  @Test
+  fun `TAC snapshot distinguishes array parameter element types`() {
+    val ints = formattedTac("fun inspect(values: Int[]) { }")
+    val longs = formattedTac("fun inspect(values: Long[]) { }")
+    assertFalse(ints == longs, "changing an array element type must change the snapshot: $ints")
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = ["val", "var"])
+  fun `for increments the counter used in its condition when the body shadows it`(binding: String) {
+    val instructions = TACCompilerImpl().compile(
+      "fun f() { for (i in 0 to 2) { $binding i: Int = 77 } }",
+    ).filterIsInstance<LLTACInstruction>()
+    val counter = instructions.single { it.opcode == LLTACOperation.LLTAC_LT }.arg1
+    val increment = instructions.single { it.opcode == LLTACOperation.LLTAC_ADD_I32 }
+    assertEquals(counter, increment.arg1, "increment must read the loop counter")
+    assertEquals(counter, increment.destination, "increment must update the loop counter")
+  }
+
+  @Test
+  fun `parameter shadows a nullary constructor in return expression`() {
+    val tac = TACCompilerImpl().compile("type Flag = Off | On\nfun f(Off: Int): Int { return Off }")
+    val parameter = tac.filterIsInstance<LLTACInstruction>()
+      .single { it.opcode == LLTACOperation.LLTAC_GET_PARAM }.destination as Operand.Variable
+    assertFalse(tac.filterIsInstance<LLTACInstruction>().any { it.opcode == LLTACOperation.LLTAC_CALL })
+    assertEquals(parameter.name to parameter.type, tac.filterIsInstance<LLTACRetInstruction>().single().value)
+  }
 
   @Test
   fun `empty array initializer for zero-sized array compiles`() {

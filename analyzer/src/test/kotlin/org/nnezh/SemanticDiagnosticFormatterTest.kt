@@ -7,6 +7,13 @@ class SemanticDiagnosticFormatterTest {
     private val formatter = SemanticDiagnosticFormatter()
 
     @Test
+    fun `duplicate parameter diagnostic locates both parameter names`() {
+        val message = firstError("fun f(x: Int, x: Long): Long { return x }")
+        assertTrue(message.contains("VARIABLE_REDECLARATION"), message)
+        assertTrue(message.contains("1:7") && message.contains("1:15"), message)
+    }
+
+    @Test
     fun `formats unknown variable with name`() {
         val message = firstError(
             """
