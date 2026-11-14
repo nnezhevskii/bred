@@ -261,10 +261,9 @@ Unsupported lvalue kinds throw `unexpected lvalue for TAC generation`.
 
 ### 7.5 Call Statement
 
-`CallFunctionStatementAstNode(expression)` lowers the expression with:
-
-- `variable = null`;
-- expected type `Unit`.
+`CallFunctionStatementAstNode(expression)` uses the analyzed result type
+(`expression.tacType()`) for the call target. It passes `variable = null` to
+discard the result, so `readInt()` as a statement emits `CALL readInt:Int 0:Int`.
 
 This is valid for function calls with no result destination. Literal/calc
 expressions in statement position are not expected by parser/semantic rules and
@@ -515,10 +514,11 @@ Name resolution:
 - product and sum constructor calls are still `CALL`; C generation interprets
   them using destination type plus metadata.
 
-For `Unit` call statements, destination is null:
+Calls in statement position have an empty destination and retain their return type.
 
 ```text
 CALL println:Unit 1:Int
+CALL readInt:Int 0:Int
 ```
 
 ### 8.6 Array Element Access
@@ -589,7 +589,7 @@ Statement-form `WhenStatementAstNode` is supported as described above.
 | `ArrayDeclarationASTNode` | Emits `ALLOC` and initializer stores. |
 | `DeclareGlobalVariableASTNode` | Emits only top-level static arrays; scalar globals ignored. |
 | `AssignmentStatementAstNode` | Dispatches to variable, array element, or field store. |
-| `CallFunctionStatementAstNode` | Lowers expression as `Unit` call with no destination. |
+| `CallFunctionStatementAstNode` | Emits a `CALL` with the expression's result type and an empty destination. |
 | `ReturnFunctionStatementAstNode` | Emits `RET`. |
 | `IfStatementAstNode` | Emits conditional jumps and labels. |
 | `WhileStatementAstNode` | Emits loop labels and jumps. |
@@ -640,8 +640,8 @@ Primary coverage lives in:
 - `tac/src/test/kotlin/org/nnezh/lltag/LLTAGCompileExpectationsTest.kt`
   for direct expectations around failures, arrays, products, sums, `when`,
   generics, and TAC shape;
-- `tac/src/test/kotlin/org/nnezh/lltag/LLTAGSnapshotTester.kt` and
-  `tac/src/test/resources/*.3ac` for snapshot coverage;
+- `tac/src/test/kotlin/org/nnezh/lltag/TACInstructionSequenceTest.kt` for typed
+  instruction sequences derived from the programs in `tac/src/test/resources`;
 - `tac/src/test/resources/deploymentHealthRadar.bred` for a compact fixture
   covering product fields, generic products/sums, and sum payload patterns.
 

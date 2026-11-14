@@ -15,6 +15,8 @@ import org.nnezh.org.nnezh.ICGenerator.LLTACOperation
 import org.nnezh.org.nnezh.ICGenerator.LLTACOperation.*
 import org.nnezh.org.nnezh.ICGenerator.LLTACRetInstruction
 import org.nnezh.org.nnezh.ICGenerator.Operand
+import org.nnezh.org.nnezh.ICGenerator.Operand.Variable
+import org.nnezh.org.nnezh.ICGenerator.Operand.TypeConst
 
 internal fun verifyIR(types: ProgramGlobalContext, code: List<LLTACElement>, block: TACTestingFramework.() -> Unit) {
     TACTestingFramework(types, code).apply(block).expectEnd()
@@ -120,6 +122,12 @@ internal class TACTestingFramework(private val types: ProgramGlobalContext,
     fun text(value: String, local: String? = null): Operand.Variable =
         expectAssign(Operand.StringConst(value), types.stringType, local)
 
+    fun boolLiteral(value: Boolean, local: String? = null): Variable =
+        expectAssign(Operand.BoolConst(value), types.booleanType, local)
+
+    fun doubleLiteral(value: Double, local: String? = null): Variable =
+        expectAssign(Operand.DoubleConst(value), types.doubleType, local)
+
     fun expectAlloc(baseName: String, elementType: TypeSign, size: Int): Operand.Variable =
         expectDestination(
             LLTACOperation.LLTAC_ALLOC, "local_${baseName}_", types.arrayOf(elementType),
@@ -200,8 +208,104 @@ internal class TACTestingFramework(private val types: ProgramGlobalContext,
     ): Operand.Variable =
         expectDestination(opcode, destinationPrefix, destinationType, arg1, arg2)
 
-    fun compare(op: LLTACOperation, left: Operand.Variable, right: Operand.Variable): Operand.Variable =
-        expectBinOp(op, "var", types.booleanType, left, right)
+    fun compare(op: LLTACOperation, left: Variable, right: Variable, local: String? = null): Variable =
+        expectBinOp(op, local?.let { "local_${it}_" } ?: "var", types.booleanType, left, right)
+
+    fun arithmetic(op: LLTACOperation, left: Variable, right: Variable, local: String? = null): Variable =
+        expectBinOp(op, local?.let { "local_${it}_" } ?: "var", left.type, left, right)
+
+    fun expectField(owner: Variable, name: String, type: TypeSign, local: String? = null): Variable =
+        expectDestination(LLTAC_LDF, local?.let { "local_${it}_" } ?: "var", type, owner, Variable(name, type))
+
+    fun expectStruct(type: TypeSign, vararg fields: Variable) {
+        expectInstruction(LLTAC_STRUCT_DEF, TypeConst(type))
+        fields.forEach { expectInstruction(LLTAC_FIELD, it) }
+        expectInstruction(LLTAC_STRUCT_DEF_END, null)
+    }
+
+    /** Variant order defines the tags. Payload fields follow their constructor argument order. */
+    fun expectSum(type: TypeSign, vararg variants: Pair<String, List<Variable>>) {
+        val fields = variants.flatMap { (name, payload) ->
+            payload.map { Variable("${name}_${it.name}", it.type) }
+        }
+        expectStruct(type, Variable("tag", types.intType), *fields.toTypedArray())
+        for ((tag, variant) in variants.withIndex()) {
+            val (name, payload) = variant
+            val constructor = Variable(name, type)
+            expectInstruction(LLTAC_SUM_VARIANT, TypeConst(type), constructor, Operand.IntConst(tag.toLong()))
+            for (field in payload) {
+                expectInstruction(LLTAC_SUM_VARIANT_FIELD, TypeConst(type), constructor, Variable("${name}_${field.name}", field.type))
+            }
+        }
+    }
+
+    fun expectWhen(subject: Variable, vararg branches: Pair<Int, () -> Unit>) {
+        require(branches.isNotEmpty())
+        var end: LLTACLabel? = null
+        for ((tag, body) in branches) {
+            val actual = expectField(subject, "tag", types.intType)
+            val next = expectJumpIfNot(compare(LLTAC_EQ, actual, intLiteral(tag)))
+            body()
+            end = expectJump(end)
+            expectLabel(next)
+        }
+        expectLabel(requireNotNull(end))
+    }
+
+    fun expectIf(condition: Variable, thenBody: () -> Unit) {
+        val end = expectJumpIfNot(condition)
+        thenBody()
+        expectLabel(end)
+    }
+
+    fun expectIf(condition: Variable, thenBody: () -> Unit, elseBody: () -> Unit) {
+        val otherwise = expectJumpIfNot(condition)
+        thenBody()
+        val end = expectJump()
+        expectLabel(otherwise)
+        elseBody()
+        expectLabel(end)
+    }
+
+    fun expectWhile(condition: () -> Variable, body: () -> Unit) {
+        val head = expectLabel()
+        val end = expectJumpIfNot(condition())
+        body()
+        expectJump(head)
+        expectLabel(end)
+    }
+
+    fun increment(value: Variable) = expectInstruction(LLTAC_ADD_I32, value, value, intLiteral(1))
+
+    fun forBody(counter: Variable, limit: Variable, body: () -> Unit) {
+        expectWhile({ compare(LLTAC_LT, counter, limit) }) {
+            body()
+            increment(counter)
+        }
+    }
+
+    fun forIndex(size: Variable, start: Int = 0, body: (Variable) -> Unit) {
+        val i = intLiteral(start, "i")
+        forBody(i, expectNamedAssign("\$_right_borderi", size)) { body(i) }
+    }
+
+    fun intArrayWithValues(name: String, vararg values: Int): Variable {
+        val array = expectAlloc(name, types.intType, values.size)
+        for ((i, value) in values.withIndex()) {
+            val index = intLiteral(i)
+            val item = if (value < 0) {
+                expectNeg(expectAssign(Operand.IntConst(-value.toLong()), types.intType))
+            } else {
+                intLiteral(value)
+            }
+            expectInstruction(LLTAC_STX, array, index, item)
+        }
+        return array
+    }
+
+    fun decimal(value: Variable) = valueCall("intToString", types.stringType, value)
+
+    fun join(left: Variable, right: Variable) = expectBinOp(LLTAC_ADD, "var", types.stringType, left, right)
 
     fun expectCallArgument(value: Operand.Variable) {
         expectInstruction(LLTACOperation.LLTAC_PARAM, value)
@@ -236,6 +340,11 @@ internal class TACTestingFramework(private val types: ProgramGlobalContext,
     fun printLine(value: Operand.Variable) {
         expectCallArgument(value)
         expectUnitCall("println", 1)
+    }
+
+    fun unitCall(name: String, vararg args: Variable) {
+        args.forEach { expectCallArgument(it) }
+        expectUnitCall(name, args.size)
     }
 
     fun expectDiscardedCall(name: String, returnType: TypeSign, argumentCount: Int) {

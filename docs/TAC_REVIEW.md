@@ -8,7 +8,7 @@
 
 - Заново запущено `.\gradlew.bat :tac:test --offline --rerun-tasks` на JDK 25. Результат — **50/50**.
 - Примеры ниже переданы в `TACCompilerImpl().compile(source)` через локальный JShell. Полученные инструкции напечатаны `PrettyPrinter`. Для двух случаев дополнительно проверен текст из `CTranspile.compile(ir)`. Пробелы между операндами в выдержках сокращены. Нативная компиляция и запуск exe в этот прогон не входили.
-- Все 22 пары в `tac/src/test/resources` сравнены в памяти по правилу штатного тестера. Снимки на диске сохранены в исходном виде. [Тестер снимков](../tac/src/test/kotlin/org/nnezh/lltag/LLTAGSnapshotTester.kt)
+- Все 22 пары в `tac/src/test/resources` сравнены в памяти по правилу штатного тестера. Снимки на диске сохранены в исходном виде. [Тестер снимков](https://github.com/nnezhevskii/bred/blob/09472ab043c817532dc8ca729cd12c86b923d483/tac/src/test/kotlin/org/nnezh/lltag/LLTAGSnapshotTester.kt)
 
 ## Дефекты по убыванию последствий
 

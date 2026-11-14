@@ -55,7 +55,6 @@
 | G-50 | Global initializers cannot call user functions | `SemanticAnalyzer.analyze` visits global variables before registering user functions; only built-ins are registered at that point | Decide whether global initializers may call user functions; if yes, register user signatures before global variable analysis |
 | G-91 | Вложенные массивы на границе C backend | В `CTranspile` оставлен TODO, а руководство по генерации C фиксирует ограничение на массивы массивов. | Проверить прохождение вложенного массива через публичный API и стадию диагностики. Для текущего ограничения закрепить понятную ошибку тестом. |
 | G-76 | CLI игнорирует keep-c | `main` разбирает третий аргумент, но передаёт сборщику константу `true`. Поэтому `false` и отсутствие аргумента сохраняют C-файл вопреки README. | После G-75 передать разобранное значение и проверить CLI для отсутствующего аргумента, `false` и `true`. Тесты прямого вызова builder этот путь обходят. [Main](../src/main/kotlin/org/nnezh/Main.kt), [контракт CLI](../README.md) |
-| G-86 | Пробелы внутри строк исчезают при сравнении снимков | `LLTAGSnapshotTester` удаляет все обычные пробелы у ожидаемого и фактического TAC. В снимке `isPositive` изменения `number: ` → `number:` пройдут незамеченными. | Проверить, что изменение строки ломает сравнение. Нормализовать только служебное форматирование. В списке активны 8 пар из 22, остальные разбирать по одной с учётом отдельных compile-expectation тестов. [SnapshotTester](../tac/src/test/kotlin/org/nnezh/lltag/LLTAGSnapshotTester.kt), [пример](../tac/src/test/resources/isPositive.3ac) |
 | G-84 | Демо вычисляет площадь и возвращает константу | Каждая ветка `square` записывает результат в `value`. Единственный `return 0.0` отбрасывает его. Это видно на прямоугольнике 2 × 4, где должно получиться 8. | Вернуть вычисленное значение. Проверить прямоугольник и квадрат, у которых результат точный. У демонстрации в конце есть чтение числа. [Демо фигур](../examples/3ac.bred) |
 
 ## P3 · Расширения языка, документация и поддержка кода
@@ -84,6 +83,7 @@
 
 | ID | Item | Resolution |
 |----|------|------------|
+| G-86 | Проверка пробелов в строковых литералах TAC | Все 22 программы проверяются через типизированные операнды. Матчер сравнивает полное значение строки, включая пробелы. [Проверки последовательностей](../tac/src/test/kotlin/org/nnezh/lltag/TACInstructionSequenceTest.kt) |
 | G-46 | Global static arrays are parsed but analyzed as scalar globals | Resolved by binding top-level `val name: T[n]` as `Array<T>` in semantic scope, validating initializer size/type, emitting `LLTACGlobalStaticArray`, and rendering global C storage before function prototypes |
 | G-60 | C backend does not escape string literals | Resolved by escaping newline, carriage return, tab, quote, and backslash before emitting C string literals for `create_string(...)` / `strlen(...)`; covered by `string assignment escapes c string literal contents` |
 | G-58 | Self-reference in local initializer is accepted | Resolved by tracking variables while their initializer is analyzed; self-reference now reports `UNKNOWN_VARIABLE`, including shadowing and array initializer cases |

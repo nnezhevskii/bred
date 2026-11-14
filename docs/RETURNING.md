@@ -1,15 +1,15 @@
 # Возвращение в Bred
 
-**На сегодня я бы выбрала один пример и один тест.** Открой [isPositive.bred](../tac/src/test/resources/isPositive.bred), найди `if (x > 0)` и посмотри на первые строки [isPositive.3ac](../tac/src/test/resources/isPositive.3ac). Там `GT` вычисляет условие, а `JMP_IF_NOT` ведёт в другую ветку. Этого достаточно, чтобы вспомнить один рабочий кусочек компилятора.
+Открой [isPositive.bred](../tac/src/test/resources/isPositive.bred) и найди `if (x > 0)`. В методе `isPositive` видно, как сравнение `GT` передаёт условие в `JMP_IF_NOT` и на какую метку ведёт переход. [Тест последовательности](../tac/src/test/kotlin/org/nnezh/lltag/TACInstructionSequenceTest.kt)
 
-Из корня репозитория в PowerShell можно прогнать набор, в который входит этот пример. В момент ревизии он зелёный.
+Из корня репозитория в PowerShell можно запустить проверки этого примера.
 
 ```powershell
 $env:JAVA_HOME = 'C:\Users\Nikita\.jdks\azul-25.0.3'
-.\gradlew.bat :tac:test --tests '*LLTAGSnapshotTester' --rerun-tasks
+.\gradlew.bat :tac:test --tests '*TACInstructionSequenceTest.isPositive'
 ```
 
-**Точка остановки через 5–10 минут:** можешь показать в снимке переход для одной ветки и увидеть зелёный тест. На сегодня задача закончена.
+Через 5–10 минут можно найти в тесте переход для одной ветки и проверить результат запуска.
 
 ## Если хочется сделать одно изменение
 

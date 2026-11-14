@@ -154,7 +154,7 @@ class BredCompilationFactoryTest {
         result.fold(
             ifLeft = { errors -> error("expected C code, got: $errors") },
             ifRight = { cLines ->
-                val declaration = Regex("""int local_values_\d+\[3\] = \{1, 2, 3\};""")
+                val declaration = Regex("""int global_values_\d+\[3\] = \{1, 2, 3\};""")
                 val declarationIndex = cLines.indexOfFirst { it.matches(declaration) }
                 assertTrue(
                     declarationIndex >= 0,
@@ -186,9 +186,11 @@ class BredCompilationFactoryTest {
         result.fold(
             ifLeft = { errors -> error("expected C code, got: $errors") },
             ifRight = { cLines ->
+                val declaration = Regex("""int global_values_\d+\[2\];""")
+                val declarationIndex = cLines.indexOfFirst { it.matches(declaration) }
                 assertTrue(
-                    cLines.any { it == "int global_values_18[2];" },
-                    "expected uninitialized global array declaration in C output: $cLines",
+                    declarationIndex in 0 until cLines.indexOfFirst { it.startsWith("int main(") },
+                    "expected uninitialized global array declaration before main: $cLines",
                 )
             },
         )

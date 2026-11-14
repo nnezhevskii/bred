@@ -163,4 +163,4 @@ Known gaps and follow-ups: [`docs/TODO.md`](docs/TODO.md).
 - **Lexer/parser/analyzer:** module tests under `lexer/`, `parser/`, and `analyzer/`.
 - **Root API:** `org.nnezh.root.BredCompilationFactoryTest`.
 - **C backend:** `c-backend/src/test/kotlin`; covers array pointers, local/global static arrays, string concat, C string literal escaping, and logical `!`.
-- **TAC snapshots:** `LLTAGSnapshotTester` - `.bred` vs expected `.3ac` in `tac/src/test/resources/`.
+- **TAC sequences** — [TACInstructionSequenceTest](tac/src/test/kotlin/org/nnezh/lltag/TACInstructionSequenceTest.kt) checks typed instructions, operands and jump targets for the [Bred fixtures](tac/src/test/resources/).

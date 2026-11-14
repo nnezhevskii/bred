@@ -128,7 +128,7 @@ Language Status относит пользовательские типы и до
 
 **Проверка и следующий шаг.** Проверить, что изменение строки ломает сравнение. Нормализовать только служебное форматирование. В списке активны 8 пар из 22, остальные разбирать по одной с учётом отдельных compile-expectation тестов.
 
-[SnapshotTester](../tac/src/test/kotlin/org/nnezh/lltag/LLTAGSnapshotTester.kt), [пример](../tac/src/test/resources/isPositive.3ac)
+[SnapshotTester](https://github.com/nnezhevskii/bred/blob/09472ab043c817532dc8ca729cd12c86b923d483/tac/src/test/kotlin/org/nnezh/lltag/LLTAGSnapshotTester.kt), [пример](https://github.com/nnezhevskii/bred/blob/09472ab043c817532dc8ca729cd12c86b923d483/tac/src/test/resources/isPositive.3ac)
 
 ### G-87. Перегрузки обычных функций могут получить одно имя в C
 

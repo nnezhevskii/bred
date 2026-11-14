@@ -729,7 +729,7 @@ Primary coverage lives in:
 - `src/test/kotlin/org/nnezh/root/BredCompilationFactoryTest.kt` for root
   frontend-to-C integration, stdlib injection, global arrays, product/sum code,
   and the `examples/3ac.bred` deployment health radar payload extraction;
-- `tac/src/test/resources/deploymentHealthRadar.3ac` for snapshot evidence that
+- `deploymentHealthRadar` in `TACInstructionSequenceTest` for checks that
   sum payload binding reaches ordinary `LOAD_FIELD` instructions before C
   rendering.
 
