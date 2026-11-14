@@ -72,33 +72,34 @@ class TACInstructionSequenceTest {
         println(intToString(factorialRecursion(n)))
       }
       """.trimIndent(),
-    ).take(6)
+    )
 
-    verifyIR(types,tac) {
-        expectFunc("factorialRecursion", types.intType)
-        val paramN = expectParam("n", types.intType)
-        val value1 = expectAssign(Operand.IntConst(1), types.intType)
-        val ltResult = expectBinOp(
-            opcode = LLTACOperation.LLTAC_LT,
-            destinationType = types.booleanType,
-            destinationPrefix = "var",
-            arg1 = paramN,
-            arg2 = value1,
-        )
-        val lbl = expectJumpIfNot(
-            condition = ltResult
-        )
+    verifyIR(types, tac) {
+      expectFunc("factorialRecursion", types.intType)
+      val paramN = expectParam("n", types.intType)
+      val threshold = expectAssign(Operand.IntConst(1), types.intType)
+      val isBaseCase = expectBinOp(LLTACOperation.LLTAC_LT, "var", types.booleanType, paramN, threshold)
+      val recursiveCase = expectJumpIfNot(isBaseCase)
+      val baseResult = expectAssign(Operand.IntConst(1), types.intType)
+      expectRet(baseResult)
 
-        val temp = 0
+      expectLabel(recursiveCase)
+      val one = expectAssign(Operand.IntConst(1), types.intType)
+      val previousN = expectBinOp(LLTACOperation.LLTAC_SUB, "var", types.intType, paramN, one)
+      expectCallArgument(previousN)
+      val previousFactorial = expectCall("factorialRecursion", types.intType, argumentCount = 1)
+      val product = expectBinOp(LLTACOperation.LLTAC_MUL, "var", types.intType, paramN, previousFactorial)
+      expectRet(product)
 
-
-//      val values = expectGlobalArray("values", types.intType, size = 2)
-//      expectFunc("main", types.unitType)
-//      val index = expectAssign(Operand.IntConst(0), types.intType)
-//      val loaded = expectLoad(values, index)
-//      expectNamedAssign("item", loaded)
-//      expectRet()
+      expectFunc("main", types.unitType)
+      val input = expectCall("readInt", types.intType, argumentCount = 0, localName = "n")
+      expectCallArgument(input)
+      val factorial = expectCall("factorialRecursion", types.intType, argumentCount = 1)
+      expectCallArgument(factorial)
+      val formatted = expectCall("intToString", types.stringType, argumentCount = 1)
+      expectCallArgument(formatted)
+      expectUnitCall("println", argumentCount = 1)
+      expectRet()
     }
   }
-
 }

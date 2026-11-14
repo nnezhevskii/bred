@@ -200,7 +200,7 @@ class SemanticAnalyzer(val globalContext: ProgramGlobalContext) {
                 declareVariable(
                     node = node,
                     name = node.name,
-                    id = idGenerator.nextLocal(node.name), // или nextGlobal для глобальной
+                    id = idGenerator.nextGlobal(node.name), // или nextGlobal для глобальной
                     type = node.scopeType(),
                     isMutable = node.isMutable,
                     scope = scope,

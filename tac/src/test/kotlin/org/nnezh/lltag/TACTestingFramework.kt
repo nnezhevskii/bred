@@ -2,6 +2,7 @@ package org.nnezh.lltag
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertNull
 import org.nnezh.bred.common.TypeSign
 import org.nnezh.bred.context.ProgramGlobalContext
 import org.nnezh.org.nnezh.ICGenerator.LLTACElement
@@ -80,40 +81,30 @@ internal class TACTestingFramework(private val types: ProgramGlobalContext,
         expectNext<LLTACRetInstruction> { assertEquals(expected, it.value, "return value") }
     }
 
-    fun expectParam(paramBaseName: String, paramType: TypeSign): Operand.Variable {
-        var destination: Operand.Variable? = null
-
-        expectNext<LLTACInstruction> {
-            assert(it.opcode == LLTACOperation.LLTAC_GET_PARAM)
-            assert(it.destination is Operand.Variable)
-            destination = it.destination as Operand.Variable
-
-            assertGeneratedName(destination.name, "param_${paramBaseName}_")
-            assert(destination.type == paramType)
-
+    fun expectParam(paramBaseName: String, paramType: TypeSign): Operand.Variable =
+        matchNext(LLTACInstruction::class.java) {
+            assertEquals(LLTACOperation.LLTAC_GET_PARAM, it.opcode, "opcode")
+            assertNull(it.arg1, "first operand")
+            assertNull(it.arg2, "second operand")
+            val parameter = assertInstanceOf(Operand.Variable::class.java, it.destination, "parameter")
+            assertGeneratedName(parameter.name, "param_${paramBaseName}_")
+            assertEquals(paramType, parameter.type, "parameter type")
+            parameter
         }
-        return destination!!
-    }
 
-    fun expectJumpIfNot(
-        condition: Operand,
-    ): LLTACLabel {
-
-        assert(condition.type == types.booleanType )
-
-        var result: LLTACLabel? = null
-        expectNext<LLTACInstruction> {
-            assert(it.opcode == LLTACOperation.LLTAC_JMP_IF_NOT)
-            assert(it.arg1 == condition)
-            assert(it.destination is Operand.Label)
-            assert(it.arg2 == null)
-
-            val target = it.destination as Operand.Label
+    fun expectJumpIfNot(condition: Operand.Variable): LLTACLabel =
+        matchNext(LLTACInstruction::class.java) {
+            assertEquals(LLTACOperation.LLTAC_JMP_IF_NOT, it.opcode, "opcode")
+            assertEquals(types.booleanType, condition.type, "condition type")
+            assertEquals(condition, it.arg1, "jump condition")
+            assertNull(it.arg2, "second operand")
+            val target = assertInstanceOf(Operand.Label::class.java, it.destination, "jump target")
             assertGeneratedName(target.label.name, "lbl")
-            result = target.label
+            target.label
         }
 
-        return result!!
+    fun expectLabel(target: LLTACLabel) {
+        expectNext<LLTACLabel> { assertEquals(target, it, "jump target") }
     }
 
     fun expectBinOp(
@@ -122,27 +113,39 @@ internal class TACTestingFramework(private val types: ProgramGlobalContext,
         destinationType: TypeSign,
         arg1: Operand,
         arg2: Operand
-    ): Operand {
-        val destination: Operand.Variable = expectDestination(
-            opcode = opcode,
-            namePrefix = destinationPrefix,
-            type = destinationType,
-            arg1 = arg1,
-            arg2 = arg2
-        )
-//        expectNext<LLTACInstruction> {
-//            e
-//            assert(it.opcode == opcode)
-//            assert(it.destination is Operand.Variable)
-//            destination = it.destination as Operand.Variable
-//            assert(destination.name.startsWith(destinationPrefix))
-//            assert(destination.type == destinationType)
-//            assert(it.arg1 == arg1 )
-//            assert(it.arg2 == arg2)
-//
-//        }
+    ): Operand.Variable =
+        expectDestination(opcode, destinationPrefix, destinationType, arg1, arg2)
 
-        return destination
+    fun expectCallArgument(value: Operand.Variable) {
+        expectNext<LLTACInstruction> {
+            assertEquals(LLTACOperation.LLTAC_PARAM, it.opcode, "opcode")
+            assertEquals(value, it.destination, "call argument")
+            assertNull(it.arg1, "first operand")
+            assertNull(it.arg2, "second operand")
+        }
+    }
+
+    fun expectCall(
+        name: String,
+        returnType: TypeSign,
+        argumentCount: Int,
+        localName: String? = null,
+    ): Operand.Variable =
+        expectDestination(
+            LLTACOperation.LLTAC_CALL,
+            localName?.let { "local_${it}_" } ?: "var",
+            returnType,
+            Operand.FunctionCall(name, returnType),
+            Operand.IntConst(argumentCount.toLong()),
+        )
+
+    fun expectUnitCall(name: String, argumentCount: Int) {
+        expectNext<LLTACInstruction> {
+            assertEquals(LLTACOperation.LLTAC_CALL, it.opcode, "opcode")
+            assertNull(it.destination, "call destination")
+            assertEquals(Operand.FunctionCall(name, types.unitType), it.arg1, "call target")
+            assertEquals(Operand.IntConst(argumentCount.toLong()), it.arg2, "argument count")
+        }
     }
 
     private fun expectDestination(
